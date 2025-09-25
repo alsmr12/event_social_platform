@@ -29,7 +29,7 @@
 ### Для начала:
 ```bash
 # 1. Клонировать репозиторий
-git clone https://github.com/alsnr12/event_social_platform.git
+git clone https://github.com/alsmr12/event_social_platform.git
 cd event_social_platform
 
 # 2. Создать свою ветку
@@ -76,6 +76,7 @@ git push origin имя_ветки
 ```markdown
 
 ```
+---
 
 ## Разрешение конфликтов
 
