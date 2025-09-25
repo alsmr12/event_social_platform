@@ -1,0 +1,25 @@
+{{template "base.html" .}}
+
+{{define "content"}}
+<div class="profiles-container">
+    <h2>Все профили ({{if .Users}}{{len .Users}}{{else}}0{{end}})</h2>
+
+    {{if .Users}}
+    <div class="profiles-grid">
+        {{range .Users}}
+        <div class="profile-item">
+            <h3>{{.FirstName}} {{.LastName}}</h3>
+            <p>{{.Email}}</p>
+            {{if .Age}}<p>{{.Age}} лет</p>{{end}}
+            <a href="/profile/{{.ID}}" class="btn btn-outline">Посмотреть</a>
+        </div>
+        {{end}}
+    </div>
+    {{else}}
+    <div class="empty-state">
+        <p>Пока нет профилей.</p>
+        <a href="/create-profile" class="btn btn-primary">Создать первый профиль!</a>
+    </div>
+    {{end}}
+</div>
+{{end}}

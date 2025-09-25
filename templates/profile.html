@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Профиль - Социальная платформа</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<nav class="navbar">
+    <div class="nav-container">
+        <h1><a href="/">СоцПлатформа</a></h1>
+        <ul class="nav-menu">
+            <li><a href="/">Главная</a></li>
+            <li><a href="/create-profile">Создать профиль</a></li>
+            <li><a href="/profiles">Все профили</a></li>
+        </ul>
+    </div>
+</nav>
+
+<main class="container">
+    <div class="profile-card">
+        {{if .User}}
+        <h2>{{.User.FirstName}} {{.User.LastName}}</h2>
+        <p><strong>Email:</strong> {{.User.Email}}</p>
+        {{if .User.Gender}}<p><strong>Пол:</strong> {{.User.Gender}}</p>{{end}}
+        {{if .User.Age}}<p><strong>Возраст:</strong> {{.User.Age}} лет</p>{{end}}
+        {{if .User.Phone}}<p><strong>Телефон:</strong> {{.User.Phone}}</p>{{end}}
+        {{if .User.SocialLinks}}<p><strong>Соцсети:</strong> {{.User.SocialLinks}}</p>{{end}}
+        <p><strong>Зарегистрирован:</strong> {{.User.CreatedAt.Format "02.01.2006 15:04"}}</p>
+        {{else}}
+        <h2>Профиль не найден</h2>
+        <p>Пользователь с таким ID не существует.</p>
+        {{end}}
+
+        <div class="profile-actions">
+            <a href="/profiles" class="btn btn-secondary">← Назад к списку</a>
+            <a href="/create-profile" class="btn btn-primary">Создать новый профиль</a>
+        </div>
+    </div>
+</main>
+
+<footer class="footer">
+    <p>© 2025 Социальная платформа</p>
+</footer>
+</body>
+</html>
