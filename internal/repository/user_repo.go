@@ -2,65 +2,41 @@ package repository
 
 import (
 	"event_social_platform/internal/models"
-	"sync"
-	"time"
+	"gorm.io/gorm"
 )
 
 type UserRepository struct {
-	users  map[uint]*models.User
-	mu     sync.RWMutex
-	nextID uint
+	db *gorm.DB
 }
 
-func NewUserRepository() *UserRepository {
-	return &UserRepository{
-		users:  make(map[uint]*models.User),
-		nextID: 1,
-	}
+func NewUserRepository(db *gorm.DB) *UserRepository {
+	return &UserRepository{db: db}
 }
 
 func (r *UserRepository) CreateUser(user *models.User) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	user.ID = r.nextID
-	user.CreatedAt = time.Now()
-	r.users[user.ID] = user
-	r.nextID++
-
-	return nil
+	return r.db.Create(user).Error
 }
 
 func (r *UserRepository) GetUserByID(id uint) (*models.User, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	user, exists := r.users[id]
-	if !exists {
-		return nil, nil
+	var user models.User
+	err := r.db.First(&user, id).Error
+	if err != nil {
+		return nil, err
 	}
-	return user, nil
+	return &user, nil
 }
 
 func (r *UserRepository) GetAllUsers() ([]*models.User, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	users := make([]*models.User, 0, len(r.users))
-	for _, user := range r.users {
-		users = append(users, user)
+	var users []*models.User
+	err := r.db.Find(&users).Error
+	if err != nil {
+		return nil, err
 	}
 	return users, nil
 }
 
 func (r *UserRepository) UserExists(email string) bool {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	for _, user := range r.users {
-		if user.Email == email {
-			return true
-		}
-	}
-	return false
+	var count int64
+	r.db.Model(&models.User{}).Where("email = ?", email).Count(&count)
+	return count > 0
 }

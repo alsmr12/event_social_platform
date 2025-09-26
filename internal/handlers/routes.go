@@ -3,12 +3,13 @@ package handlers
 import (
 	"event_social_platform/internal/repository"
 
-	"github.com/gin-gonic/gin" // веб движок для go
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
-func SetupRoutes(router *gin.Engine) {
-	// Инициализируем репозиторий
-	userRepo := repository.NewUserRepository()
+func SetupRoutes(router *gin.Engine, db *gorm.DB) {
+	// Инициализируем репозиторий с БД
+	userRepo := repository.NewUserRepository(db)
 	userHandler := NewUserHandler(userRepo)
 
 	// Статические файлы
