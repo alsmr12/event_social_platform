@@ -36,7 +36,6 @@ func (h *UserHandler) CreateProfile(c *gin.Context) {
 		return
 	}
 
-	// Проверяем, существует ли пользователь
 	if h.userRepo.UserExists(req.Email) {
 		c.HTML(http.StatusBadRequest, "create_profile.html", gin.H{
 			"Error": "Пользователь с таким email уже существует",
@@ -44,10 +43,9 @@ func (h *UserHandler) CreateProfile(c *gin.Context) {
 		return
 	}
 
-	// Создаем пользователя
+	// Создаем пользователя (БЕЗ пароля пока)
 	user := &models.User{
 		Email:       req.Email,
-		Password:    req.Password, // В реальном приложении нужно хешировать!
 		FirstName:   req.FirstName,
 		LastName:    req.LastName,
 		Gender:      req.Gender,
@@ -56,15 +54,23 @@ func (h *UserHandler) CreateProfile(c *gin.Context) {
 		SocialLinks: req.SocialLinks,
 	}
 
-	if err := h.userRepo.CreateUser(user); err != nil {
+	// Хешируем пароль!
+	if err := user.HashPassword(req.Password); err != nil {
 		c.HTML(http.StatusInternalServerError, "create_profile.html", gin.H{
-			"Error": "Ошибка при создании профиля",
+			"Error": "Ошибка при хешировании пароля: " + err.Error(),
 		})
 		return
 	}
 
-	// Перенаправляем на страницу профиля
-	c.Redirect(http.StatusSeeOther, "/profile/"+strconv.Itoa(int(user.ID)))
+	// Сохраняем в БД
+	if err := h.userRepo.CreateUser(user); err != nil {
+		c.HTML(http.StatusInternalServerError, "create_profile.html", gin.H{
+			"Error": "Ошибка при создании профиля: " + err.Error(),
+		})
+		return
+	}
+
+	c.Redirect(http.StatusSeeOther, "/login")
 }
 
 func (h *UserHandler) GetProfile(c *gin.Context) {

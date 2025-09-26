@@ -40,3 +40,12 @@ func (r *UserRepository) UserExists(email string) bool {
 	r.db.Model(&models.User{}).Where("email = ?", email).Count(&count)
 	return count > 0
 }
+
+func (r *UserRepository) GetUserByEmail(email string) (*models.User, error) {
+	var user models.User
+	err := r.db.Where("email = ?", email).First(&user).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}

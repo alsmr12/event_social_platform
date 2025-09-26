@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мой профиль - Социальная платформа</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<nav class="navbar">
+    <div class="nav-container">
+        <h1><a href="/">СоцПлатформа</a></h1>
+        <ul class="nav-menu">
+            <li><a href="/">Главная</a></li>
+            <li><a href="/events">События</a></li>
+            <li><a href="/create-event">Создать событие</a></li>
+            <li><a href="/profiles">Все профили</a></li>
+            <li><a href="/profile">Мой профиль</a></li>
+            <li><a href="/logout">Выйти</a></li>
+        </ul>
+    </div>
+</nav>
+
+<main class="container">
+    <div class="profile-container">
+        <div class="profile-header">
+            <h2>Мой профиль</h2>
+            <span class="profile-badge">👤 Вы вошли как: {{.User.FirstName}} {{.User.LastName}}</span>
+        </div>
+
+        <div class="profile-info">
+            <div class="info-section">
+                <h3>Основная информация</h3>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <strong>Email:</strong>
+                        <span>{{.User.Email}}</span>
+                    </div>
+                    <div class="info-item">
+                        <strong>Имя:</strong>
+                        <span>{{.User.FirstName}} {{.User.LastName}}</span>
+                    </div>
+                    {{if .User.Gender}}
+                    <div class="info-item">
+                        <strong>Пол:</strong>
+                        <span>{{.User.Gender}}</span>
+                    </div>
+                    {{end}}
+                    {{if .User.Age}}
+                    <div class="info-item">
+                        <strong>Возраст:</strong>
+                        <span>{{.User.Age}} лет</span>
+                    </div>
+                    {{end}}
+                    {{if .User.Phone}}
+                    <div class="info-item">
+                        <strong>Телефон:</strong>
+                        <span>{{.User.Phone}}</span>
+                    </div>
+                    {{end}}
+                    <div class="info-item">
+                        <strong>Дата регистрации:</strong>
+                        <span>{{.User.CreatedAt.Format "02.01.2006"}}</span>
+                    </div>
+                </div>
+            </div>
+
+            {{if .User.SocialLinks}}
+            <div class="info-section">
+                <h3>Социальные сети</h3>
+                <p>{{.User.SocialLinks}}</p>
+            </div>
+            {{end}}
+        </div>
+
+        <div class="profile-actions">
+            <a href="/events" class="btn btn-secondary">← К событиям</a>
+            <a href="/create-event" class="btn btn-primary">Создать событие</a>
+        </div>
+    </div>
+</main>
+</body>
+</html>

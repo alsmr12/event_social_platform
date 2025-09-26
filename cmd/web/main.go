@@ -30,6 +30,10 @@ func main() {
 		log.Fatal("Failed to migrate database:", err)
 	}
 
+	// После подключения к БД добавим:
+	sessionRepo := repository.NewSessionRepository(db)
+	sessionRepo.CleanExpiredSessions()
+
 	router := gin.Default()
 	router.LoadHTMLGlob("templates/*")
 	handlers.SetupRoutes(router, db)

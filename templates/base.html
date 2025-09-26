@@ -1,29 +1,17 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{.Title}} - Социальная платформа</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
 <nav class="navbar">
     <div class="nav-container">
         <h1><a href="/">СоцПлатформа</a></h1>
         <ul class="nav-menu">
             <li><a href="/">Главная</a></li>
-            <li><a href="/create-profile">Создать профиль</a></li>
-            <li><a href="/profiles">Все профили</a></li>
+            <li><a href="/events">События</a></li>
+            {{if .IsAuthenticated}}
+            <li><a href="/create-event">Создать событие</a></li>
+            <li><a href="/profile">Мой профиль</a></li>
+            <li><a href="/logout">Выйти ({{.User.FirstName}})</a></li>
+            {{else}}
+            <li><a href="/login">Войти</a></li>
+            <li><a href="/create-profile">Регистрация</a></li>
+            {{end}}
         </ul>
     </div>
 </nav>
-
-<main class="container">
-    {{block "content" .}}{{end}}
-</main>
-
-<footer class="footer">
-    <p>© 2025 Социальная платформа</p>
-</footer>
-</body>
-</html>

@@ -23,12 +23,24 @@ func NewEventHandler(eventRepo *repository.EventRepository, userRepo *repository
 }
 
 func (h *EventHandler) ShowCreateEventForm(c *gin.Context) {
+	user := GetUserFromContext(c)
+	if user == nil {
+		c.Redirect(http.StatusSeeOther, "/login")
+		return
+	}
+
 	c.HTML(http.StatusOK, "create_event.html", gin.H{
 		"Title": "Создание события",
 	})
 }
 
 func (h *EventHandler) CreateEvent(c *gin.Context) {
+	user := GetUserFromContext(c)
+	if user == nil {
+		c.Redirect(http.StatusSeeOther, "/login")
+		return
+	}
+
 	var req models.CreateEventRequest
 	if err := c.ShouldBind(&req); err != nil {
 		c.HTML(http.StatusBadRequest, "create_event.html", gin.H{
@@ -46,21 +58,13 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 		return
 	}
 
-	// TODO: Получить ID текущего пользователя из сессии
-	// Пока используем первого пользователя как создателя
-	users, _ := h.userRepo.GetAllUsers()
-	var creatorID uint = 1
-	if len(users) > 0 {
-		creatorID = users[0].ID
-	}
-
 	event := &models.Event{
 		Title:           req.Title,
 		Description:     req.Description,
 		Type:            req.Type,
 		DateTime:        eventTime,
 		Location:        req.Location,
-		CreatorID:       creatorID,
+		CreatorID:       user.ID, // Используем ID текущего пользователя
 		IsPrivate:       req.IsPrivate,
 		MaxParticipants: req.MaxParticipants,
 	}

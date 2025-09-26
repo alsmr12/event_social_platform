@@ -1,25 +1,53 @@
-{{template "base.html" .}}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Все профили - Социальная платформа</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<nav class="navbar">
+    <div class="nav-container">
+        <h1><a href="/">СоцПлатформа</a></h1>
+        <ul class="nav-menu">
+            <li><a href="/">Главная</a></li>
+            <li><a href="/profiles">Все профили</a></li>
+            <li><a href="/events">События</a></li>
+            <li><a href="/create-event">Создать событие</a></li>
+            <li><a href="/profile">Мой профиль</a></li>
+            <li><a href="/logout">Выйти</a></li>
+        </ul>
+    </div>
+</nav>
 
-{{define "content"}}
-<div class="profiles-container">
-    <h2>Все профили ({{if .Users}}{{len .Users}}{{else}}0{{end}})</h2>
+<main class="container">
+    <div class="profiles-container">
+        <h2>Все профили ({{len .Users}})</h2>
 
-    {{if .Users}}
-    <div class="profiles-grid">
-        {{range .Users}}
-        <div class="profile-item">
-            <h3>{{.FirstName}} {{.LastName}}</h3>
-            <p>{{.Email}}</p>
-            {{if .Age}}<p>{{.Age}} лет</p>{{end}}
-            <a href="/profile/{{.ID}}" class="btn btn-outline">Посмотреть</a>
+        {{if .Users}}
+        <div class="profiles-grid">
+            {{range .Users}}
+            <div class="profile-card">
+                <h3>{{.FirstName}} {{.LastName}}</h3>
+                <p class="profile-email">{{.Email}}</p>
+                {{if .Age}}<p>{{.Age}} лет</p>{{end}}
+                <a href="/profile/{{.ID}}" class="btn btn-outline">Посмотреть профиль</a>
+            </div>
+            {{end}}
+        </div>
+        {{else}}
+        <div class="empty-state">
+            <p>Пока нет профилей.</p>
+            <a href="/create-profile" class="btn btn-primary">Создать первый профиль</a>
         </div>
         {{end}}
+
+        <div class="page-actions">
+            <a href="/profile" class="btn btn-primary">← Мой профиль</a>
+            <a href="/events" class="btn btn-secondary">Смотреть события →</a>
+        </div>
     </div>
-    {{else}}
-    <div class="empty-state">
-        <p>Пока нет профилей.</p>
-        <a href="/create-profile" class="btn btn-primary">Создать первый профиль!</a>
-    </div>
-    {{end}}
-</div>
-{{end}}
+</main>
+</body>
+</html>
