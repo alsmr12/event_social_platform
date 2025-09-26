@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Event.Title}} - Социальная платформа</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<nav class="navbar">
+    <div class="nav-container">
+        <h1><a href="/">СоцПлатформа</a></h1>
+        <ul class="nav-menu">
+            <li><a href="/">Главная</a></li>
+            <li><a href="/events">События</a></li>
+            <li><a href="/create-event">Создать событие</a></li>
+            <li><a href="/profiles">Профили</a></li>
+        </ul>
+    </div>
+</nav>
+
+<main class="container">
+    <div class="event-detail">
+        <div class="event-header">
+            <h2>{{.Event.Title}}</h2>
+            <span class="event-type {{.Event.Type}}">{{.Event.Type}}</span>
+            {{if .Event.IsPrivate}}<span class="event-private">🔒 Приватное</span>{{end}}
+        </div>
+
+        <div class="event-info">
+            <div class="info-section">
+                <h3>Описание</h3>
+                <p>{{.Event.Description}}</p>
+            </div>
+
+            <div class="info-grid">
+                <div class="info-item">
+                    <strong>📅 Дата и время:</strong>
+                    <span>{{.Event.DateTime.Format "Monday, 02 January 2006 в 15:04"}}</span>
+                </div>
+                <div class="info-item">
+                    <strong>📍 Место:</strong>
+                    <span>{{.Event.Location}}</span>
+                </div>
+                <div class="info-item">
+                    <strong>👤 Организатор:</strong>
+                    <span>{{.Event.Creator.FirstName}} {{.Event.Creator.LastName}}</span>
+                </div>
+                <div class="info-item">
+                    <strong>👥 Участников:</strong>
+                    <span>{{if .Event.MaxParticipants}}{{.Event.MaxParticipants}} макс.{{else}}Не ограничено{{end}}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="event-actions">
+            <a href="/events" class="btn btn-secondary">← Назад к событиям</a>
+            <button class="btn btn-primary">Участвовать</button>
+        </div>
+    </div>
+</main>
+</body>
+</html>

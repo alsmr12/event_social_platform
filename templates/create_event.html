@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создание события - Социальная платформа</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<nav class="navbar">
+    <div class="nav-container">
+        <h1><a href="/">СоцПлатформа</a></h1>
+        <ul class="nav-menu">
+            <li><a href="/">Главная</a></li>
+            <li><a href="/events">События</a></li>
+            <li><a href="/create-event">Создать событие</a></li>
+            <li><a href="/profiles">Профили</a></li>
+        </ul>
+    </div>
+</nav>
+
+<main class="container">
+    <div class="form-container">
+        <h2>Создание события</h2>
+
+        {{if .Error}}
+        <div class="alert error">{{.Error}}</div>
+        {{end}}
+
+        <form method="POST" action="/create-event">
+            <div class="form-group">
+                <label>Название события:</label>
+                <input type="text" name="title" required>
+            </div>
+
+            <div class="form-group">
+                <label>Описание:</label>
+                <textarea name="description" required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Тип события:</label>
+                <select name="type" required>
+                    <option value="">Выберите тип</option>
+                    <option value="concert">Концерт</option>
+                    <option value="lecture">Лекция</option>
+                    <option value="sport">Спорт</option>
+                    <option value="meetup">Встреча</option>
+                    <option value="conference">Конференция</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Дата и время:</label>
+                <input type="datetime-local" name="date_time" required>
+            </div>
+
+            <div class="form-group">
+                <label>Место проведения:</label>
+                <input type="text" name="location" required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Приватное событие:</label>
+                    <input type="checkbox" name="is_private">
+                </div>
+                <div class="form-group">
+                    <label>Макс. участников:</label>
+                    <input type="number" name="max_participants" min="1">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Создать событие</button>
+        </form>
+    </div>
+</main>
+</body>
+</html>

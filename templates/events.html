@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Все события - Социальная платформа</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<nav class="navbar">
+    <div class="nav-container">
+        <h1><a href="/">СоцПлатформа</a></h1>
+        <ul class="nav-menu">
+            <li><a href="/">Главная</a></li>
+            <li><a href="/events">События</a></li>
+            <li><a href="/create-event">Создать событие</a></li>
+            <li><a href="/profiles">Профили</a></li>
+        </ul>
+    </div>
+</nav>
+
+<main class="container">
+    <div class="events-container">
+        <h2>Все события ({{len .Events}})</h2>
+
+        {{if .Events}}
+        <div class="events-grid">
+            {{range .Events}}
+            <div class="event-card">
+                <div class="event-header">
+                    <h3>{{.Title}}</h3>
+                    <span class="event-type {{.Type}}">{{.Type}}</span>
+                </div>
+                <p class="event-description">{{.Description}}</p>
+                <div class="event-details">
+                    <p><strong>📅 Когда:</strong> {{.DateTime.Format "02.01.2006 15:04"}}</p>
+                    <p><strong>📍 Где:</strong> {{.Location}}</p>
+                    <p><strong>👤 Организатор:</strong> {{.Creator.FirstName}} {{.Creator.LastName}}</p>
+                </div>
+                <a href="/event/{{.ID}}" class="btn btn-outline">Подробнее</a>
+            </div>
+            {{end}}
+        </div>
+        {{else}}
+        <div class="empty-state">
+            <p>Пока нет созданных событий.</p>
+            <a href="/create-event" class="btn btn-primary">Создать первое событие!</a>
+        </div>
+        {{end}}
+    </div>
+</main>
+</body>
+</html>
