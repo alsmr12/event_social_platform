@@ -95,3 +95,22 @@ git commit -m "resolve: merge conflicts with main"
 # 4. Запушить изменения
 git push origin твой-никнейм/ветка
 ```
+---
+### Выдать пользователю БД права:
+```markdown
+-- Даем права на схему public
+GRANT USAGE ON SCHEMA public TO event_user;
+GRANT CREATE ON SCHEMA public TO event_user;
+
+-- Даем права на все таблицы в схеме public
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO event_user;
+
+-- Даем права на последовательности (для auto increment)
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO event_user;
+
+-- Убедимся что пользователь имеет права на базу
+GRANT CONNECT ON DATABASE event_platform TO event_user;
+
+-- Выйти
+\q
+```
