@@ -14,6 +14,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	sessionRepo := repository.NewSessionRepository(db)
 	wallRepo := repository.NewWallRepository(db)
 	subscriptionRepo := repository.NewSubscriptionRepository(db)
+	friendshipRepo := repository.NewFriendshipRepository(db)
 
 	// Инициализируем обработчики
 	userHandler := NewUserHandler(userRepo)
@@ -21,6 +22,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	authHandler := NewAuthHandler(userRepo, sessionRepo)
 	wallHandler := NewWallHandler(wallRepo, userRepo)
 	subscriptionHandler := NewSubscriptionHandler(subscriptionRepo, userRepo)
+	friendshipHandler := NewFriendshipHandler(friendshipRepo, userRepo)
 
 	// Middleware аутентификации (теперь не глобальный)
 	authMiddleware := middleware.AuthMiddleware(userRepo, sessionRepo)
@@ -68,6 +70,13 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 		protected.GET("/subscriptions", subscriptionHandler.MySubscriptions)
 		protected.GET("/subscribe/:id", subscriptionHandler.Subscribe)
 		protected.GET("/unsubscribe/:id", subscriptionHandler.Unsubscribe)
+
+		// Друзья
+		protected.GET("/friends", friendshipHandler.FriendsPage)
+		protected.GET("/friends/add/:id", friendshipHandler.SendFriendRequest)
+		protected.GET("/friends/accept/:id", friendshipHandler.AcceptFriendRequest)
+		protected.GET("/friends/reject/:id", friendshipHandler.RejectFriendRequest)
+		protected.GET("/friends/remove/:id", friendshipHandler.RemoveFriend)
 
 		protected.GET("/edit-profile", userHandler.ShowEditProfileForm)
 		protected.POST("/edit-profile", userHandler.UpdateProfile)

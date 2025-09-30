@@ -50,7 +50,8 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.Event{},
 		&models.Session{},
 		&models.WallPost{},
-		&models.Subscription{}, // ← ДОБАВЛЯЕМ ПОДПИСКИ
+		&models.Subscription{},
+		&models.Friendship{}, // ← ДОБАВЛЯЕМ ДРУЖБУ
 	)
 	if err != nil {
 		return fmt.Errorf("failed to auto-migrate database: %w", err)

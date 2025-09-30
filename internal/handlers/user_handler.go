@@ -112,13 +112,33 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		isSubscribed, _ = subscriptionRepo.IsSubscribed(currentUser.ID, uint(id))
 	}
 
+	// Получаем статус дружбы
+	var friendshipStatus string = "none"
+	var isIncomingRequest bool = false
+	if currentUser != nil && currentUser.ID != uint(id) {
+		friendshipRepo := repository.NewFriendshipRepository(db)
+		friendshipStatus, err = friendshipRepo.GetFriendshipStatus(currentUser.ID, uint(id))
+		if err != nil {
+			friendshipStatus = "none"
+		}
+
+		// Проверяем, является ли запрос входящим
+		if friendshipStatus == "pending" {
+			var friendship models.Friendship
+			err := db.Where("user_id = ? AND friend_id = ?", uint(id), currentUser.ID).First(&friendship).Error
+			isIncomingRequest = (err == nil)
+		}
+	}
+
 	c.HTML(http.StatusOK, "profile.html", gin.H{
-		"User":           user,
-		"Posts":          posts,
-		"CurrentUser":    currentUser,
-		"FollowersCount": followersCount,
-		"FollowingCount": followingCount,
-		"IsSubscribed":   isSubscribed,
+		"User":              user,
+		"Posts":             posts,
+		"CurrentUser":       currentUser,
+		"FollowersCount":    followersCount,
+		"FollowingCount":    followingCount,
+		"IsSubscribed":      isSubscribed,
+		"FriendshipStatus":  friendshipStatus,
+		"IsIncomingRequest": isIncomingRequest,
 	})
 }
 

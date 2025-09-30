@@ -150,6 +150,60 @@
             gap: 10px;
             justify-content: flex-end;
         }
+        /* Стили для дружбы */
+        .friendship-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .friendship-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.85em;
+            text-decoration: none;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #218838;
+            color: white;
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+            color: white;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #545b62;
+            color: white;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+        }
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
     </style>
 </head>
 <body>
@@ -195,6 +249,39 @@
             {{else}}
             <a href="/subscribe/{{.User.ID}}" class="subscribe-btn">Подписаться</a>
             {{end}}
+        </div>
+        {{end}}
+
+        <!-- СЕКЦИЯ ДРУЖБЫ -->
+        {{if and .CurrentUser (ne .CurrentUser.ID .User.ID)}}
+        <div class="friendship-section">
+            <h4 style="margin: 0 0 15px 0; color: #333;">Дружба</h4>
+            <div class="friendship-actions">
+                {{if eq .FriendshipStatus "none"}}
+                <a href="/friends/add/{{.User.ID}}" class="btn btn-primary">Добавить в друзья</a>
+                {{else if eq .FriendshipStatus "pending"}}
+                {{if .IsIncomingRequest}}
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <span style="color: #666;">Запрос на дружбу отправлен вам</span>
+                    <a href="/friends/accept/{{.User.ID}}" class="btn-small btn-success">Принять</a>
+                    <a href="/friends/reject/{{.User.ID}}" class="btn-small btn-danger">Отклонить</a>
+                </div>
+                {{else}}
+                <div style="color: #666;">
+                    <span>Запрос на дружбу отправлен</span>
+                    <span class="status-badge status-pending" style="margin-left: 10px;">ожидает</span>
+                    <a href="/friends/remove/{{.User.ID}}" class="btn-small btn-secondary" style="margin-left: 10px;" onclick="return confirm('Отменить запрос в друзья?')">Отменить</a>
+                </div>
+                {{end}}
+                {{else if eq .FriendshipStatus "accepted"}}
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <span style="color: #28a745;">✓ В друзьях</span>
+                    <a href="/friends/remove/{{.User.ID}}" class="btn-small btn-danger" onclick="return confirm('Удалить из друзей?')">Удалить из друзей</a>
+                </div>
+                {{else if eq .FriendshipStatus "rejected"}}
+                <span style="color: #666;">Запрос на дружбу отклонен</span>
+                {{end}}
+            </div>
         </div>
         {{end}}
 
@@ -255,7 +342,7 @@
         <div class="profile-actions">
             <a href="/profiles" class="btn btn-secondary">← Назад к списку</a>
             {{if .CurrentUser}}
-            <a href="/subscriptions" class="btn btn-primary">Мои подписки</a>
+            <a href="/friends" class="btn btn-primary">Мои друзья</a>
             {{else}}
             <a href="/create-profile" class="btn btn-primary">Создать новый профиль</a>
             {{end}}
