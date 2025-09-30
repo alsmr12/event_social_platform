@@ -419,3 +419,31 @@ input:focus, select:focus, textarea:focus {
 .nav-menu a[href*="{{.CurrentPage}}"] {
     background-color: rgba(255, 255, 255, 0.2);
 }
+
+.edit-btn {
+    color: #0066cc;
+    text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px;
+    border: 1px solid #0066cc;
+    border-radius: 3px;
+}
+.edit-btn:hover {
+    background: #0066cc;
+    color: white;
+    text-decoration: none;
+}
+
+.delete-btn {
+    color: #ff4444;
+    text-decoration: none;
+    font-size: 0.9em;
+    padding: 5px 10px;
+    border: 1px solid #ff4444;
+    border-radius: 3px;
+}
+.delete-btn:hover {
+    background: #ff4444;
+    color: white;
+    text-decoration: none;
+}

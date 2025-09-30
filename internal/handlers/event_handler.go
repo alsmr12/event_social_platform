@@ -3,12 +3,18 @@ package handlers
 import (
 	"event_social_platform/internal/models"
 	"event_social_platform/internal/repository"
+	"gorm.io/gorm"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
+
+// Добавляем метод для получения DB если понадобится
+func (h *EventHandler) GetDB() *gorm.DB {
+	return h.userRepo.GetDB()
+}
 
 type EventHandler struct {
 	eventRepo *repository.EventRepository

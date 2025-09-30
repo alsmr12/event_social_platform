@@ -12,11 +12,13 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	userRepo := repository.NewUserRepository(db)
 	eventRepo := repository.NewEventRepository(db)
 	sessionRepo := repository.NewSessionRepository(db)
+	wallRepo := repository.NewWallRepository(db)
 
 	// Инициализируем обработчики
 	userHandler := NewUserHandler(userRepo)
 	eventHandler := NewEventHandler(eventRepo, userRepo)
 	authHandler := NewAuthHandler(userRepo, sessionRepo)
+	wallHandler := NewWallHandler(wallRepo, userRepo)
 
 	// Middleware аутентификации (теперь не глобальный)
 	authMiddleware := middleware.AuthMiddleware(userRepo, sessionRepo)
@@ -43,7 +45,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	protected := router.Group("/")
 	protected.Use(authMiddleware)
 	{
-		// Профили
+		// Профили (стена теперь интегрирована в профиль)
 		protected.GET("/profiles", userHandler.GetAllProfiles)
 		protected.GET("/profile/:id", userHandler.GetProfile)
 		protected.GET("/profile", authHandler.ShowProfile)
@@ -53,6 +55,12 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 		protected.GET("/event/:id", eventHandler.GetEvent)
 		protected.GET("/create-event", eventHandler.ShowCreateEventForm)
 		protected.POST("/create-event", eventHandler.CreateEvent)
+
+		// Действия со стеной
+		protected.POST("/wall/post", wallHandler.CreatePost)
+		protected.GET("/wall/delete/:id", wallHandler.DeletePost)
+		protected.GET("/wall/edit/:id", wallHandler.ShowEditForm)
+		protected.POST("/wall/edit/:id", wallHandler.UpdatePost)
 
 		// Выход
 		protected.GET("/logout", authHandler.Logout)

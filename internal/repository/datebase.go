@@ -44,17 +44,17 @@ func ConnectDB(config *DBConfig) (*gorm.DB, error) {
 	return db, nil
 }
 
-// AutoMigrate - автоматическое создание таблиц
 func AutoMigrate(db *gorm.DB) error {
 	err := db.AutoMigrate(
 		&models.User{},
 		&models.Event{},
-		&models.Session{}, // ← Добавляем сессии
+		&models.Session{},
+		&models.WallPost{}, // ← ДОБАВИТЬ
 	)
 	if err != nil {
 		return fmt.Errorf("failed to auto-migrate database: %w", err)
 	}
 
-	log.Println("✅ Database migration completed successfully")
+	log.Println("Database migration completed successfully")
 	return nil
 }

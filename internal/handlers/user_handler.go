@@ -91,8 +91,21 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
+	// Получаем записи на стене пользователя через репозиторий стены
+	db := h.userRepo.GetDB()
+	wallRepo := repository.NewWallRepository(db)
+	posts, err := wallRepo.GetPostsByUserID(uint(id))
+	if err != nil {
+		// В случае ошибки просто используем пустой список
+		posts = []*models.WallPost{}
+	}
+
+	currentUser := GetUserFromContext(c)
+
 	c.HTML(http.StatusOK, "profile.html", gin.H{
-		"User": user,
+		"User":        user,
+		"Posts":       posts,
+		"CurrentUser": currentUser,
 	})
 }
 

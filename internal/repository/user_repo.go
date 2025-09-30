@@ -5,6 +5,11 @@ import (
 	"gorm.io/gorm"
 )
 
+// Добавляем метод для получения DB
+func (r *UserRepository) GetDB() *gorm.DB {
+	return r.db
+}
+
 type UserRepository struct {
 	db *gorm.DB
 }
