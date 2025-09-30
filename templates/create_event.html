@@ -1,79 +1,79 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Создание события - Социальная платформа</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-<nav class="navbar">
-    <div class="nav-container">
-        <h1><a href="/">СоцПлатформа</a></h1>
-        <ul class="nav-menu">
-            <li><a href="/">Главная</a></li>
-            <li><a href="/events">События</a></li>
-            <li><a href="/create-event">Создать событие</a></li>
-            <li><a href="/profiles">Профили</a></li>
-        </ul>
+{{define "create_event_content"}}
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    <h2 style="text-align: center; margin-bottom: 30px;">Создание события</h2>
+
+    {{if .Error}}
+    <div class="alert alert-error">
+        {{.Error}}
     </div>
-</nav>
+    {{end}}
 
-<main class="container">
-    <div class="form-container">
-        <h2>Создание события</h2>
+    <form action="/create-event" method="POST">
+        <div class="form-group">
+            <label for="title">Название события *</label>
+            <input type="text" id="title" name="title" class="form-control" required>
+        </div>
 
-        {{if .Error}}
-        <div class="alert error">{{.Error}}</div>
-        {{end}}
+        <div class="form-group">
+            <label for="description">Описание *</label>
+            <textarea id="description" name="description" class="form-control" required></textarea>
+        </div>
 
-        <form method="POST" action="/create-event">
+        <div class="form-row">
             <div class="form-group">
-                <label>Название события:</label>
-                <input type="text" name="title" required>
-            </div>
-
-            <div class="form-group">
-                <label>Описание:</label>
-                <textarea name="description" required></textarea>
-            </div>
-
-            <div class="form-group">
-                <label>Тип события:</label>
-                <select name="type" required>
+                <label for="type">Тип события *</label>
+                <select id="type" name="type" class="form-control" required>
                     <option value="">Выберите тип</option>
                     <option value="concert">Концерт</option>
                     <option value="lecture">Лекция</option>
                     <option value="sport">Спорт</option>
-                    <option value="meetup">Встреча</option>
+                    <option value="meeting">Встреча</option>
+                    <option value="party">Вечеринка</option>
                     <option value="conference">Конференция</option>
+                    <option value="exhibition">Выставка</option>
+                    <option value="other">Другое</option>
                 </select>
             </div>
-
             <div class="form-group">
-                <label>Дата и время:</label>
-                <input type="datetime-local" name="date_time" required>
+                <label for="date_time">Дата и время *</label>
+                <input type="datetime-local" id="date_time" name="date_time" class="form-control" required>
             </div>
+        </div>
 
+        <div class="form-group">
+            <label for="location">Место проведения *</label>
+            <input type="text" id="location" name="location" class="form-control" required>
+        </div>
+
+        <div class="form-row">
             <div class="form-group">
-                <label>Место проведения:</label>
-                <input type="text" name="location" required>
+                <label for="latitude">Широта</label>
+                <input type="text" id="latitude" name="latitude" class="form-control" placeholder="55.7558">
             </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Приватное событие:</label>
-                    <input type="checkbox" name="is_private">
-                </div>
-                <div class="form-group">
-                    <label>Макс. участников:</label>
-                    <input type="number" name="max_participants" min="1">
-                </div>
+            <div class="form-group">
+                <label for="longitude">Долгота</label>
+                <input type="text" id="longitude" name="longitude" class="form-control" placeholder="37.6173">
             </div>
+        </div>
 
+        <div class="form-row">
+            <div class="form-group">
+                <label for="max_participants">Макс. участников</label>
+                <input type="number" id="max_participants" name="max_participants" class="form-control" min="1">
+            </div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="is_private" name="is_private" value="true">
+                    Приватное событие
+                </label>
+                <small style="color: var(--text-muted);">Только по приглашению</small>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 30px;">
+            <a href="/events" class="btn btn-secondary">Отмена</a>
             <button type="submit" class="btn btn-primary">Создать событие</button>
-        </form>
-    </div>
-</main>
-</body>
-</html>
+        </div>
+    </form>
+</div>
+{{end}}

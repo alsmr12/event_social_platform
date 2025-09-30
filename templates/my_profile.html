@@ -1,259 +1,98 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мой профиль - Социальная платформа</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-    <style>
-        .wall-section {
-            margin-top: 30px;
-            border-top: 1px solid #eee;
-            padding-top: 20px;
-        }
-        .post-form {
-            margin-bottom: 30px;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            background: #f9f9f9;
-        }
-        .post-form textarea {
-            width: 100%;
-            height: 80px;
-            margin-bottom: 10px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            resize: vertical;
-        }
-        .post {
-            border: 1px solid #eee;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-radius: 8px;
-            background: white;
-        }
-        .post-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            align-items: center;
-        }
-        .post-author {
-            font-weight: bold;
-            color: #333;
-        }
-        .post-date {
-            color: #666;
-            font-size: 0.9em;
-        }
-        .post-content {
-            margin-bottom: 10px;
-            line-height: 1.5;
-        }
-        .post-actions {
-            text-align: right;
-        }
-        .delete-btn {
-            color: #ff4444;
-            text-decoration: none;
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 0.9em;
-        }
-        .delete-btn:hover {
-            text-decoration: underline;
-        }
-        .wall-title {
-            margin-bottom: 20px;
-            color: #333;
-        }
-        .no-posts {
-            text-align: center;
-            color: #666;
-            padding: 40px;
-            background: #f9f9f9;
-            border-radius: 8px;
-        }
-        /* Стили для подписок */
-        .subscription-stats {
-            display: flex;
-            gap: 30px;
-            margin: 20px 0;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 8px;
-        }
-        .stat-item {
-            text-align: center;
-        }
-        .stat-number {
-            font-size: 20px;
-            font-weight: bold;
-            color: #0066cc;
-        }
-        .stat-label {
-            font-size: 12px;
-            color: #666;
-            text-transform: uppercase;
-        }
-        .edit-btn {
-            color: #0066cc;
-            text-decoration: none;
-            font-size: 0.9em;
-            padding: 5px 10px;
-            border: 1px solid #0066cc;
-            border-radius: 3px;
-        }
-        .edit-btn:hover {
-            background: #0066cc;
-            color: white;
-            text-decoration: none;
-        }
-        .post-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-        }
-        .profile-actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 30px;
-        }
-    </style>
-</head>
-<body>
-<nav class="navbar">
-    <div class="nav-container">
-        <h1><a href="/">СоцПлатформа</a></h1>
-        <ul class="nav-menu">
-            <li><a href="/">Главная</a></li>
-            <li><a href="/events">События</a></li>
-            <li><a href="/create-event">Создать событие</a></li>
-            <li><a href="/profiles">Все профили</a></li>
-            <li><a href="/profile">Мой профиль</a></li>
-            <li><a href="/subscriptions">Мои подписки</a></li>
-            <li><a href="/friends">Друзья</a></li>
-            <li><a href="/logout">Выйти</a></li>
-        </ul>
+{{define "my_profile_content"}}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h2>Мой профиль</h2>
+        <span style="background: var(--primary-color); color: white; padding: 5px 10px; border-radius: 4px; font-size: 0.9em;">
+            👤 {{.User.FirstName}} {{.User.LastName}}
+        </span>
     </div>
-</nav>
 
-<main class="container">
-    <div class="profile-container">
-        <div class="profile-header">
-            <h2>Мой профиль</h2>
-            <span class="profile-badge">👤 Вы вошли как: {{.User.FirstName}} {{.User.LastName}}</span>
+    <!-- Статистика -->
+    <div class="stats">
+        <div class="stat-item">
+            <div class="stat-number">{{.FollowersCount}}</div>
+            <div class="stat-label">Подписчиков</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">{{.FollowingCount}}</div>
+            <div class="stat-label">Подписок</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">{{.FriendsCount}}</div>
+            <div class="stat-label">Друзей</div>
+        </div>
+    </div>
+
+    <!-- Информация профиля -->
+    <div class="grid grid-2">
+        <div>
+            <h3>Основная информация</h3>
+            <div style="line-height: 2;">
+                <div><strong>Email:</strong> {{.User.Email}}</div>
+                <div><strong>Имя:</strong> {{.User.FirstName}} {{.User.LastName}}</div>
+                {{if .User.Gender}}<div><strong>Пол:</strong> {{.User.Gender}}</div>{{end}}
+                {{if .User.Age}}<div><strong>Возраст:</strong> {{.User.Age}} лет</div>{{end}}
+                {{if .User.Phone}}<div><strong>Телефон:</strong> {{.User.Phone}}</div>{{end}}
+                <div><strong>Зарегистрирован:</strong> {{.User.CreatedAt.Format "02.01.2006"}}</div>
+            </div>
         </div>
 
-        <!-- СТАТИСТИКА ПОДПИСОК -->
-        <div class="subscription-stats">
-            <div class="stat-item">
-                <div class="stat-number">{{.FollowersCount}}</div>
-                <div class="stat-label">Подписчиков</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number">{{.FollowingCount}}</div>
-                <div class="stat-label">Подписок</div>
+        {{if .User.SocialLinks}}
+        <div>
+            <h3>Социальные сети</h3>
+            <div style="line-height: 2;">
+                {{.User.SocialLinks}}
             </div>
         </div>
+        {{end}}
+    </div>
 
-        <div class="profile-info">
-            <div class="info-section">
-                <h3>Основная информация</h3>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <strong>Email:</strong>
-                        <span>{{.User.Email}}</span>
-                    </div>
-                    <div class="info-item">
-                        <strong>Имя:</strong>
-                        <span>{{.User.FirstName}} {{.User.LastName}}</span>
-                    </div>
-                    {{if .User.Gender}}
-                    <div class="info-item">
-                        <strong>Пол:</strong>
-                        <span>{{.User.Gender}}</span>
-                    </div>
-                    {{end}}
-                    {{if .User.Age}}
-                    <div class="info-item">
-                        <strong>Возраст:</strong>
-                        <span>{{.User.Age}} лет</span>
-                    </div>
-                    {{end}}
-                    {{if .User.Phone}}
-                    <div class="info-item">
-                        <strong>Телефон:</strong>
-                        <span>{{.User.Phone}}</span>
-                    </div>
-                    {{end}}
-                    <div class="info-item">
-                        <strong>Дата регистрации:</strong>
-                        <span>{{.User.CreatedAt.Format "02.01.2006"}}</span>
-                    </div>
-                </div>
+    <!-- Действия профиля -->
+    <div class="page-actions">
+        <a href="/edit-profile" class="btn btn-primary">Редактировать профиль</a>
+        <a href="/friends" class="btn btn-outline">Мои друзья</a>
+        <a href="/subscriptions" class="btn btn-outline">Мои подписки</a>
+        <a href="/create-event" class="btn btn-success">Создать событие</a>
+    </div>
+</div>
+
+<!-- Стена -->
+<div class="card">
+    <h3>Моя стена</h3>
+
+    <!-- Форма новой записи -->
+    <div style="background: var(--light-bg); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <form action="/wall/post" method="POST">
+            <textarea name="content" class="form-control" placeholder="Что у вас нового?" required maxlength="1000" rows="4"></textarea>
+            <input type="hidden" name="user_id" value="{{.User.ID}}">
+            <button type="submit" class="btn btn-primary" style="margin-top: 10px;">Опубликовать</button>
+        </form>
+    </div>
+
+    <!-- Список записей -->
+    <div class="posts">
+        {{range .Posts}}
+        <div class="post">
+            <div class="post-header">
+                <span class="post-author">{{.Author.FirstName}} {{.Author.LastName}}</span>
+                <span class="post-date">{{.CreatedAt.Format "02.01.2006 15:04"}}</span>
             </div>
-
-            {{if .User.SocialLinks}}
-            <div class="info-section">
-                <h3>Социальные сети</h3>
-                <p>{{.User.SocialLinks}}</p>
-            </div>
-            {{end}}
-        </div>
-
-        <!-- СЕКЦИЯ СТЕНЫ В МОЕМ ПРОФИЛЕ -->
-        <div class="wall-section">
-            <h3 class="wall-title">Моя стена</h3>
-
-            <!-- Форма для новой записи -->
-            <div class="post-form">
-                <form action="/wall/post" method="POST">
-                    <textarea name="content" placeholder="Что у вас нового?" required maxlength="1000"></textarea>
-                    <input type="hidden" name="user_id" value="{{.User.ID}}">
-                    <button type="submit" class="btn btn-primary">Опубликовать</button>
-                </form>
-            </div>
-
-            <!-- Список записей -->
-            <div class="posts">
-                {{range .Posts}}
-                <div class="post">
-                    <div class="post-header">
-                        <span class="post-author">{{.Author.FirstName}} {{.Author.LastName}}</span>
-                        <span class="post-date">{{.CreatedAt.Format "02.01.2006 15:04"}}</span>
-                    </div>
-                    <div class="post-content">{{.Content}}</div>
-                    <div class="post-actions">
-                        {{if and $.CurrentUser (or (eq $.CurrentUser.ID .AuthorID) (eq $.CurrentUser.ID .UserID))}}
-                        {{if eq $.CurrentUser.ID .AuthorID}}
-                        <a href="/wall/edit/{{.ID}}" class="edit-btn">Редактировать</a>
-                        {{end}}
-                        <a href="/wall/delete/{{.ID}}" class="delete-btn" onclick="return confirm('Удалить запись?')">Удалить</a>
-                        {{end}}
-                    </div>
-                </div>
-                {{else}}
-                <div class="no-posts">
-                    <p>На вашей стене пока нет записей.</p>
-                    <p>Напишите что-нибудь первым!</p>
-                </div>
+            <div class="post-content">{{.Content}}</div>
+            <div class="post-actions">
+                {{if and $.CurrentUser (or (eq $.CurrentUser.ID .AuthorID) (eq $.CurrentUser.ID .UserID))}}
+                {{if eq $.CurrentUser.ID .AuthorID}}
+                <a href="/wall/edit/{{.ID}}" class="btn btn-outline btn-small">Редактировать</a>
+                {{end}}
+                <a href="/wall/delete/{{.ID}}" class="btn btn-danger btn-small" onclick="return confirm('Удалить запись?')">Удалить</a>
                 {{end}}
             </div>
         </div>
-        <!-- КОНЕЦ СЕКЦИИ СТЕНЫ -->
-
-        <div class="profile-actions">
-            <a href="/events" class="btn btn-secondary">← К событиям</a>
-            <a href="/edit-profile" class="btn btn-primary">Редактировать профиль</a>
-            <a href="/subscriptions" class="btn btn-primary">Управление подписками</a>
-            <a href="/create-event" class="btn btn-primary">Создать событие</a>
+        {{else}}
+        <div class="empty-state">
+            <p>На вашей стене пока нет записей.</p>
+            <p>Напишите что-нибудь первым!</p>
         </div>
+        {{end}}
     </div>
-</main>
-</body>
-</html>
+</div>
+{{end}}

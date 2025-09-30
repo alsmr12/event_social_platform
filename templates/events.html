@@ -1,60 +1,48 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Все события - Социальная платформа</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-<nav class="navbar">
-    <div class="nav-container">
-        <h1><a href="/">СоцПлатформа</a></h1>
-        <ul class="nav-menu">
-            <li><a href="/">Главная</a></li>
-            <li><a href="/profiles">Все профили</a></li>
-            <li><a href="/events">События</a></li>
-            <li><a href="/create-event">Создать событие</a></li>
-            <li><a href="/profile">Мой профиль</a></li>
-            <li><a href="/logout">Выйти</a></li>
-        </ul>
+{{define "events_content"}}
+<div class="card">
+    <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 30px;">
+        <h2>Все события</h2>
+        <a href="/create-event" class="btn btn-success">Создать событие</a>
     </div>
-</nav>
 
-<main class="container">
-    <div class="events-container">
-        <h2>Все события ({{len .Events}})</h2>
-
-        {{if .Events}}
-        <div class="events-grid">
-            {{range .Events}}
-            <div class="event-card">
-                <div class="event-header">
-                    <h3>{{.Title}}</h3>
-                    <span class="event-type {{.Type}}">{{.Type}}</span>
-                </div>
-                <p class="event-description">{{.Description}}</p>
-                <div class="event-details">
-                    <p><strong>📅 Когда:</strong> {{.DateTime.Format "02.01.2006 15:04"}}</p>
-                    <p><strong>📍 Где:</strong> {{.Location}}</p>
-                    <p><strong>👤 Организатор:</strong> {{.Creator.FirstName}} {{.Creator.LastName}}</p>
-                </div>
-                <a href="/event/{{.ID}}" class="btn btn-outline">Подробнее</a>
+    {{if .Events}}
+    <div class="grid grid-2">
+        {{range .Events}}
+        <div class="card">
+            <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 15px;">
+                <h3 style="margin: 0;">{{.Title}}</h3>
+                <span class="badge" style="background: #e9ecef; color: var(--text-color);">{{.Type}}</span>
             </div>
-            {{end}}
-        </div>
-        {{else}}
-        <div class="empty-state">
-            <p>Пока нет созданных событий.</p>
-            <a href="/create-event" class="btn btn-primary">Создать первое событие!</a>
+
+            <p style="color: var(--text-muted); margin-bottom: 15px;">{{.Description}}</p>
+
+            <div style="line-height: 1.8; margin-bottom: 20px;">
+                <div><strong>📅 Когда:</strong> {{.DateTime.Format "02.01.2006 15:04"}}</div>
+                <div><strong>📍 Где:</strong> {{.Location}}</div>
+                <div><strong>👤 Организатор:</strong> {{.Creator.FirstName}} {{.Creator.LastName}}</div>
+                {{if .MaxParticipants}}<div><strong>👥 Участников:</strong> до {{.MaxParticipants}} человек</div>{{end}}
+                {{if .IsPrivate}}<div><strong>🔒 Приватное событие</strong></div>{{end}}
+            </div>
+
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <a href="/event/{{.ID}}" class="btn btn-outline btn-small">Подробнее</a>
+                {{if eq .CreatorID $.CurrentUser.ID}}
+                <a href="/event/delete/{{.ID}}" class="btn btn-danger btn-small" onclick="return confirm('Удалить событие?')">Удалить</a>
+                {{end}}
+            </div>
         </div>
         {{end}}
-
-        <div class="page-actions">
-            <a href="/profile" class="btn btn-primary">← Мой профиль</a>
-            <a href="/profiles" class="btn btn-secondary">Смотреть профили →</a>
-        </div>
     </div>
-</main>
-</body>
-</html>
+    {{else}}
+    <div class="empty-state">
+        <p>Пока нет событий.</p>
+        <a href="/create-event" class="btn btn-primary">Создать первое событие</a>
+    </div>
+    {{end}}
+
+    <div class="page-actions">
+        <a href="/create-event" class="btn btn-success">Создать событие</a>
+        <a href="/profile" class="btn btn-outline">← Мой профиль</a>
+    </div>
+</div>
+{{end}}

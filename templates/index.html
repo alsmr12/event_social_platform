@@ -1,36 +1,58 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Главная страница - Социальная платформа</title>
-  <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-<nav class="navbar">
-  <div class="nav-container">
-    <h1><a href="/">СоцПлатформа</a></h1>
-    <ul class="nav-menu">
-      <li><a href="/">Главная</a></li>
-      <li><a href="/profiles">Все профили</a></li>
-      <li><a href="/events">События</a></li>
-      <li><a href="/create-event">Создать событие</a></li>
-      <li><a href="/profile">Мой профиль</a></li>
-      <li><a href="/logout">Выйти</a></li>
-    </ul>
-  </div>
-</nav>
+{{define "home_content"}}
+<div style="text-align: center; padding: 60px 20px;">
+  <h1>Добро пожаловать в Социальную платформу</h1>
+  <p style="font-size: 1.2em; color: var(--text-muted); margin-bottom: 40px;">
+    Общайтесь, находите друзей, создавайте события и делитесь моментами
+  </p>
 
-<main class="container">
-  <div class="hero">
-    <h1>Добро пожаловать!</h1>
-    <p>Социальная платформа для мероприятий и общения</p>
-    <div class="cta-buttons">
-      <a href="/profiles" class="btn btn-primary">Смотреть профили</a>
-      <a href="/events" class="btn btn-secondary">Смотреть события</a>
+  {{if .CurrentUser}}
+  <div class="page-actions">
+    <a href="/events" class="btn btn-primary">Смотреть события</a>
+    <a href="/profiles" class="btn btn-outline">Найти людей</a>
+    <a href="/create-event" class="btn btn-success">Создать событие</a>
+  </div>
+
+  <div class="grid grid-3" style="margin-top: 60px;">
+    <div class="card">
+      <h3>👥 Друзья</h3>
+      <p>Находите друзей и общайтесь</p>
+      <a href="/friends" class="btn btn-outline">Управление друзьями</a>
+    </div>
+
+    <div class="card">
+      <h3>📅 События</h3>
+      <p>Создавайте и участвуйте в событиях</p>
+      <a href="/events" class="btn btn-outline">Все события</a>
+    </div>
+
+    <div class="card">
+      <h3>👤 Профиль</h3>
+      <p>Управляйте своей страницей</p>
       <a href="/profile" class="btn btn-outline">Мой профиль</a>
     </div>
   </div>
-</main>
-</body>
-</html>
+  {{else}}
+  <div class="page-actions">
+    <a href="/login" class="btn btn-primary">Войти в систему</a>
+    <a href="/create-profile" class="btn btn-success">Создать профиль</a>
+  </div>
+
+  <div class="grid grid-3" style="margin-top: 60px;">
+    <div class="card">
+      <h3>🚀 Быстрый старт</h3>
+      <p>Создайте профиль за 2 минуты и начните общение</p>
+    </div>
+
+    <div class="card">
+      <h3>👥 Сообщество</h3>
+      <p>Находите друзей и единомышленников</p>
+    </div>
+
+    <div class="card">
+      <h3>📅 Мероприятия</h3>
+      <p>Участвуйте в событиях и создавайте свои</p>
+    </div>
+  </div>
+  {{end}}
+</div>
+{{end}}

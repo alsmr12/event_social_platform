@@ -1,0 +1,19 @@
+{{define "content"}}
+<div class="card" style="text-align: center; max-width: 500px; margin: 50px auto;">
+    <div style="font-size: 4em; margin-bottom: 20px;">😕</div>
+    <h2>Произошла ошибка</h2>
+
+    {{if .Error}}
+    <div class="alert alert-error" style="margin: 20px 0;">
+        {{.Error}}
+    </div>
+    {{else}}
+    <p style="color: var(--text-muted); margin: 20px 0;">Что-то пошло не так</p>
+    {{end}}
+
+    <div class="page-actions">
+        <a href="/" class="btn btn-primary">На главную</a>
+        <a href="javascript:history.back()" class="btn btn-outline">Назад</a>
+    </div>
+</div>
+{{end}}

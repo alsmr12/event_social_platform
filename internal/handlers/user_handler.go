@@ -18,32 +18,42 @@ func NewUserHandler(userRepo *repository.UserRepository) *UserHandler {
 }
 
 func (h *UserHandler) ShowHomePage(c *gin.Context) {
-	c.HTML(http.StatusOK, "index.html", gin.H{
-		"Title": "Социальная платформа",
+	currentUser := GetUserFromContext(c)
+
+	c.HTML(http.StatusOK, "base.html", gin.H{
+		"Title":       "Главная",
+		"NavActive":   "home",
+		"CurrentUser": currentUser,
 	})
 }
 
 func (h *UserHandler) ShowCreateProfileForm(c *gin.Context) {
-	c.HTML(http.StatusOK, "create_profile.html", gin.H{})
+	c.HTML(http.StatusOK, "base.html", gin.H{
+		"Title":     "Регистрация",
+		"NavActive": "register", // УЖЕ ПРАВИЛЬНО
+	})
 }
 
 func (h *UserHandler) CreateProfile(c *gin.Context) {
 	var req models.CreateUserRequest
 	if err := c.ShouldBind(&req); err != nil {
-		c.HTML(http.StatusBadRequest, "create_profile.html", gin.H{
-			"Error": "Неверные данные формы",
+		c.HTML(http.StatusBadRequest, "base.html", gin.H{
+			"Title":     "Регистрация",
+			"NavActive": "register",
+			"Error":     "Неверные данные формы",
 		})
 		return
 	}
 
 	if h.userRepo.UserExists(req.Email) {
-		c.HTML(http.StatusBadRequest, "create_profile.html", gin.H{
-			"Error": "Пользователь с таким email уже существует",
+		c.HTML(http.StatusBadRequest, "base.html", gin.H{
+			"Title":     "Регистрация",
+			"NavActive": "register",
+			"Error":     "Пользователь с таким email уже существует",
 		})
 		return
 	}
 
-	// Создаем пользователя (БЕЗ пароля пока)
 	user := &models.User{
 		Email:       req.Email,
 		FirstName:   req.FirstName,
@@ -54,18 +64,20 @@ func (h *UserHandler) CreateProfile(c *gin.Context) {
 		SocialLinks: req.SocialLinks,
 	}
 
-	// Хешируем пароль!
 	if err := user.HashPassword(req.Password); err != nil {
-		c.HTML(http.StatusInternalServerError, "create_profile.html", gin.H{
-			"Error": "Ошибка при хешировании пароля: " + err.Error(),
+		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+			"Title":     "Регистрация",
+			"NavActive": "register",
+			"Error":     "Ошибка при хешировании пароля: " + err.Error(),
 		})
 		return
 	}
 
-	// Сохраняем в БД
 	if err := h.userRepo.CreateUser(user); err != nil {
-		c.HTML(http.StatusInternalServerError, "create_profile.html", gin.H{
-			"Error": "Ошибка при создании профиля: " + err.Error(),
+		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+			"Title":     "Регистрация",
+			"NavActive": "register",
+			"Error":     "Ошибка при создании профиля: " + err.Error(),
 		})
 		return
 	}
@@ -77,16 +89,20 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		c.HTML(http.StatusOK, "profile.html", gin.H{
-			"Error": "Неверный ID профиля",
+		c.HTML(http.StatusOK, "base.html", gin.H{
+			"Title":     "Профиль",
+			"NavActive": "profile", // ИСПРАВЛЕНО (было "profiles")
+			"Error":     "Неверный ID профиля",
 		})
 		return
 	}
 
 	user, err := h.userRepo.GetUserByID(uint(id))
 	if err != nil || user == nil {
-		c.HTML(http.StatusOK, "profile.html", gin.H{
-			"Error": "Профиль не найден",
+		c.HTML(http.StatusOK, "base.html", gin.H{
+			"Title":     "Профиль",
+			"NavActive": "profile", // ИСПРАВЛЕНО (было "profiles")
+			"Error":     "Профиль не найден",
 		})
 		return
 	}
@@ -130,12 +146,19 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		}
 	}
 
-	c.HTML(http.StatusOK, "profile.html", gin.H{
+	// Получаем количество друзей
+	friendshipRepo := repository.NewFriendshipRepository(db)
+	friendsCount, _ := friendshipRepo.GetFriendsCount(uint(id))
+
+	c.HTML(http.StatusOK, "base.html", gin.H{
+		"Title":             "Профиль " + user.FirstName + " " + user.LastName,
+		"NavActive":         "profile", // ИСПРАВЛЕНО (было "profiles")
+		"CurrentUser":       currentUser,
 		"User":              user,
 		"Posts":             posts,
-		"CurrentUser":       currentUser,
 		"FollowersCount":    followersCount,
 		"FollowingCount":    followingCount,
+		"FriendsCount":      friendsCount,
 		"IsSubscribed":      isSubscribed,
 		"FriendshipStatus":  friendshipStatus,
 		"IsIncomingRequest": isIncomingRequest,
@@ -145,14 +168,15 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 func (h *UserHandler) GetAllProfiles(c *gin.Context) {
 	users, err := h.userRepo.GetAllUsers()
 	if err != nil {
-		// Всегда возвращаем Users, даже если пустой массив
-		c.HTML(http.StatusOK, "profiles.html", gin.H{
-			"Users": []*models.User{},
+		c.HTML(http.StatusOK, "base.html", gin.H{
+			"Title":       "Все пользователи",
+			"NavActive":   "profiles", // УЖЕ ПРАВИЛЬНО
+			"Users":       []*models.User{},
+			"CurrentUser": GetUserFromContext(c),
 		})
 		return
 	}
 
-	// Если users nil, заменяем на пустой массив
 	if users == nil {
 		users = []*models.User{}
 	}
@@ -162,16 +186,18 @@ func (h *UserHandler) GetAllProfiles(c *gin.Context) {
 	// Создаем структуру для передачи дополнительных данных
 	type UserWithSubscriptions struct {
 		*models.User
-		FollowersCount int64
-		FollowingCount int64
-		IsSubscribed   bool
+		FollowersCount   int64
+		FollowingCount   int64
+		IsSubscribed     bool
+		FriendshipStatus string
 	}
 
 	usersWithSubs := make([]UserWithSubscriptions, len(users))
 
-	// Получаем репозиторий подписок
+	// Получаем репозитории
 	db := h.userRepo.GetDB()
 	subscriptionRepo := repository.NewSubscriptionRepository(db)
+	friendshipRepo := repository.NewFriendshipRepository(db)
 
 	for i, user := range users {
 		// Получаем статистику подписок для каждого пользователя
@@ -180,25 +206,29 @@ func (h *UserHandler) GetAllProfiles(c *gin.Context) {
 
 		// Проверяем, подписан ли текущий пользователь
 		var isSubscribed bool
+		var friendshipStatus string = "none"
 		if currentUser != nil && currentUser.ID != user.ID {
 			isSubscribed, _ = subscriptionRepo.IsSubscribed(currentUser.ID, user.ID)
+			friendshipStatus, _ = friendshipRepo.GetFriendshipStatus(currentUser.ID, user.ID)
 		}
 
 		usersWithSubs[i] = UserWithSubscriptions{
-			User:           user,
-			FollowersCount: followersCount,
-			FollowingCount: followingCount,
-			IsSubscribed:   isSubscribed,
+			User:             user,
+			FollowersCount:   followersCount,
+			FollowingCount:   followingCount,
+			IsSubscribed:     isSubscribed,
+			FriendshipStatus: friendshipStatus,
 		}
 	}
 
-	c.HTML(http.StatusOK, "profiles.html", gin.H{
+	c.HTML(http.StatusOK, "base.html", gin.H{
+		"Title":       "Все пользователи",
+		"NavActive":   "profiles",
 		"Users":       usersWithSubs,
 		"CurrentUser": currentUser,
 	})
 }
 
-// Показывает форму редактирования профиля
 func (h *UserHandler) ShowEditProfileForm(c *gin.Context) {
 	currentUser := GetUserFromContext(c)
 	if currentUser == nil {
@@ -206,12 +236,14 @@ func (h *UserHandler) ShowEditProfileForm(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "edit_profile.html", gin.H{
-		"User": currentUser,
+	c.HTML(http.StatusOK, "base.html", gin.H{
+		"Title":       "Редактирование профиля",
+		"NavActive":   "edit_profile", // ИСПРАВЛЕНО
+		"User":        currentUser,
+		"CurrentUser": currentUser,
 	})
 }
 
-// Обрабатывает обновление профиля
 func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	currentUser := GetUserFromContext(c)
 	if currentUser == nil {
@@ -221,9 +253,12 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 
 	var req models.UpdateUserRequest
 	if err := c.ShouldBind(&req); err != nil {
-		c.HTML(http.StatusBadRequest, "edit_profile.html", gin.H{
-			"Error": "Неверные данные формы: " + err.Error(),
-			"User":  currentUser,
+		c.HTML(http.StatusBadRequest, "base.html", gin.H{
+			"Title":       "Редактирование профиля",
+			"NavActive":   "profile",
+			"Error":       "Неверные данные формы: " + err.Error(),
+			"User":        currentUser,
+			"CurrentUser": currentUser,
 		})
 		return
 	}
@@ -237,9 +272,12 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	currentUser.SocialLinks = req.SocialLinks
 
 	if err := h.userRepo.UpdateUser(currentUser); err != nil {
-		c.HTML(http.StatusInternalServerError, "edit_profile.html", gin.H{
-			"Error": "Ошибка обновления профиля: " + err.Error(),
-			"User":  currentUser,
+		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+			"Title":       "Редактирование профиля",
+			"NavActive":   "profile",
+			"Error":       "Ошибка обновления профиля: " + err.Error(),
+			"User":        currentUser,
+			"CurrentUser": currentUser,
 		})
 		return
 	}

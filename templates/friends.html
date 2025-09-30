@@ -1,263 +1,102 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мои друзья - Социальная платформа</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-    <style>
-        .friends-container {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .section {
-            margin-bottom: 40px;
-            background: white;
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #f0f0f0;
-        }
-        .section-title {
-            font-size: 1.5em;
-            color: #333;
-            margin: 0;
-        }
-        .count-badge {
-            background: #0066cc;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.9em;
-        }
-        .users-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px;
-        }
-        .user-card {
-            border: 1px solid #e0e0e0;
-            padding: 20px;
-            border-radius: 8px;
-            background: #fafafa;
-        }
-        .user-info h4 {
-            margin: 0 0 5px 0;
-            color: #333;
-        }
-        .user-email {
-            color: #666;
-            font-size: 0.9em;
-            margin-bottom: 10px;
-        }
-        .user-actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 15px;
-        }
-        .btn-small {
-            padding: 6px 12px;
-            font-size: 0.85em;
-            text-decoration: none;
-            border-radius: 4px;
-            border: none;
-            cursor: pointer;
-        }
-        .btn-primary {
-            background: #0066cc;
-            color: white;
-        }
-        .btn-primary:hover {
-            background: #0052a3;
-        }
-        .btn-success {
-            background: #28a745;
-            color: white;
-        }
-        .btn-success:hover {
-            background: #218838;
-        }
-        .btn-danger {
-            background: #dc3545;
-            color: white;
-        }
-        .btn-danger:hover {
-            background: #c82333;
-        }
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-        .btn-secondary:hover {
-            background: #545b62;
-        }
-        .btn-outline {
-            background: transparent;
-            color: #0066cc;
-            border: 1px solid #0066cc;
-        }
-        .btn-outline:hover {
-            background: #0066cc;
-            color: white;
-        }
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-            background: #f8f9fa;
-            border-radius: 8px;
-        }
-        .request-info {
-            font-size: 0.85em;
-            color: #888;
-            margin-top: 8px;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 0.8em;
-            margin-left: 8px;
-        }
-        .status-pending {
-            background: #fff3cd;
-            color: #856404;
-        }
-    </style>
-</head>
-<body>
-<nav class="navbar">
-    <div class="nav-container">
-        <h1><a href="/">СоцПлатформа</a></h1>
-        <ul class="nav-menu">
-            <li><a href="/">Главная</a></li>
-            <li><a href="/events">События</a></li>
-            <li><a href="/profiles">Все профили</a></li>
-            <li><a href="/profile">Мой профиль</a></li>
-            <li><a href="/subscriptions">Подписки</a></li>
-            <li><a href="/friends" class="active">Друзья</a></li>
-            <li><a href="/logout">Выйти</a></li>
-        </ul>
+{{define "friends_content"}}
+<div class="card">
+    <h2>Мои друзья</h2>
+
+    <!-- Входящие запросы -->
+    <div style="margin-bottom: 40px;">
+        <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 20px;">
+            <h3>Входящие запросы</h3>
+            <span class="badge badge-pending">{{len .PendingRequests}}</span>
+        </div>
+
+        {{if .PendingRequests}}
+        <div class="grid grid-3">
+            {{range .PendingRequests}}
+            <div class="card">
+                <h4>{{.User.FirstName}} {{.User.LastName}}</h4>
+                <p style="color: var(--text-muted); margin: 10px 0;">{{.User.Email}}</p>
+                {{if .User.Age}}<p>{{.User.Age}} лет</p>{{end}}
+                <div style="font-size: 0.85em; color: var(--text-muted); margin: 10px 0;">
+                    Запрос отправлен: {{.CreatedAt.Format "02.01.2006 15:04"}}
+                </div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <a href="/friends/accept/{{.User.ID}}" class="btn btn-success btn-small">Принять</a>
+                    <a href="/friends/reject/{{.User.ID}}" class="btn btn-danger btn-small">Отклонить</a>
+                    <a href="/profile/{{.User.ID}}" class="btn btn-outline btn-small">Профиль</a>
+                </div>
+            </div>
+            {{end}}
+        </div>
+        {{else}}
+        <div class="empty-state">
+            <p>Нет входящих запросов в друзья</p>
+        </div>
+        {{end}}
     </div>
-</nav>
 
-<main class="container">
-    <div class="friends-container">
-        <h2>Мои друзья</h2>
+    <!-- Исходящие запросы -->
+    <div style="margin-bottom: 40px;">
+        <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 20px;">
+            <h3>Исходящие запросы</h3>
+            <span class="badge badge-pending">{{len .SentRequests}}</span>
+        </div>
 
-        <!-- Входящие запросы в друзья -->
-        <div class="section">
-            <div class="section-header">
-                <h3 class="section-title">Входящие запросы</h3>
-                <span class="count-badge">{{len .PendingRequests}}</span>
-            </div>
-
-            {{if .PendingRequests}}
-            <div class="users-grid">
-                {{range .PendingRequests}}
-                <div class="user-card">
-                    <div class="user-info">
-                        <h4>{{.User.FirstName}} {{.User.LastName}}</h4>
-                        <p class="user-email">{{.User.Email}}</p>
-                        {{if .User.Age}}<p>{{.User.Age}} лет</p>{{end}}
-                        <div class="request-info">
-                            Запрос отправлен: {{.CreatedAt.Format "02.01.2006 15:04"}}
-                        </div>
-                    </div>
-                    <div class="user-actions">
-                        <a href="/friends/accept/{{.User.ID}}" class="btn-small btn-success">Принять</a>
-                        <a href="/friends/reject/{{.User.ID}}" class="btn-small btn-danger">Отклонить</a>
-                        <a href="/profile/{{.User.ID}}" class="btn-small btn-outline">Профиль</a>
-                    </div>
+        {{if .SentRequests}}
+        <div class="grid grid-3">
+            {{range .SentRequests}}
+            <div class="card">
+                <h4>{{.Friend.FirstName}} {{.Friend.LastName}}</h4>
+                <p style="color: var(--text-muted); margin: 10px 0;">{{.Friend.Email}}</p>
+                {{if .Friend.Age}}<p>{{.Friend.Age}} лет</p>{{end}}
+                <div style="font-size: 0.85em; color: var(--text-muted); margin: 10px 0;">
+                    Запрос отправлен: {{.CreatedAt.Format "02.01.2006 15:04"}}
                 </div>
-                {{end}}
-            </div>
-            {{else}}
-            <div class="empty-state">
-                <p>Нет входящих запросов в друзья</p>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <a href="/profile/{{.Friend.ID}}" class="btn btn-outline btn-small">Профиль</a>
+                    <a href="/friends/remove/{{.Friend.ID}}" class="btn btn-secondary btn-small" onclick="return confirm('Отменить запрос в друзья?')">Отменить</a>
+                </div>
             </div>
             {{end}}
         </div>
-
-        <!-- Исходящие запросы в друзья -->
-        <div class="section">
-            <div class="section-header">
-                <h3 class="section-title">Исходящие запросы</h3>
-                <span class="count-badge">{{len .SentRequests}}</span>
-            </div>
-
-            {{if .SentRequests}}
-            <div class="users-grid">
-                {{range .SentRequests}}
-                <div class="user-card">
-                    <div class="user-info">
-                        <h4>{{.Friend.FirstName}} {{.Friend.LastName}}</h4>
-                        <p class="user-email">{{.Friend.Email}}</p>
-                        {{if .Friend.Age}}<p>{{.Friend.Age}} лет</p>{{end}}
-                        <div class="request-info">
-                            Запрос отправлен: {{.CreatedAt.Format "02.01.2006 15:04"}}
-                            <span class="status-badge status-pending">ожидает</span>
-                        </div>
-                    </div>
-                    <div class="user-actions">
-                        <a href="/profile/{{.Friend.ID}}" class="btn-small btn-outline">Профиль</a>
-                        <a href="/friends/remove/{{.Friend.ID}}" class="btn-small btn-secondary" onclick="return confirm('Отменить запрос в друзья?')">Отменить</a>
-                    </div>
-                </div>
-                {{end}}
-            </div>
-            {{else}}
-            <div class="empty-state">
-                <p>Нет исходящих запросов в друзья</p>
-            </div>
-            {{end}}
+        {{else}}
+        <div class="empty-state">
+            <p>Нет исходящих запросов в друзья</p>
         </div>
-
-        <!-- Список друзей -->
-        <div class="section">
-            <div class="section-header">
-                <h3 class="section-title">Мои друзья</h3>
-                <span class="count-badge">{{.FriendsCount}}</span>
-            </div>
-
-            {{if .Friends}}
-            <div class="users-grid">
-                {{range .Friends}}
-                <div class="user-card">
-                    <div class="user-info">
-                        <h4>{{.FirstName}} {{.LastName}}</h4>
-                        <p class="user-email">{{.Email}}</p>
-                        {{if .Age}}<p>{{.Age}} лет</p>{{end}}
-                    </div>
-                    <div class="user-actions">
-                        <a href="/profile/{{.ID}}" class="btn-small btn-outline">Профиль</a>
-                        <a href="/friends/remove/{{.ID}}" class="btn-small btn-danger" onclick="return confirm('Удалить из друзей?')">Удалить</a>
-                    </div>
-                </div>
-                {{end}}
-            </div>
-            {{else}}
-            <div class="empty-state">
-                <p>У вас пока нет друзей</p>
-                <a href="/profiles" class="btn btn-primary" style="margin-top: 15px;">Найти друзей</a>
-            </div>
-            {{end}}
-        </div>
-
-        <div class="page-actions" style="margin-top: 30px; text-align: center;">
-            <a href="/profiles" class="btn btn-primary">Найти новых друзей</a>
-            <a href="/profile" class="btn btn-secondary">← Мой профиль</a>
-        </div>
+        {{end}}
     </div>
-</main>
-</body>
-</html>
+
+    <!-- Список друзей -->
+    <div>
+        <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 20px;">
+            <h3>Мои друзья</h3>
+            <span class="badge badge-success">{{.FriendsCount}}</span>
+        </div>
+
+        {{if .Friends}}
+        <div class="grid grid-3">
+            {{range .Friends}}
+            <div class="card">
+                <h4>{{.FirstName}} {{.LastName}}</h4>
+                <p style="color: var(--text-muted); margin: 10px 0;">{{.Email}}</p>
+                {{if .Age}}<p>{{.Age}} лет</p>{{end}}
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <a href="/profile/{{.ID}}" class="btn btn-outline btn-small">Профиль</a>
+                    <a href="/friends/remove/{{.ID}}" class="btn btn-danger btn-small" onclick="return confirm('Удалить из друзей?')">Удалить</a>
+                </div>
+            </div>
+            {{end}}
+        </div>
+        {{else}}
+        <div class="empty-state">
+            <p>У вас пока нет друзей</p>
+            <a href="/profiles" class="btn btn-primary" style="margin-top: 15px;">Найти друзей</a>
+        </div>
+        {{end}}
+    </div>
+
+    <div class="page-actions">
+        <a href="/profiles" class="btn btn-primary">Найти новых друзей</a>
+        <a href="/profile" class="btn btn-outline">← Мой профиль</a>
+    </div>
+</div>
+{{end}}

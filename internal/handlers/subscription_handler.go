@@ -21,7 +21,6 @@ func NewSubscriptionHandler(subscriptionRepo *repository.SubscriptionRepository,
 	}
 }
 
-// Подписаться на пользователя
 func (h *SubscriptionHandler) Subscribe(c *gin.Context) {
 	currentUser := GetUserFromContext(c)
 	if currentUser == nil {
@@ -32,16 +31,22 @@ func (h *SubscriptionHandler) Subscribe(c *gin.Context) {
 	followingIDStr := c.Param("id")
 	followingID, err := strconv.Atoi(followingIDStr)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"Error": "Неверный ID пользователя",
+		c.HTML(http.StatusBadRequest, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Неверный ID пользователя",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
 
 	// Нельзя подписаться на самого себя
 	if currentUser.ID == uint(followingID) {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"Error": "Нельзя подписаться на самого себя",
+		c.HTML(http.StatusBadRequest, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Нельзя подписаться на самого себя",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
@@ -49,8 +54,11 @@ func (h *SubscriptionHandler) Subscribe(c *gin.Context) {
 	// Проверяем существование пользователя
 	_, err = h.userRepo.GetUserByID(uint(followingID))
 	if err != nil {
-		c.HTML(http.StatusNotFound, "error.html", gin.H{
-			"Error": "Пользователь не найден",
+		c.HTML(http.StatusNotFound, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Пользователь не найден",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
@@ -58,15 +66,21 @@ func (h *SubscriptionHandler) Subscribe(c *gin.Context) {
 	// Проверяем, не подписан ли уже
 	isSubscribed, err := h.subscriptionRepo.IsSubscribed(currentUser.ID, uint(followingID))
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"Error": "Ошибка проверки подписки",
+		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Ошибка проверки подписки",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
 
 	if isSubscribed {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"Error": "Вы уже подписаны на этого пользователя",
+		c.HTML(http.StatusBadRequest, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Вы уже подписаны на этого пользователя",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
@@ -77,8 +91,11 @@ func (h *SubscriptionHandler) Subscribe(c *gin.Context) {
 	}
 
 	if err := h.subscriptionRepo.CreateSubscription(subscription); err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"Error": "Ошибка создания подписки",
+		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Ошибка создания подписки",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
@@ -91,7 +108,6 @@ func (h *SubscriptionHandler) Subscribe(c *gin.Context) {
 	c.Redirect(http.StatusSeeOther, referer)
 }
 
-// Отписаться от пользователя
 func (h *SubscriptionHandler) Unsubscribe(c *gin.Context) {
 	currentUser := GetUserFromContext(c)
 	if currentUser == nil {
@@ -102,8 +118,11 @@ func (h *SubscriptionHandler) Unsubscribe(c *gin.Context) {
 	followingIDStr := c.Param("id")
 	followingID, err := strconv.Atoi(followingIDStr)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"Error": "Неверный ID пользователя",
+		c.HTML(http.StatusBadRequest, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Неверный ID пользователя",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
@@ -111,22 +130,31 @@ func (h *SubscriptionHandler) Unsubscribe(c *gin.Context) {
 	// Проверяем, подписан ли пользователь
 	isSubscribed, err := h.subscriptionRepo.IsSubscribed(currentUser.ID, uint(followingID))
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"Error": "Ошибка проверки подписки",
+		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Ошибка проверки подписки",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
 
 	if !isSubscribed {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"Error": "Вы не подписаны на этого пользователя",
+		c.HTML(http.StatusBadRequest, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Вы не подписаны на этого пользователя",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
 
 	if err := h.subscriptionRepo.DeleteSubscription(currentUser.ID, uint(followingID)); err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"Error": "Ошибка отписки",
+		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Ошибка отписки",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
@@ -139,7 +167,6 @@ func (h *SubscriptionHandler) Unsubscribe(c *gin.Context) {
 	c.Redirect(http.StatusSeeOther, referer)
 }
 
-// Страница моих подписок
 func (h *SubscriptionHandler) MySubscriptions(c *gin.Context) {
 	currentUser := GetUserFromContext(c)
 	if currentUser == nil {
@@ -149,8 +176,11 @@ func (h *SubscriptionHandler) MySubscriptions(c *gin.Context) {
 
 	following, err := h.subscriptionRepo.GetFollowing(currentUser.ID)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"Error": "Ошибка получения подписок",
+		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Ошибка получения подписок",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
@@ -159,10 +189,13 @@ func (h *SubscriptionHandler) MySubscriptions(c *gin.Context) {
 	followersCount, _ := h.subscriptionRepo.GetFollowersCount(currentUser.ID)
 	followingCount, _ := h.subscriptionRepo.GetFollowingCount(currentUser.ID)
 
-	c.HTML(http.StatusOK, "subscriptions.html", gin.H{
+	c.HTML(http.StatusOK, "base.html", gin.H{
+		"Title":          "Мои подписки",
+		"NavActive":      "subscriptions", // УЖЕ ПРАВИЛЬНО
 		"User":           currentUser,
 		"Following":      following,
 		"FollowersCount": followersCount,
 		"FollowingCount": followingCount,
+		"CurrentUser":    currentUser,
 	})
 }

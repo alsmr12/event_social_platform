@@ -21,7 +21,6 @@ func NewFriendshipHandler(friendshipRepo *repository.FriendshipRepository, userR
 	}
 }
 
-// Отправить запрос в друзья
 func (h *FriendshipHandler) SendFriendRequest(c *gin.Context) {
 	currentUser := GetUserFromContext(c)
 	if currentUser == nil {
@@ -32,16 +31,22 @@ func (h *FriendshipHandler) SendFriendRequest(c *gin.Context) {
 	friendIDStr := c.Param("id")
 	friendID, err := strconv.Atoi(friendIDStr)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"Error": "Неверный ID пользователя",
+		c.HTML(http.StatusBadRequest, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Неверный ID пользователя",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
 
 	// Нельзя добавить в друзья самого себя
 	if currentUser.ID == uint(friendID) {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"Error": "Нельзя добавить самого себя в друзья",
+		c.HTML(http.StatusBadRequest, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Нельзя добавить самого себя в друзья",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
@@ -49,8 +54,11 @@ func (h *FriendshipHandler) SendFriendRequest(c *gin.Context) {
 	// Проверяем существование пользователя
 	_, err = h.userRepo.GetUserByID(uint(friendID))
 	if err != nil {
-		c.HTML(http.StatusNotFound, "error.html", gin.H{
-			"Error": "Пользователь не найден",
+		c.HTML(http.StatusNotFound, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Пользователь не найден",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
@@ -58,15 +66,21 @@ func (h *FriendshipHandler) SendFriendRequest(c *gin.Context) {
 	// Проверяем, не отправили ли уже запрос
 	status, err := h.friendshipRepo.GetFriendshipStatus(currentUser.ID, uint(friendID))
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"Error": "Ошибка проверки статуса дружбы",
+		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Ошибка проверки статуса дружбы",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
 
 	if status != "none" {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"Error": "Запрос на дружбу уже отправлен или пользователь уже в друзьях",
+		c.HTML(http.StatusBadRequest, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Запрос на дружбу уже отправлен или пользователь уже в друзьях",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
@@ -78,8 +92,11 @@ func (h *FriendshipHandler) SendFriendRequest(c *gin.Context) {
 	}
 
 	if err := h.friendshipRepo.CreateFriendship(friendship); err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"Error": "Ошибка отправки запроса в друзья",
+		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Ошибка отправки запроса в друзья",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
@@ -92,7 +109,6 @@ func (h *FriendshipHandler) SendFriendRequest(c *gin.Context) {
 	c.Redirect(http.StatusSeeOther, referer)
 }
 
-// Принять запрос в друзья
 func (h *FriendshipHandler) AcceptFriendRequest(c *gin.Context) {
 	currentUser := GetUserFromContext(c)
 	if currentUser == nil {
@@ -103,15 +119,21 @@ func (h *FriendshipHandler) AcceptFriendRequest(c *gin.Context) {
 	friendIDStr := c.Param("id")
 	friendID, err := strconv.Atoi(friendIDStr)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"Error": "Неверный ID пользователя",
+		c.HTML(http.StatusBadRequest, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Неверный ID пользователя",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
 
 	if err := h.friendshipRepo.AcceptFriendship(currentUser.ID, uint(friendID)); err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"Error": "Ошибка принятия запроса в друзья",
+		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Ошибка принятия запроса в друзья",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
@@ -124,7 +146,6 @@ func (h *FriendshipHandler) AcceptFriendRequest(c *gin.Context) {
 	c.Redirect(http.StatusSeeOther, referer)
 }
 
-// Отклонить запрос в друзья
 func (h *FriendshipHandler) RejectFriendRequest(c *gin.Context) {
 	currentUser := GetUserFromContext(c)
 	if currentUser == nil {
@@ -135,15 +156,21 @@ func (h *FriendshipHandler) RejectFriendRequest(c *gin.Context) {
 	friendIDStr := c.Param("id")
 	friendID, err := strconv.Atoi(friendIDStr)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"Error": "Неверный ID пользователя",
+		c.HTML(http.StatusBadRequest, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Неверный ID пользователя",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
 
 	if err := h.friendshipRepo.RejectFriendship(currentUser.ID, uint(friendID)); err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"Error": "Ошибка отклонения запроса в друзья",
+		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Ошибка отклонения запроса в друзья",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
@@ -156,7 +183,6 @@ func (h *FriendshipHandler) RejectFriendRequest(c *gin.Context) {
 	c.Redirect(http.StatusSeeOther, referer)
 }
 
-// Удалить из друзей
 func (h *FriendshipHandler) RemoveFriend(c *gin.Context) {
 	currentUser := GetUserFromContext(c)
 	if currentUser == nil {
@@ -167,15 +193,21 @@ func (h *FriendshipHandler) RemoveFriend(c *gin.Context) {
 	friendIDStr := c.Param("id")
 	friendID, err := strconv.Atoi(friendIDStr)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"Error": "Неверный ID пользователя",
+		c.HTML(http.StatusBadRequest, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Неверный ID пользователя",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
 
 	if err := h.friendshipRepo.DeleteFriendship(currentUser.ID, uint(friendID)); err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"Error": "Ошибка удаления из друзей",
+		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Ошибка удаления из друзей",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
@@ -188,7 +220,6 @@ func (h *FriendshipHandler) RemoveFriend(c *gin.Context) {
 	c.Redirect(http.StatusSeeOther, referer)
 }
 
-// Страница управления друзьями
 func (h *FriendshipHandler) FriendsPage(c *gin.Context) {
 	currentUser := GetUserFromContext(c)
 	if currentUser == nil {
@@ -199,35 +230,47 @@ func (h *FriendshipHandler) FriendsPage(c *gin.Context) {
 	// Получаем все данные для страницы
 	friends, err := h.friendshipRepo.GetFriends(currentUser.ID)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"Error": "Ошибка получения списка друзей",
+		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Ошибка получения списка друзей",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
 
 	pendingRequests, err := h.friendshipRepo.GetPendingRequests(currentUser.ID)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"Error": "Ошибка получения входящих запросов",
+		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Ошибка получения входящих запросов",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
 
 	sentRequests, err := h.friendshipRepo.GetSentRequests(currentUser.ID)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"Error": "Ошибка получения исходящих запросов",
+		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+			"Title":       "Ошибка",
+			"NavActive":   "",
+			"Error":       "Ошибка получения исходящих запросов",
+			"CurrentUser": currentUser,
 		})
 		return
 	}
 
 	friendsCount, _ := h.friendshipRepo.GetFriendsCount(currentUser.ID)
 
-	c.HTML(http.StatusOK, "friends.html", gin.H{
+	c.HTML(http.StatusOK, "base.html", gin.H{
+		"Title":           "Мои друзья",
+		"NavActive":       "friends", // УЖЕ ПРАВИЛЬНО
 		"User":            currentUser,
 		"Friends":         friends,
 		"PendingRequests": pendingRequests,
 		"SentRequests":    sentRequests,
 		"FriendsCount":    friendsCount,
+		"CurrentUser":     currentUser,
 	})
 }

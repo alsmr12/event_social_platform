@@ -1,357 +1,146 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Профиль - Социальная платформа</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-    <style>
-        .wall-section {
-            margin-top: 30px;
-            border-top: 1px solid #eee;
-            padding-top: 20px;
-        }
-        .post-form {
-            margin-bottom: 30px;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            background: #f9f9f9;
-        }
-        .post-form textarea {
-            width: 100%;
-            height: 80px;
-            margin-bottom: 10px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            resize: vertical;
-        }
-        .post {
-            border: 1px solid #eee;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-radius: 8px;
-            background: white;
-        }
-        .post-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            align-items: center;
-        }
-        .post-author {
-            font-weight: bold;
-            color: #333;
-        }
-        .post-date {
-            color: #666;
-            font-size: 0.9em;
-        }
-        .post-content {
-            margin-bottom: 10px;
-            line-height: 1.5;
-        }
-        .post-actions {
-            text-align: right;
-        }
-        .delete-btn {
-            color: #ff4444;
-            text-decoration: none;
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 0.9em;
-        }
-        .delete-btn:hover {
-            text-decoration: underline;
-        }
-        .wall-title {
-            margin-bottom: 20px;
-            color: #333;
-        }
-        .no-posts {
-            text-align: center;
-            color: #666;
-            padding: 40px;
-            background: #f9f9f9;
-            border-radius: 8px;
-        }
-        /* Стили для подписок */
-        .subscription-stats {
-            display: flex;
-            gap: 30px;
-            margin: 20px 0;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 8px;
-        }
-        .stat-item {
-            text-align: center;
-        }
-        .stat-number {
-            font-size: 20px;
-            font-weight: bold;
-            color: #0066cc;
-        }
-        .stat-label {
-            font-size: 12px;
-            color: #666;
-            text-transform: uppercase;
-        }
-        .subscription-actions {
-            margin: 20px 0;
-        }
-        .subscribe-btn {
-            background: #0066cc;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-        }
-        .subscribe-btn:hover {
-            background: #0052a3;
-            color: white;
-            text-decoration: none;
-        }
-        .unsubscribe-btn {
-            background: #666;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-        }
-        .unsubscribe-btn:hover {
-            background: #555;
-            color: white;
-            text-decoration: none;
-        }
-        .edit-btn {
-            color: #0066cc;
-            text-decoration: none;
-            font-size: 0.9em;
-            padding: 5px 10px;
-            border: 1px solid #0066cc;
-            border-radius: 3px;
-        }
-        .edit-btn:hover {
-            background: #0066cc;
-            color: white;
-            text-decoration: none;
-        }
-        .post-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-        }
-        /* Стили для дружбы */
-        .friendship-section {
-            margin: 20px 0;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 8px;
-        }
-        .friendship-actions {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-        .btn-small {
-            padding: 6px 12px;
-            font-size: 0.85em;
-            text-decoration: none;
-            border-radius: 4px;
-            border: none;
-            cursor: pointer;
-        }
-        .btn-success {
-            background: #28a745;
-            color: white;
-        }
-        .btn-success:hover {
-            background: #218838;
-            color: white;
-        }
-        .btn-danger {
-            background: #dc3545;
-            color: white;
-        }
-        .btn-danger:hover {
-            background: #c82333;
-            color: white;
-        }
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-        .btn-secondary:hover {
-            background: #545b62;
-            color: white;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 0.8em;
-        }
-        .status-pending {
-            background: #fff3cd;
-            color: #856404;
-        }
-    </style>
-</head>
-<body>
-<nav class="navbar">
-    <div class="nav-container">
-        <h1><a href="/">СоцПлатформа</a></h1>
-        <ul class="nav-menu">
-            <li><a href="/">Главная</a></li>
-            <li><a href="/create-profile">Создать профиль</a></li>
-            <li><a href="/profiles">Все профили</a></li>
-        </ul>
+{{define "profile_content"}}
+<div class="card">
+    {{if .User}}
+    <h2>{{.User.FirstName}} {{.User.LastName}}</h2>
+
+    <!-- Статистика -->
+    <div class="stats">
+        <div class="stat-item">
+            <div class="stat-number">{{.FollowersCount}}</div>
+            <div class="stat-label">Подписчиков</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">{{.FollowingCount}}</div>
+            <div class="stat-label">Подписок</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">{{.FriendsCount}}</div>
+            <div class="stat-label">Друзей</div>
+        </div>
     </div>
-</nav>
 
-<main class="container">
-    <div class="profile-card">
-        {{if .User}}
-        <h2>{{.User.FirstName}} {{.User.LastName}}</h2>
-        <p><strong>Email:</strong> {{.User.Email}}</p>
-        {{if .User.Gender}}<p><strong>Пол:</strong> {{.User.Gender}}</p>{{end}}
-        {{if .User.Age}}<p><strong>Возраст:</strong> {{.User.Age}} лет</p>{{end}}
-        {{if .User.Phone}}<p><strong>Телефон:</strong> {{.User.Phone}}</p>{{end}}
-        {{if .User.SocialLinks}}<p><strong>Соцсети:</strong> {{.User.SocialLinks}}</p>{{end}}
-        <p><strong>Зарегистрирован:</strong> {{.User.CreatedAt.Format "02.01.2006 15:04"}}</p>
-
-        <!-- СТАТИСТИКА ПОДПИСОК -->
-        <div class="subscription-stats">
-            <div class="stat-item">
-                <div class="stat-number">{{.FollowersCount}}</div>
-                <div class="stat-label">Подписчиков</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number">{{.FollowingCount}}</div>
-                <div class="stat-label">Подписок</div>
+    <!-- Информация профиля -->
+    <div class="grid grid-2" style="margin-bottom: 30px;">
+        <div>
+            <h3>Информация</h3>
+            <div style="line-height: 2;">
+                <div><strong>Email:</strong> {{.User.Email}}</div>
+                <div><strong>Имя:</strong> {{.User.FirstName}} {{.User.LastName}}</div>
+                {{if .User.Gender}}<div><strong>Пол:</strong> {{.User.Gender}}</div>{{end}}
+                {{if .User.Age}}<div><strong>Возраст:</strong> {{.User.Age}} лет</div>{{end}}
+                {{if .User.Phone}}<div><strong>Телефон:</strong> {{.User.Phone}}</div>{{end}}
+                <div><strong>Зарегистрирован:</strong> {{.User.CreatedAt.Format "02.01.2006"}}</div>
             </div>
         </div>
 
-        <!-- КНОПКИ ПОДПИСКИ (только для авторизованных и не своего профиля) -->
-        {{if and .CurrentUser (ne .CurrentUser.ID .User.ID)}}
-        <div class="subscription-actions">
+        {{if .User.SocialLinks}}
+        <div>
+            <h3>Социальные сети</h3>
+            <p>{{.User.SocialLinks}}</p>
+        </div>
+        {{end}}
+    </div>
+
+    <!-- Действия -->
+    {{if and .CurrentUser (ne .CurrentUser.ID .User.ID)}}
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 30px; padding: 20px; background: var(--light-bg); border-radius: 8px;">
+        <!-- Подписки -->
+        <div>
             {{if .IsSubscribed}}
-            <a href="/unsubscribe/{{.User.ID}}" class="unsubscribe-btn">Отписаться</a>
+            <a href="/unsubscribe/{{.User.ID}}" class="btn btn-secondary btn-small">Отписаться</a>
             {{else}}
-            <a href="/subscribe/{{.User.ID}}" class="subscribe-btn">Подписаться</a>
+            <a href="/subscribe/{{.User.ID}}" class="btn btn-primary btn-small">Подписаться</a>
             {{end}}
         </div>
-        {{end}}
 
-        <!-- СЕКЦИЯ ДРУЖБЫ -->
-        {{if and .CurrentUser (ne .CurrentUser.ID .User.ID)}}
-        <div class="friendship-section">
-            <h4 style="margin: 0 0 15px 0; color: #333;">Дружба</h4>
-            <div class="friendship-actions">
-                {{if eq .FriendshipStatus "none"}}
-                <a href="/friends/add/{{.User.ID}}" class="btn btn-primary">Добавить в друзья</a>
-                {{else if eq .FriendshipStatus "pending"}}
-                {{if .IsIncomingRequest}}
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <span style="color: #666;">Запрос на дружбу отправлен вам</span>
-                    <a href="/friends/accept/{{.User.ID}}" class="btn-small btn-success">Принять</a>
-                    <a href="/friends/reject/{{.User.ID}}" class="btn-small btn-danger">Отклонить</a>
-                </div>
-                {{else}}
-                <div style="color: #666;">
-                    <span>Запрос на дружбу отправлен</span>
-                    <span class="status-badge status-pending" style="margin-left: 10px;">ожидает</span>
-                    <a href="/friends/remove/{{.User.ID}}" class="btn-small btn-secondary" style="margin-left: 10px;" onclick="return confirm('Отменить запрос в друзья?')">Отменить</a>
-                </div>
-                {{end}}
-                {{else if eq .FriendshipStatus "accepted"}}
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <span style="color: #28a745;">✓ В друзьях</span>
-                    <a href="/friends/remove/{{.User.ID}}" class="btn-small btn-danger" onclick="return confirm('Удалить из друзей?')">Удалить из друзей</a>
-                </div>
-                {{else if eq .FriendshipStatus "rejected"}}
-                <span style="color: #666;">Запрос на дружбу отклонен</span>
-                {{end}}
-            </div>
-        </div>
-        {{end}}
-
-        <!-- СЕКЦИЯ СТЕНЫ -->
-        <div class="wall-section">
-            <h3 class="wall-title">Стена пользователя</h3>
-
-            <!-- Форма для новой записи (только для авторизованных) -->
-            {{if .CurrentUser}}
-            <div class="post-form">
-                <form action="/wall/post" method="POST">
-                    <textarea name="content" placeholder="Напишите сообщение на стене..." required maxlength="1000"></textarea>
-                    <input type="hidden" name="user_id" value="{{.User.ID}}">
-                    <button type="submit" class="btn btn-primary">Опубликовать</button>
-                </form>
+        <!-- Дружба -->
+        <div>
+            {{if eq .FriendshipStatus "none"}}
+            <a href="/friends/add/{{.User.ID}}" class="btn btn-success btn-small">Добавить в друзья</a>
+            {{else if eq .FriendshipStatus "pending"}}
+            {{if .IsIncomingRequest}}
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <span style="color: var(--text-muted);">Запрос на дружбу отправлен вам</span>
+                <a href="/friends/accept/{{.User.ID}}" class="btn btn-success btn-small">Принять</a>
+                <a href="/friends/reject/{{.User.ID}}" class="btn btn-danger btn-small">Отклонить</a>
             </div>
             {{else}}
-            <p style="text-align: center; color: #666;">
-                <a href="/login">Войдите</a>, чтобы написать на стене
-            </p>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <span style="color: var(--text-muted);">Запрос на дружбу отправлен</span>
+                <span class="badge badge-pending">ожидает</span>
+                <a href="/friends/remove/{{.User.ID}}" class="btn btn-secondary btn-small" onclick="return confirm('Отменить запрос в друзья?')">Отменить</a>
+            </div>
             {{end}}
-
-            <!-- Список записей -->
-            <div class="posts">
-                {{range .Posts}}
-                <div class="post">
-                    <div class="post-header">
-                        <span class="post-author">{{.Author.FirstName}} {{.Author.LastName}}</span>
-                        <span class="post-date">{{.CreatedAt.Format "02.01.2006 15:04"}}</span>
-                    </div>
-                    <div class="post-content">{{.Content}}</div>
-                    <div class="post-actions">
-                        {{if and $.CurrentUser (or (eq $.CurrentUser.ID .AuthorID) (eq $.CurrentUser.ID .UserID))}}
-                        {{if eq $.CurrentUser.ID .AuthorID}}
-                        <a href="/wall/edit/{{.ID}}" class="edit-btn">Редактировать</a>
-                        {{end}}
-                        <a href="/wall/delete/{{.ID}}" class="delete-btn" onclick="return confirm('Удалить запись?')">Удалить</a>
-                        {{end}}
-                    </div>
-                </div>
-                {{else}}
-                <div class="no-posts">
-                    <p>Пока нет записей на стене.</p>
-                    {{if .CurrentUser}}
-                    <p>Будьте первым, кто оставит запись!</p>
-                    {{end}}
-                </div>
-                {{end}}
+            {{else if eq .FriendshipStatus "accepted"}}
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <span style="color: var(--success-color);">✓ В друзьях</span>
+                <a href="/friends/remove/{{.User.ID}}" class="btn btn-danger btn-small" onclick="return confirm('Удалить из друзей?')">Удалить</a>
             </div>
-        </div>
-        <!-- КОНЕЦ СЕКЦИИ СТЕНЫ -->
-
-        {{else}}
-        <h2>Профиль не найден</h2>
-        <p>Пользователь с таким ID не существует.</p>
-        {{end}}
-
-        <div class="profile-actions">
-            <a href="/profiles" class="btn btn-secondary">← Назад к списку</a>
-            {{if .CurrentUser}}
-            <a href="/friends" class="btn btn-primary">Мои друзья</a>
-            {{else}}
-            <a href="/create-profile" class="btn btn-primary">Создать новый профиль</a>
             {{end}}
         </div>
     </div>
-</main>
+    {{end}}
 
-<footer class="footer">
-    <p>© 2025 Социальная платформа</p>
-</footer>
-</body>
-</html>
+    <!-- Стена -->
+    <h3>Стена пользователя</h3>
+
+    <!-- Форма новой записи -->
+    {{if .CurrentUser}}
+    <div style="background: var(--light-bg); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <form action="/wall/post" method="POST">
+            <textarea name="content" class="form-control" placeholder="Напишите сообщение на стене..." required maxlength="1000"></textarea>
+            <input type="hidden" name="user_id" value="{{.User.ID}}">
+            <button type="submit" class="btn btn-primary" style="margin-top: 10px;">Опубликовать</button>
+        </form>
+    </div>
+    {{else}}
+    <div style="text-align: center; padding: 20px; color: var(--text-muted); background: var(--light-bg); border-radius: 8px; margin-bottom: 20px;">
+        <a href="/login">Войдите</a>, чтобы написать на стене
+    </div>
+    {{end}}
+
+    <!-- Список записей -->
+    <div class="posts">
+        {{range .Posts}}
+        <div class="post">
+            <div class="post-header">
+                <span class="post-author">{{.Author.FirstName}} {{.Author.LastName}}</span>
+                <span class="post-date">{{.CreatedAt.Format "02.01.2006 15:04"}}</span>
+            </div>
+            <div class="post-content">{{.Content}}</div>
+            <div class="post-actions">
+                {{if and $.CurrentUser (or (eq $.CurrentUser.ID .AuthorID) (eq $.CurrentUser.ID .UserID))}}
+                {{if eq $.CurrentUser.ID .AuthorID}}
+                <a href="/wall/edit/{{.ID}}" class="btn btn-outline btn-small">Редактировать</a>
+                {{end}}
+                <a href="/wall/delete/{{.ID}}" class="btn btn-danger btn-small" onclick="return confirm('Удалить запись?')">Удалить</a>
+                {{end}}
+            </div>
+        </div>
+        {{else}}
+        <div class="empty-state">
+            <p>Пока нет записей на стене.</p>
+            {{if .CurrentUser}}
+            <p>Будьте первым, кто оставит запись!</p>
+            {{end}}
+        </div>
+        {{end}}
+    </div>
+
+    {{else}}
+    <div class="empty-state">
+        <h3>Профиль не найден</h3>
+        <p>Пользователь с таким ID не существует.</p>
+    </div>
+    {{end}}
+
+    <div class="page-actions">
+        <a href="/profiles" class="btn btn-outline">← Назад к списку</a>
+        {{if .CurrentUser}}
+        <a href="/friends" class="btn btn-primary">Мои друзья</a>
+        {{else}}
+        <a href="/create-profile" class="btn btn-primary">Создать профиль</a>
+        {{end}}
+    </div>
+</div>
+{{end}}

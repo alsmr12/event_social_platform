@@ -1,17 +1,395 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} - Социальная платформа</title>
+    <style>
+        :root {
+            --primary-color: #0066cc;
+            --primary-hover: #0052a3;
+            --success-color: #28a745;
+            --success-hover: #218838;
+            --danger-color: #dc3545;
+            --danger-hover: #c82333;
+            --secondary-color: #6c757d;
+            --secondary-hover: #545b62;
+            --light-bg: #f8f9fa;
+            --border-color: #dee2e6;
+            --text-color: #333;
+            --text-muted: #666;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            flex: 1;
+        }
+
+        /* Навигация */
+        .navbar {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            height: 60px;
+        }
+
+        .navbar h1 {
+            margin: 0;
+            font-size: 1.5em;
+        }
+
+        .navbar h1 a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .nav-menu {
+            display: flex;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            gap: 20px;
+        }
+
+        .nav-menu a {
+            color: var(--text-color);
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+
+        .nav-menu a:hover, .nav-menu a.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* Кнопки */
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            text-decoration: none;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9em;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            color: white;
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: var(--success-hover);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: var(--danger-hover);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: var(--secondary-color);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: var(--secondary-hover);
+            color: white;
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+        }
+
+        .btn-outline:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.85em;
+        }
+
+        /* Карточки */
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        /* Сетки */
+        .grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .grid-2 {
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        }
+
+        .grid-3 {
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        }
+
+        /* Статистика */
+        .stats {
+            display: flex;
+            gap: 30px;
+            margin: 20px 0;
+            padding: 20px;
+            background: var(--light-bg);
+            border-radius: 8px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        /* Формы */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: var(--text-color);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 16px;
+            font-family: inherit;
+        }
+
+        textarea.form-control {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        /* Сообщения */
+        .alert {
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .alert-error {
+            background: #ffeaea;
+            color: var(--danger-color);
+            border: 1px solid #ffcdd2;
+        }
+
+        .alert-success {
+            background: #e8f5e8;
+            color: var(--success-color);
+            border: 1px solid #c8e6c9;
+        }
+
+        /* Пустые состояния */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+            background: var(--light-bg);
+            border-radius: 8px;
+        }
+
+        /* Действия страницы */
+        .page-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        /* Посты на стене */
+        .post {
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            background: white;
+        }
+
+        .post-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        .post-author {
+            font-weight: bold;
+            color: var(--text-color);
+        }
+
+        .post-date {
+            color: var(--text-muted);
+            font-size: 0.9em;
+        }
+
+        .post-content {
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .post-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        /* Бейджи статусов */
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: normal;
+        }
+
+        .badge-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
 <nav class="navbar">
     <div class="nav-container">
         <h1><a href="/">СоцПлатформа</a></h1>
         <ul class="nav-menu">
-            <li><a href="/">Главная</a></li>
-            <li><a href="/events">События</a></li>
-            {{if .IsAuthenticated}}
-            <li><a href="/create-event">Создать событие</a></li>
-            <li><a href="/profile">Мой профиль</a></li>
-            <li><a href="/logout">Выйти ({{.User.FirstName}})</a></li>
+            <li><a href="/" class="{{if eq .NavActive "home"}}active{{end}}">Главная</a></li>
+            <li><a href="/events" class="{{if eq .NavActive "events"}}active{{end}}">События</a></li>
+            <li><a href="/profiles" class="{{if eq .NavActive "profiles"}}active{{end}}">Люди</a></li>
+            {{if .CurrentUser}}
+            <li><a href="/profile" class="{{if eq .NavActive "profile"}}active{{end}}">Мой профиль</a></li>
+            <li><a href="/friends" class="{{if eq .NavActive "friends"}}active{{end}}">Друзья</a></li>
+            <li><a href="/subscriptions" class="{{if eq .NavActive "subscriptions"}}active{{end}}">Подписки</a></li>
+            <li><a href="/logout">Выйти</a></li>
             {{else}}
-            <li><a href="/login">Войти</a></li>
-            <li><a href="/create-profile">Регистрация</a></li>
+            <li><a href="/login" class="{{if eq .NavActive "login"}}active{{end}}">Войти</a></li>
+            <li><a href="/create-profile" class="{{if eq .NavActive "register"}}active{{end}}">Регистрация</a></li>
             {{end}}
         </ul>
     </div>
 </nav>
+
+<main class="container">
+    {{if eq .NavActive "home"}}
+    {{template "home_content" .}}
+    {{else if eq .NavActive "login"}}
+    {{template "login_content" .}}
+    {{else if eq .NavActive "register"}}
+    {{template "register_content" .}}
+    {{else if eq .NavActive "my_profile"}}
+    {{template "my_profile_content" .}}
+    {{else if eq .NavActive "profile"}}
+    {{template "profile_content" .}}
+    {{else if eq .NavActive "profiles"}}
+    {{template "profiles_content" .}}
+    {{else if eq .NavActive "friends"}}
+    {{template "friends_content" .}}
+    {{else if eq .NavActive "subscriptions"}}
+    {{template "subscriptions_content" .}}
+    {{else if eq .NavActive "event"}}
+    {{template "event_content" .}}
+    {{else if eq .NavActive "events"}}
+    {{template "events_content" .}}
+    {{else if eq .NavActive "create_event"}}
+    {{template "create_event_content" .}}
+    {{else if eq .NavActive "edit_profile"}}
+    {{template "edit_profile_content" .}}
+    {{else if eq .NavActive "edit_post"}}
+    {{template "edit_post_content" .}}
+    {{else}}
+    {{block "content" .}}{{end}}
+    {{end}}
+</main>
+
+<footer style="text-align: center; padding: 20px; margin-top: 40px; color: var(--text-muted); border-top: 1px solid var(--border-color);">
+    <p>© 2025 Социальная платформа</p>
+</footer>
+</body>
+</html>
