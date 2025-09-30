@@ -18,35 +18,43 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	eventHandler := NewEventHandler(eventRepo, userRepo)
 	authHandler := NewAuthHandler(userRepo, sessionRepo)
 
-	// Middleware аутентификации для ВСЕХ маршрутов
+	// Middleware аутентификации (теперь не глобальный)
 	authMiddleware := middleware.AuthMiddleware(userRepo, sessionRepo)
-	router.Use(authMiddleware)
 
-	// Статические файлы
+	// Статические файлы (доступны без аутентификации)
 	router.Static("/static", "./static")
 
-	// ==================== ВСЕ МАРШРУТЫ ТРЕБУЮТ АУТЕНТИФИКАЦИИ ====================
+	// ==================== МАРШРУТЫ БЕЗ АУТЕНТИФИКАЦИИ ====================
 
 	// Главная страница
 	router.GET("/", userHandler.ShowHomePage)
 
-	// Профили
-	router.GET("/profiles", userHandler.GetAllProfiles)
-	router.GET("/profile/:id", userHandler.GetProfile)
-	router.GET("/profile", authHandler.ShowProfile) // Мой профиль
-
-	// События
-	router.GET("/events", eventHandler.GetAllEvents)
-	router.GET("/event/:id", eventHandler.GetEvent)
-	router.GET("/create-event", eventHandler.ShowCreateEventForm)
-	router.POST("/create-event", eventHandler.CreateEvent)
-
 	// Аутентификация
 	router.GET("/login", authHandler.ShowLoginForm)
 	router.POST("/login", authHandler.Login)
-	router.GET("/logout", authHandler.Logout)
 
-	// Создание профиля
+	// Создание профиля (регистрация)
 	router.GET("/create-profile", userHandler.ShowCreateProfileForm)
 	router.POST("/create-profile", userHandler.CreateProfile)
+
+	// ==================== МАРШРУТЫ С АУТЕНТИФИКАЦИЕЙ ====================
+
+	// Группа защищенных маршрутов
+	protected := router.Group("/")
+	protected.Use(authMiddleware)
+	{
+		// Профили
+		protected.GET("/profiles", userHandler.GetAllProfiles)
+		protected.GET("/profile/:id", userHandler.GetProfile)
+		protected.GET("/profile", authHandler.ShowProfile)
+
+		// События
+		protected.GET("/events", eventHandler.GetAllEvents)
+		protected.GET("/event/:id", eventHandler.GetEvent)
+		protected.GET("/create-event", eventHandler.ShowCreateEventForm)
+		protected.POST("/create-event", eventHandler.CreateEvent)
+
+		// Выход
+		protected.GET("/logout", authHandler.Logout)
+	}
 }

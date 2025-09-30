@@ -33,7 +33,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	var req models.LoginRequest
 	if err := c.ShouldBind(&req); err != nil {
-		println("❌ Ошибка绑定 формы:", err.Error())
+		println("Ошибка формы:", err.Error())
 		c.HTML(http.StatusBadRequest, "login.html", gin.H{
 			"Error": "Неверные данные формы",
 		})
@@ -104,7 +104,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 func (h *AuthHandler) ShowProfile(c *gin.Context) {
 	user := GetUserFromContext(c)
 	if user == nil {
-		println("❌ ПОЛЬЗОВАТЕЛЬ НЕ АУТЕНТИФИЦИРОВАН - редирект на логин")
+		println("ПОЛЬЗОВАТЕЛЬ НЕ АУТЕНТИФИЦИРОВАН - редирект на логин")
 		c.Redirect(http.StatusSeeOther, "/login")
 		return
 	}
