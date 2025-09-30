@@ -1,57 +1,22 @@
 {{define "home_content"}}
-<div style="text-align: center; padding: 60px 20px;">
-  <h1>Добро пожаловать в Социальную платформу</h1>
-  <p style="font-size: 1.2em; color: var(--text-muted); margin-bottom: 40px;">
-    Общайтесь, находите друзей, создавайте события и делитесь моментами
+<div style="text-align: center; padding: 100px 20px;">
+  <h1 style="font-size: 2.8em; margin-bottom: 20px; color: var(--text-primary);">
+    SocialSphere
+  </h1>
+  <p style="font-size: 1.3em; color: var(--text-muted); margin-bottom: 50px;">
+    Войти или зарегистрироваться
   </p>
 
   {{if .CurrentUser}}
-  <div class="page-actions">
-    <a href="/events" class="btn btn-primary">Смотреть события</a>
-    <a href="/profiles" class="btn btn-outline">Найти людей</a>
-    <a href="/create-event" class="btn btn-success">Создать событие</a>
-  </div>
-
-  <div class="grid grid-3" style="margin-top: 60px;">
-    <div class="card">
-      <h3>👥 Друзья</h3>
-      <p>Находите друзей и общайтесь</p>
-      <a href="/friends" class="btn btn-outline">Управление друзьями</a>
-    </div>
-
-    <div class="card">
-      <h3>📅 События</h3>
-      <p>Создавайте и участвуйте в событиях</p>
-      <a href="/events" class="btn btn-outline">Все события</a>
-    </div>
-
-    <div class="card">
-      <h3>👤 Профиль</h3>
-      <p>Управляйте своей страницей</p>
-      <a href="/profile" class="btn btn-outline">Мой профиль</a>
-    </div>
+  <div style="display: flex; gap: 15px; justify-content: center; margin-bottom: 60px;">
+    <a href="/events" class="btn btn-primary">События</a>
+    <a href="/profiles" class="btn btn-outline">Люди</a>
+    <a href="/profile" class="btn btn-outline">Профиль</a>
   </div>
   {{else}}
-  <div class="page-actions">
-    <a href="/login" class="btn btn-primary">Войти в систему</a>
-    <a href="/create-profile" class="btn btn-success">Создать профиль</a>
-  </div>
-
-  <div class="grid grid-3" style="margin-top: 60px;">
-    <div class="card">
-      <h3>🚀 Быстрый старт</h3>
-      <p>Создайте профиль за 2 минуты и начните общение</p>
-    </div>
-
-    <div class="card">
-      <h3>👥 Сообщество</h3>
-      <p>Находите друзей и единомышленников</p>
-    </div>
-
-    <div class="card">
-      <h3>📅 Мероприятия</h3>
-      <p>Участвуйте в событиях и создавайте свои</p>
-    </div>
+  <div style="display: flex; gap: 15px; justify-content: center; margin-bottom: 60px;">
+    <a href="/login" class="btn btn-primary">Войти</a>
+    <a href="/create-profile" class="btn btn-outline">Регистрация</a>
   </div>
   {{end}}
 </div>

@@ -47,7 +47,7 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 	if err := c.ShouldBind(&req); err != nil {
 		c.HTML(http.StatusBadRequest, "base.html", gin.H{
 			"Title":       "Создание события",
-			"NavActive":   "events",
+			"NavActive":   "event",
 			"Error":       "Неверные данные формы",
 			"CurrentUser": currentUser,
 		})
@@ -59,7 +59,7 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 	if err != nil {
 		c.HTML(http.StatusBadRequest, "base.html", gin.H{
 			"Title":       "Создание события",
-			"NavActive":   "events",
+			"NavActive":   "event",
 			"Error":       "Неверный формат даты и времени",
 			"CurrentUser": currentUser,
 		})
@@ -80,7 +80,7 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 	if err := h.eventRepo.CreateEvent(event); err != nil {
 		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
 			"Title":       "Создание события",
-			"NavActive":   "events",
+			"NavActive":   "event",
 			"Error":       "Ошибка при создании события: " + err.Error(),
 			"CurrentUser": currentUser,
 		})
@@ -118,7 +118,7 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 	if err != nil {
 		c.HTML(http.StatusBadRequest, "base.html", gin.H{
 			"Title":       "Событие",
-			"NavActive":   "events",
+			"NavActive":   "event",
 			"Error":       "Неверный ID события",
 			"CurrentUser": GetUserFromContext(c),
 		})
@@ -129,7 +129,7 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 	if err != nil {
 		c.HTML(http.StatusNotFound, "base.html", gin.H{
 			"Title":       "Событие",
-			"NavActive":   "events",
+			"NavActive":   "event",
 			"Error":       "Событие не найдено",
 			"CurrentUser": GetUserFromContext(c),
 		})
@@ -140,7 +140,7 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "base.html", gin.H{
 		"Title":       event.Title,
-		"NavActive":   "events",
+		"NavActive":   "event",
 		"Event":       event,
 		"CurrentUser": currentUser,
 	})
