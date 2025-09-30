@@ -77,6 +77,79 @@
             background: #f9f9f9;
             border-radius: 8px;
         }
+        /* Стили для подписок */
+        .subscription-stats {
+            display: flex;
+            gap: 30px;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .stat-item {
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 20px;
+            font-weight: bold;
+            color: #0066cc;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+        }
+        .subscription-actions {
+            margin: 20px 0;
+        }
+        .subscribe-btn {
+            background: #0066cc;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .subscribe-btn:hover {
+            background: #0052a3;
+            color: white;
+            text-decoration: none;
+        }
+        .unsubscribe-btn {
+            background: #666;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .unsubscribe-btn:hover {
+            background: #555;
+            color: white;
+            text-decoration: none;
+        }
+        .edit-btn {
+            color: #0066cc;
+            text-decoration: none;
+            font-size: 0.9em;
+            padding: 5px 10px;
+            border: 1px solid #0066cc;
+            border-radius: 3px;
+        }
+        .edit-btn:hover {
+            background: #0066cc;
+            color: white;
+            text-decoration: none;
+        }
+        .post-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
     </style>
 </head>
 <body>
@@ -101,6 +174,29 @@
         {{if .User.Phone}}<p><strong>Телефон:</strong> {{.User.Phone}}</p>{{end}}
         {{if .User.SocialLinks}}<p><strong>Соцсети:</strong> {{.User.SocialLinks}}</p>{{end}}
         <p><strong>Зарегистрирован:</strong> {{.User.CreatedAt.Format "02.01.2006 15:04"}}</p>
+
+        <!-- СТАТИСТИКА ПОДПИСОК -->
+        <div class="subscription-stats">
+            <div class="stat-item">
+                <div class="stat-number">{{.FollowersCount}}</div>
+                <div class="stat-label">Подписчиков</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">{{.FollowingCount}}</div>
+                <div class="stat-label">Подписок</div>
+            </div>
+        </div>
+
+        <!-- КНОПКИ ПОДПИСКИ (только для авторизованных и не своего профиля) -->
+        {{if and .CurrentUser (ne .CurrentUser.ID .User.ID)}}
+        <div class="subscription-actions">
+            {{if .IsSubscribed}}
+            <a href="/unsubscribe/{{.User.ID}}" class="unsubscribe-btn">Отписаться</a>
+            {{else}}
+            <a href="/subscribe/{{.User.ID}}" class="subscribe-btn">Подписаться</a>
+            {{end}}
+        </div>
+        {{end}}
 
         <!-- СЕКЦИЯ СТЕНЫ -->
         <div class="wall-section">
@@ -132,12 +228,10 @@
                     <div class="post-content">{{.Content}}</div>
                     <div class="post-actions">
                         {{if and $.CurrentUser (or (eq $.CurrentUser.ID .AuthorID) (eq $.CurrentUser.ID .UserID))}}
-                        <div style="display: flex; gap: 10px;">
-                            {{if eq $.CurrentUser.ID .AuthorID}}
-                            <a href="/wall/edit/{{.ID}}" class="edit-btn">Редактировать</a>
-                            {{end}}
-                            <a href="/wall/delete/{{.ID}}" class="delete-btn" onclick="return confirm('Удалить запись?')">Удалить</a>
-                        </div>
+                        {{if eq $.CurrentUser.ID .AuthorID}}
+                        <a href="/wall/edit/{{.ID}}" class="edit-btn">Редактировать</a>
+                        {{end}}
+                        <a href="/wall/delete/{{.ID}}" class="delete-btn" onclick="return confirm('Удалить запись?')">Удалить</a>
                         {{end}}
                     </div>
                 </div>
@@ -160,7 +254,11 @@
 
         <div class="profile-actions">
             <a href="/profiles" class="btn btn-secondary">← Назад к списку</a>
+            {{if .CurrentUser}}
+            <a href="/subscriptions" class="btn btn-primary">Мои подписки</a>
+            {{else}}
             <a href="/create-profile" class="btn btn-primary">Создать новый профиль</a>
+            {{end}}
         </div>
     </div>
 </main>

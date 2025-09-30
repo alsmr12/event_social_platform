@@ -13,12 +13,14 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	eventRepo := repository.NewEventRepository(db)
 	sessionRepo := repository.NewSessionRepository(db)
 	wallRepo := repository.NewWallRepository(db)
+	subscriptionRepo := repository.NewSubscriptionRepository(db)
 
 	// Инициализируем обработчики
 	userHandler := NewUserHandler(userRepo)
 	eventHandler := NewEventHandler(eventRepo, userRepo)
 	authHandler := NewAuthHandler(userRepo, sessionRepo)
 	wallHandler := NewWallHandler(wallRepo, userRepo)
+	subscriptionHandler := NewSubscriptionHandler(subscriptionRepo, userRepo)
 
 	// Middleware аутентификации (теперь не глобальный)
 	authMiddleware := middleware.AuthMiddleware(userRepo, sessionRepo)
@@ -61,6 +63,14 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 		protected.GET("/wall/delete/:id", wallHandler.DeletePost)
 		protected.GET("/wall/edit/:id", wallHandler.ShowEditForm)
 		protected.POST("/wall/edit/:id", wallHandler.UpdatePost)
+
+		// Подписки
+		protected.GET("/subscriptions", subscriptionHandler.MySubscriptions)
+		protected.GET("/subscribe/:id", subscriptionHandler.Subscribe)
+		protected.GET("/unsubscribe/:id", subscriptionHandler.Unsubscribe)
+
+		protected.GET("/edit-profile", userHandler.ShowEditProfileForm)
+		protected.POST("/edit-profile", userHandler.UpdateProfile)
 
 		// Выход
 		protected.GET("/logout", authHandler.Logout)

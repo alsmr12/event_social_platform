@@ -49,7 +49,8 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.User{},
 		&models.Event{},
 		&models.Session{},
-		&models.WallPost{}, // ← ДОБАВИТЬ
+		&models.WallPost{},
+		&models.Subscription{}, // ← ДОБАВЛЯЕМ ПОДПИСКИ
 	)
 	if err != nil {
 		return fmt.Errorf("failed to auto-migrate database: %w", err)

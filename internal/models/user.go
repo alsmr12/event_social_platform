@@ -47,3 +47,12 @@ type CreateUserRequest struct {
 	Phone       string `form:"phone"`
 	SocialLinks string `form:"social_links"`
 }
+
+type UpdateUserRequest struct {
+	FirstName   string `form:"first_name" binding:"required"`
+	LastName    string `form:"last_name" binding:"required"`
+	Gender      string `form:"gender"`
+	Age         int    `form:"age"`
+	Phone       string `form:"phone"`
+	SocialLinks string `form:"social_links"`
+}

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Редактирование профиля - Социальная платформа</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .edit-container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .edit-form {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            font-family: inherit;
+        }
+        .form-group textarea {
+            height: 80px;
+            resize: vertical;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .error-message {
+            color: #ff4444;
+            background: #ffeaea;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .readonly-field {
+            background: #f5f5f5;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <div class="nav-container">
+        <h1><a href="/">СоцПлатформа</a></h1>
+        <ul class="nav-menu">
+            <li><a href="/">Главная</a></li>
+            <li><a href="/events">События</a></li>
+            <li><a href="/profiles">Все профили</a></li>
+            <li><a href="/profile">Мой профиль</a></li>
+            <li><a href="/subscriptions">Мои подписки</a></li>
+            <li><a href="/logout">Выйти</a></li>
+        </ul>
+    </div>
+</nav>
+
+<main class="container">
+    <div class="edit-container">
+        <div class="edit-form">
+            <h2>Редактирование профиля</h2>
+
+            {{if .Error}}
+            <div class="error-message">
+                {{.Error}}
+            </div>
+            {{end}}
+
+            <form action="/edit-profile" method="POST">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" value="{{.User.Email}}" class="readonly-field" readonly>
+                    <small style="color: #666;">Email нельзя изменить</small>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="first_name">Имя *</label>
+                        <input type="text" id="first_name" name="first_name" value="{{.User.FirstName}}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="last_name">Фамилия *</label>
+                        <input type="text" id="last_name" name="last_name" value="{{.User.LastName}}" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="gender">Пол</label>
+                        <select id="gender" name="gender">
+                            <option value="">Не указано</option>
+                            <option value="male" {{if eq .User.Gender "male"}}selected{{end}}>Мужской</option>
+                            <option value="female" {{if eq .User.Gender "female"}}selected{{end}}>Женский</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="age">Возраст</label>
+                        <input type="number" id="age" name="age" value="{{.User.Age}}" min="1" max="120">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Телефон</label>
+                    <input type="tel" id="phone" name="phone" value="{{.User.Phone}}" placeholder="+7 (XXX) XXX-XX-XX">
+                </div>
+
+                <div class="form-group">
+                    <label for="social_links">Социальные сети</label>
+                    <textarea id="social_links" name="social_links" placeholder="Ссылки на ваши социальные сети...">{{.User.SocialLinks}}</textarea>
+                </div>
+
+                <div class="form-actions">
+                    <a href="/profile" class="btn btn-secondary">Отмена</a>
+                    <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</main>
+</body>
+</html>

@@ -91,21 +91,34 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	// Получаем записи на стене пользователя через репозиторий стены
+	// Получаем записи на стене пользователя
 	db := h.userRepo.GetDB()
 	wallRepo := repository.NewWallRepository(db)
 	posts, err := wallRepo.GetPostsByUserID(uint(id))
 	if err != nil {
-		// В случае ошибки просто используем пустой список
 		posts = []*models.WallPost{}
 	}
 
 	currentUser := GetUserFromContext(c)
 
+	// Получаем статистику подписок
+	subscriptionRepo := repository.NewSubscriptionRepository(db)
+	followersCount, _ := subscriptionRepo.GetFollowersCount(uint(id))
+	followingCount, _ := subscriptionRepo.GetFollowingCount(uint(id))
+
+	// Проверяем, подписан ли текущий пользователь на этого пользователя
+	var isSubscribed bool
+	if currentUser != nil {
+		isSubscribed, _ = subscriptionRepo.IsSubscribed(currentUser.ID, uint(id))
+	}
+
 	c.HTML(http.StatusOK, "profile.html", gin.H{
-		"User":        user,
-		"Posts":       posts,
-		"CurrentUser": currentUser,
+		"User":           user,
+		"Posts":          posts,
+		"CurrentUser":    currentUser,
+		"FollowersCount": followersCount,
+		"FollowingCount": followingCount,
+		"IsSubscribed":   isSubscribed,
 	})
 }
 
@@ -124,7 +137,92 @@ func (h *UserHandler) GetAllProfiles(c *gin.Context) {
 		users = []*models.User{}
 	}
 
+	currentUser := GetUserFromContext(c)
+
+	// Создаем структуру для передачи дополнительных данных
+	type UserWithSubscriptions struct {
+		*models.User
+		FollowersCount int64
+		FollowingCount int64
+		IsSubscribed   bool
+	}
+
+	usersWithSubs := make([]UserWithSubscriptions, len(users))
+
+	// Получаем репозиторий подписок
+	db := h.userRepo.GetDB()
+	subscriptionRepo := repository.NewSubscriptionRepository(db)
+
+	for i, user := range users {
+		// Получаем статистику подписок для каждого пользователя
+		followersCount, _ := subscriptionRepo.GetFollowersCount(user.ID)
+		followingCount, _ := subscriptionRepo.GetFollowingCount(user.ID)
+
+		// Проверяем, подписан ли текущий пользователь
+		var isSubscribed bool
+		if currentUser != nil && currentUser.ID != user.ID {
+			isSubscribed, _ = subscriptionRepo.IsSubscribed(currentUser.ID, user.ID)
+		}
+
+		usersWithSubs[i] = UserWithSubscriptions{
+			User:           user,
+			FollowersCount: followersCount,
+			FollowingCount: followingCount,
+			IsSubscribed:   isSubscribed,
+		}
+	}
+
 	c.HTML(http.StatusOK, "profiles.html", gin.H{
-		"Users": users,
+		"Users":       usersWithSubs,
+		"CurrentUser": currentUser,
 	})
+}
+
+// Показывает форму редактирования профиля
+func (h *UserHandler) ShowEditProfileForm(c *gin.Context) {
+	currentUser := GetUserFromContext(c)
+	if currentUser == nil {
+		c.Redirect(http.StatusSeeOther, "/login")
+		return
+	}
+
+	c.HTML(http.StatusOK, "edit_profile.html", gin.H{
+		"User": currentUser,
+	})
+}
+
+// Обрабатывает обновление профиля
+func (h *UserHandler) UpdateProfile(c *gin.Context) {
+	currentUser := GetUserFromContext(c)
+	if currentUser == nil {
+		c.Redirect(http.StatusSeeOther, "/login")
+		return
+	}
+
+	var req models.UpdateUserRequest
+	if err := c.ShouldBind(&req); err != nil {
+		c.HTML(http.StatusBadRequest, "edit_profile.html", gin.H{
+			"Error": "Неверные данные формы: " + err.Error(),
+			"User":  currentUser,
+		})
+		return
+	}
+
+	// Обновляем данные пользователя
+	currentUser.FirstName = req.FirstName
+	currentUser.LastName = req.LastName
+	currentUser.Gender = req.Gender
+	currentUser.Age = req.Age
+	currentUser.Phone = req.Phone
+	currentUser.SocialLinks = req.SocialLinks
+
+	if err := h.userRepo.UpdateUser(currentUser); err != nil {
+		c.HTML(http.StatusInternalServerError, "edit_profile.html", gin.H{
+			"Error": "Ошибка обновления профиля: " + err.Error(),
+			"User":  currentUser,
+		})
+		return
+	}
+
+	c.Redirect(http.StatusSeeOther, "/profile")
 }

@@ -109,21 +109,24 @@ func (h *AuthHandler) ShowProfile(c *gin.Context) {
 		return
 	}
 
-	// Получаем записи на стене пользователя через репозиторий стены
+	// Получаем записи на стене пользователя
 	db := h.userRepo.GetDB()
 	wallRepo := repository.NewWallRepository(db)
 	posts, err := wallRepo.GetPostsByUserID(user.ID)
 	if err != nil {
-		// В случае ошибки просто используем пустой список
 		posts = []*models.WallPost{}
 	}
 
-	currentUser := GetUserFromContext(c) // Получаем текущего пользователя
+	// Получаем статистику подписок
+	subscriptionRepo := repository.NewSubscriptionRepository(db)
+	followersCount, _ := subscriptionRepo.GetFollowersCount(user.ID)
+	followingCount, _ := subscriptionRepo.GetFollowingCount(user.ID)
 
 	println("ОТОБРАЖЕНИЕ ПРОФИЛЯ для:", user.ID, user.Email)
 	c.HTML(http.StatusOK, "my_profile.html", gin.H{
-		"User":        user,
-		"Posts":       posts,
-		"CurrentUser": currentUser, // ВАЖНО: передаем CurrentUser в шаблон
+		"User":           user,
+		"Posts":          posts,
+		"FollowersCount": followersCount,
+		"FollowingCount": followingCount,
 	})
 }
