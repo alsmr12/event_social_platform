@@ -4,7 +4,7 @@
     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
         <div>
             <h2>{{.Event.Title}}</h2>
-            <span class="badge" style="background: #e9ecef; color: var(--text-color);">{{.Event.Type}}</span>
+            <span class="badge" style="background: #007bff; color: white; border: 1px solid #0056b3; padding: 2px 6px; border-radius: 4px; font-size: 0.875em; font-weight: 600;">{{.Event.Type}}</span>
             {{if .Event.IsPrivate}}<span class="badge" style="background: var(--danger-color); color: white;">🔒 Приватное</span>{{end}}
         </div>
         {{if eq .Event.CreatorID $.CurrentUser.ID}}

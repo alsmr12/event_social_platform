@@ -30,7 +30,7 @@ func (h *UserHandler) ShowHomePage(c *gin.Context) {
 func (h *UserHandler) ShowCreateProfileForm(c *gin.Context) {
 	c.HTML(http.StatusOK, "base.html", gin.H{
 		"Title":     "Регистрация",
-		"NavActive": "register", // УЖЕ ПРАВИЛЬНО
+		"NavActive": "register",
 	})
 }
 
@@ -238,7 +238,7 @@ func (h *UserHandler) ShowEditProfileForm(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "base.html", gin.H{
 		"Title":       "Редактирование профиля",
-		"NavActive":   "edit_profile", // ИСПРАВЛЕНО
+		"NavActive":   "edit_profile",
 		"User":        currentUser,
 		"CurrentUser": currentUser,
 	})

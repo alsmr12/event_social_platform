@@ -25,7 +25,7 @@ func NewAuthHandler(userRepo *repository.UserRepository, sessionRepo *repository
 func (h *AuthHandler) ShowLoginForm(c *gin.Context) {
 	c.HTML(http.StatusOK, "base.html", gin.H{
 		"Title":     "Вход в систему",
-		"NavActive": "login", // УЖЕ ПРАВИЛЬНО
+		"NavActive": "login",
 	})
 }
 
@@ -34,7 +34,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	if err := c.ShouldBind(&req); err != nil {
 		c.HTML(http.StatusBadRequest, "base.html", gin.H{
 			"Title":     "Вход в систему",
-			"NavActive": "login", // УЖЕ ПРАВИЛЬНО
+			"NavActive": "login",
 			"Error":     "Неверный email или пароль",
 		})
 		return
@@ -46,7 +46,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		c.HTML(http.StatusBadRequest, "base.html", gin.H{
 			"Title":     "Вход в систему",
 			"NavActive": "login",
-			"Error":     "Неверный email или пароль",
+			"Error":     "Неверный email",
 		})
 		return
 	}
@@ -56,7 +56,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		c.HTML(http.StatusBadRequest, "base.html", gin.H{
 			"Title":     "Вход в систему",
 			"NavActive": "login",
-			"Error":     "Неверный email или пароль",
+			"Error":     "Неверный пароль",
 		})
 		return
 	}
@@ -119,7 +119,7 @@ func (h *AuthHandler) ShowProfile(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "base.html", gin.H{
 		"Title":          "Мой профиль",
-		"NavActive":      "my_profile", // ИСПРАВЛЕНО
+		"NavActive":      "my_profile",
 		"User":           user,
 		"Posts":          posts,
 		"FollowersCount": followersCount,

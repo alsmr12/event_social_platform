@@ -24,10 +24,10 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	subscriptionHandler := NewSubscriptionHandler(subscriptionRepo, userRepo)
 	friendshipHandler := NewFriendshipHandler(friendshipRepo, userRepo)
 
-	// Middleware аутентификации (теперь не глобальный)
+	// Middleware аутентификации
 	authMiddleware := middleware.AuthMiddleware(userRepo, sessionRepo)
 
-	// Статические файлы (доступны без аутентификации)
+	// Делает доступными файлы из папки static/
 	router.Static("/static", "./static")
 
 	// ==================== МАРШРУТЫ БЕЗ АУТЕНТИФИКАЦИИ ====================
@@ -49,7 +49,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	protected := router.Group("/")
 	protected.Use(authMiddleware)
 	{
-		// Профили (стена теперь интегрирована в профиль)
+		// Профили
 		protected.GET("/profiles", userHandler.GetAllProfiles)
 		protected.GET("/profile/:id", userHandler.GetProfile)
 		protected.GET("/profile", authHandler.ShowProfile)

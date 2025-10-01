@@ -8,9 +8,9 @@
     <div class="grid grid-2">
         {{range .Events}}
         <div class="card">
-            <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
                 <h3 style="margin: 0;">{{.Title}}</h3>
-                <span class="badge" style="background: #e9ecef; color: var(--text-color);">{{.Type}}</span>
+                <span class="badge" style="background: #007bff; color: white; border: 1px solid #0056b3; padding: 4px 8px; border-radius: 4px; font-size: 0.875em; font-weight: 600;">{{.Type}}</span>
             </div>
 
             <p style="color: var(--text-muted); margin-bottom: 15px;">{{.Description}}</p>

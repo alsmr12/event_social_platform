@@ -9,7 +9,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// DBConfig - конфигурация базы данных
 type DBConfig struct {
 	Host     string
 	Port     string
@@ -28,12 +27,12 @@ func NewDBConfig(host, port, user, password, dbName string) *DBConfig {
 	}
 }
 
+// GetDSN формирует строку подключения для Postgres
 func (config *DBConfig) GetDSN() string {
 	return fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
 		config.Host, config.User, config.Password, config.DBName, config.Port)
 }
 
-// ConnectDB - подключение к базе данных
 func ConnectDB(config *DBConfig) (*gorm.DB, error) {
 	db, err := gorm.Open(postgres.Open(config.GetDSN()), &gorm.Config{})
 	if err != nil {
@@ -51,7 +50,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.Session{},
 		&models.WallPost{},
 		&models.Subscription{},
-		&models.Friendship{}, // ← ДОБАВЛЯЕМ ДРУЖБУ
+		&models.Friendship{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to auto-migrate database: %w", err)

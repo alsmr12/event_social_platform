@@ -38,7 +38,7 @@ func (u *User) CheckPassword(password string) bool {
 }
 
 type CreateUserRequest struct {
-	Email       string `form:"email" binding:"required"`
+	Email       string `form:"email" binding:"required,email"`
 	Password    string `form:"password" binding:"required"`
 	FirstName   string `form:"first_name" binding:"required"`
 	LastName    string `form:"last_name" binding:"required"`
