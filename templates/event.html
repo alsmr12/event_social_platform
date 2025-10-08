@@ -1,6 +1,17 @@
 {{define "event_content"}}
 <div class="card">
     {{if .Event}}
+    
+    <!-- Блок сообщений -->
+    {{if .Message}}
+    <div class="alert {{if eq .Message "subscribed"}}alert-success{{else if eq .Message "unsubscribed"}}alert-success{{else if eq .Message "already_subscribed"}}alert-error{{else}}alert-error{{end}}" style="margin-bottom: 20px;">
+        {{if eq .Message "subscribed"}}✅ Вы успешно подписались на событие{{end}}
+        {{if eq .Message "unsubscribed"}}✅ Вы отписались от события{{end}}
+        {{if eq .Message "already_subscribed"}}❌ Вы уже подписаны на это событие{{end}}
+        {{if eq .Message "error"}}❌ Произошла ошибка при подписке{{end}}
+    </div>
+    {{end}}
+    
     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
         <div>
             <h2>{{.Event.Title}}</h2>
@@ -17,15 +28,44 @@
             </span>
             {{if .Event.IsPrivate}}<span class="badge" style="background: var(--danger-color); color: white;">🔒 Приватное</span>{{end}}
         </div>
-        {{if eq .Event.CreatorID $.CurrentUser.ID}}
-        <a href="/event/delete/{{.Event.ID}}" class="btn btn-danger btn-small" onclick="return confirm('Удалить событие?')">Удалить</a>
-        {{end}}
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <!-- Кнопки подписки -->
+            {{if .CurrentUser}}
+                {{if .IsSubscribed}}
+                <form action="/event/{{.Event.ID}}/unsubscribe" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-outline btn-small">✅ Отписаться</button>
+                </form>
+                {{else}}
+                <form action="/event/{{.Event.ID}}/subscribe" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-primary btn-small">🔔 Подписаться</button>
+                </form>
+                {{end}}
+            {{end}}
+            
+            {{if eq .Event.CreatorID .CurrentUser.ID}}
+            <div style="display: flex; gap: 8px;">
+                <a href="/event/edit/{{.Event.ID}}" class="btn btn-outline btn-small">Редактировать</a>
+                <form action="/event/delete/{{.Event.ID}}" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger btn-small" 
+                            onclick="return confirm('Удалить событие?')">Удалить</button>
+                </form>
+            </div>
+            {{end}}
+        </div>
     </div>
 
     <div class="grid grid-2">
         <div>
             <h3>Описание</h3>
             <p style="line-height: 1.6;">{{.Event.Description}}</p>
+            
+            <!-- Информация о подписчиках -->
+            {{if .SubscribersCount}}
+            <div style="margin-top: 20px; padding: 15px; background: var(--bg-secondary); border-radius: var(--radius);">
+                <h4>🔔 Подписчики</h4>
+                <p>На это событие подписано: <strong>{{.SubscribersCount}}</strong> человек</p>
+            </div>
+            {{end}}
         </div>
 
         <div>
@@ -50,6 +90,9 @@
 
     <div class="page-actions">
         <a href="/events" class="btn btn-outline">← Все события</a>
+        {{if .CurrentUser}}
+        <a href="/event-subscriptions" class="btn btn-outline">📋 Мои подписки</a>
+        {{end}}
         <a href="/create-event" class="btn btn-success">Создать событие</a>
     </div>
 </div>

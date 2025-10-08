@@ -676,6 +676,10 @@
     {{template "edit_profile_content" .}}
     {{else if eq .NavActive "edit_post"}}
     {{template "edit_post_content" .}}
+    {{else if eq .NavActive "edit_event"}}
+    {{template "edit_event_content" .}}
+    {{else if eq .NavActive "event_subscriptions"}}
+    {{template "event_subscriptions_content" .}}
     {{else}}
     {{block "content" .}}{{end}}
     {{end}}

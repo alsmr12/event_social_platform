@@ -1,0 +1,53 @@
+{{define "event_subscriptions_content"}}
+<div class="card">
+    <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 30px;">
+        <h2>Мои подписки на события</h2>
+    </div>
+
+    {{if .Subscriptions}}
+    <div class="grid grid-2">
+        {{range .Subscriptions}}
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                <h3 style="margin: 0;">{{.Event.Title}}</h3>
+                <span class="badge" style="background: #007bff; color: white; border: 1px solid #0056b3; padding: 4px 8px; border-radius: 4px; font-size: 0.875em; font-weight: 600;">
+                    {{if eq .Event.Type "concert"}}Концерт
+                    {{else if eq .Event.Type "lecture"}}Лекция
+                    {{else if eq .Event.Type "sport"}}Спорт
+                    {{else if eq .Event.Type "meetup"}}Встреча
+                    {{else if eq .Event.Type "party"}}Вечеринка
+                    {{else if eq .Event.Type "conference"}}Конференция
+                    {{else if eq .Event.Type "exhibition"}}Выставка
+                    {{else if eq .Event.Type "other"}}Другое
+                    {{else}}{{.Event.Type}}{{end}}
+                </span>
+            </div>
+
+            <p style="color: var(--text-muted); margin-bottom: 15px;">{{.Event.Description}}</p>
+
+            <div style="line-height: 1.8; margin-bottom: 20px;">
+                <div><strong>📅 Когда:</strong> {{.Event.DateTime.Format "02.01.2006 15:04"}}</div>
+                <div><strong>📍 Где:</strong> {{.Event.Location}}</div>
+                <div><strong>👤 Организатор:</strong> {{.Event.Creator.FirstName}} {{.Event.Creator.LastName}}</div>
+                {{if .Event.MaxParticipants}}<div><strong>👥 Участников:</strong> до {{.Event.MaxParticipants}} человек</div>{{end}}
+                {{if .Event.IsPrivate}}<div><strong>🔒 Приватное событие</strong></div>{{end}}
+                <div><strong>📅 Подписан:</strong> {{.CreatedAt.Format "02.01.2006"}}</div>
+            </div>
+
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <a href="/event/{{.Event.ID}}" class="btn btn-outline btn-small">Подробнее</a>
+                <form action="/event/{{.Event.ID}}/unsubscribe" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger btn-small">Отписаться</button>
+                </form>
+            </div>
+        </div>
+        {{end}}
+    </div>
+    {{else}}
+    <div class="empty-state">
+        <p>Вы еще не подписаны ни на одно событие.</p>
+        <a href="/events" class="btn btn-primary">Найти события</a>
+    </div>
+    {{end}}
+</div>
+{{end}}

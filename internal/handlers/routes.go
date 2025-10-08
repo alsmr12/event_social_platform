@@ -8,21 +8,23 @@ import (
 )
 
 func SetupRoutes(router *gin.Engine, db *gorm.DB) {
-	// Инициализируем репозитории
-	userRepo := repository.NewUserRepository(db)
-	eventRepo := repository.NewEventRepository(db)
-	sessionRepo := repository.NewSessionRepository(db)
-	wallRepo := repository.NewWallRepository(db)
-	subscriptionRepo := repository.NewSubscriptionRepository(db)
-	friendshipRepo := repository.NewFriendshipRepository(db)
+    // Инициализируем репозитории
+    userRepo := repository.NewUserRepository(db)
+    eventRepo := repository.NewEventRepository(db)
+    sessionRepo := repository.NewSessionRepository(db)
+    wallRepo := repository.NewWallRepository(db)
+    subscriptionRepo := repository.NewSubscriptionRepository(db)
+    friendshipRepo := repository.NewFriendshipRepository(db)
+    eventSubRepo := repository.NewEventSubscriptionRepository(db) // ← правильно
 
-	// Инициализируем обработчики
-	userHandler := NewUserHandler(userRepo)
-	eventHandler := NewEventHandler(eventRepo, userRepo)
-	authHandler := NewAuthHandler(userRepo, sessionRepo)
-	wallHandler := NewWallHandler(wallRepo, userRepo)
-	subscriptionHandler := NewSubscriptionHandler(subscriptionRepo, userRepo)
-	friendshipHandler := NewFriendshipHandler(friendshipRepo, userRepo)
+    // Инициализируем обработчики
+    userHandler := NewUserHandler(userRepo)
+    eventHandler := NewEventHandler(eventRepo, userRepo, eventSubRepo) // ← 3 параметра
+    authHandler := NewAuthHandler(userRepo, sessionRepo)
+    wallHandler := NewWallHandler(wallRepo, userRepo)
+    subscriptionHandler := NewSubscriptionHandler(subscriptionRepo, userRepo)
+    friendshipHandler := NewFriendshipHandler(friendshipRepo, userRepo)
+    eventSubHandler := NewEventSubscriptionHandler(eventSubRepo) // ← правильно
 
 	// Middleware аутентификации
 	authMiddleware := middleware.AuthMiddleware(userRepo, sessionRepo)
@@ -59,6 +61,9 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 		protected.GET("/event/:id", eventHandler.GetEvent)
 		protected.GET("/create-event", eventHandler.ShowCreateEventForm)
 		protected.POST("/create-event", eventHandler.CreateEvent)
+		protected.POST("/event/delete/:id", eventHandler.DeleteEvent)
+		protected.GET("/event/edit/:id", eventHandler.ShowEditEventForm)
+		protected.POST("/event/edit/:id", eventHandler.UpdateEvent)
 
 		// Действия со стеной
 		protected.POST("/wall/post", wallHandler.CreatePost)
@@ -70,6 +75,11 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 		protected.GET("/subscriptions", subscriptionHandler.MySubscriptions)
 		protected.GET("/subscribe/:id", subscriptionHandler.Subscribe)
 		protected.GET("/unsubscribe/:id", subscriptionHandler.Unsubscribe)
+
+		// Подписки на события
+		protected.POST("/event/:id/subscribe", eventSubHandler.Subscribe)
+		protected.POST("/event/:id/unsubscribe", eventSubHandler.Unsubscribe)
+		protected.GET("/event-subscriptions", eventSubHandler.GetUserSubscriptions)
 
 		// Друзья
 		protected.GET("/friends", friendshipHandler.FriendsPage)

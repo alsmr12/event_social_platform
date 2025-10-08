@@ -1,8 +1,9 @@
 package repository
 
 import (
-	"event_social_platform/internal/models"
-	"gorm.io/gorm"
+    "fmt" // ДОБАВЬТЕ ЭТУ СТРОКУ
+    "event_social_platform/internal/models"
+    "gorm.io/gorm"
 )
 
 type EventRepository struct {
@@ -18,21 +19,21 @@ func (r *EventRepository) CreateEvent(event *models.Event) error {
 }
 
 func (r *EventRepository) GetEventByID(id uint) (*models.Event, error) {
-	var event models.Event
-	err := r.db.Preload("Creator").First(&event, id).Error
-	if err != nil {
-		return nil, err
-	}
-	return &event, nil
+    var event models.Event
+    err := r.db.Preload("Creator").Where("id = ?", id).First(&event).Error
+    if err != nil {
+        return nil, err
+    }
+    return &event, nil
 }
 
 func (r *EventRepository) GetAllEvents() ([]*models.Event, error) {
-	var events []*models.Event
-	err := r.db.Preload("Creator").Order("date_time ASC").Find(&events).Error
-	if err != nil {
-		return nil, err
-	}
-	return events, nil
+    var events []*models.Event
+    err := r.db.Preload("Creator").Order("date_time ASC").Find(&events).Error
+    if err != nil {
+        return nil, err
+    }
+    return events, nil
 }
 
 func (r *EventRepository) GetEventsByType(eventType string) ([]*models.Event, error) {
@@ -45,5 +46,15 @@ func (r *EventRepository) GetEventsByType(eventType string) ([]*models.Event, er
 }
 
 func (r *EventRepository) DeleteEvent(id uint) error {
-	return r.db.Delete(&models.Event{}, id).Error
+    result := r.db.Where("id = ?", id).Delete(&models.Event{})
+    if result.Error != nil {
+        return result.Error
+    }
+    if result.RowsAffected == 0 {
+        return fmt.Errorf("event not found")
+    }
+    return nil
+}
+func (r *EventRepository) UpdateEvent(event *models.Event) error {
+    return r.db.Save(event).Error
 }

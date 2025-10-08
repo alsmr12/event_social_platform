@@ -22,6 +22,9 @@ type Event struct {
 	CreatedAt       time.Time      `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt       time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
 	DeletedAt       gorm.DeletedAt `gorm:"index" json:"-"`
+
+    IsSubscribed    bool           `gorm:"-" json:"is_subscribed"`        // ← ДОБАВИТЬ
+    SubscribersCount int64         `gorm:"-" json:"subscribers_count"`    // ← ДОБАВИТЬ
 }
 
 type CreateEventRequest struct {

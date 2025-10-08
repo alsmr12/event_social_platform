@@ -1,0 +1,77 @@
+{{define "edit_event_content"}}
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+    <h2 style="text-align: center; margin-bottom: 30px;">Редактирование события</h2>
+
+    {{if .Error}}
+    <div class="alert alert-error">
+        {{.Error}}
+    </div>
+    {{end}}
+
+    <form action="/event/edit/{{.Event.ID}}" method="POST">
+        <div class="form-group">
+            <label for="title">Название события *</label>
+            <input type="text" id="title" name="title" value="{{.Event.Title}}" class="form-control" required>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Описание *</label>
+            <textarea id="description" name="description" class="form-control" rows="4" required>{{.Event.Description}}</textarea>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="type">Тип события *</label>
+                <select id="type" name="type" class="form-control" required>
+                    <option value="concert" {{if eq .Event.Type "concert"}}selected{{end}}>Концерт</option>
+                    <option value="lecture" {{if eq .Event.Type "lecture"}}selected{{end}}>Лекция</option>
+                    <option value="sport" {{if eq .Event.Type "sport"}}selected{{end}}>Спорт</option>
+                    <option value="meetup" {{if eq .Event.Type "meetup"}}selected{{end}}>Встреча</option>
+                    <option value="party" {{if eq .Event.Type "party"}}selected{{end}}>Вечеринка</option>
+                    <option value="conference" {{if eq .Event.Type "conference"}}selected{{end}}>Конференция</option>
+                    <option value="exhibition" {{if eq .Event.Type "exhibition"}}selected{{end}}>Выставка</option>
+                    <option value="other" {{if eq .Event.Type "other"}}selected{{end}}>Другое</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="max_participants">Макс. участников</label>
+                <input type="number" id="max_participants" name="max_participants" value="{{.Event.MaxParticipants}}" class="form-control" min="0">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="date_time">Дата и время *</label>
+                <input type="datetime-local" id="date_time" name="date_time" value="{{.Event.DateTime.Format "2006-01-02T15:04"}}" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="location">Место проведения *</label>
+                <input type="text" id="location" name="location" value="{{.Event.Location}}" class="form-control" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="latitude">Широта</label>
+                <input type="text" id="latitude" name="latitude" value="{{.Event.Latitude}}" class="form-control" placeholder="55.7558">
+            </div>
+            <div class="form-group">
+                <label for="longitude">Долгота</label>
+                <input type="text" id="longitude" name="longitude" value="{{.Event.Longitude}}" class="form-control" placeholder="37.6173">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="checkbox">
+                <input type="checkbox" name="is_private" value="true" {{if .Event.IsPrivate}}checked{{end}}>
+                <span>Приватное событие</span>
+            </label>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+            <a href="/event/{{.Event.ID}}" class="btn btn-outline">Отмена</a>
+            <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+        </div>
+    </form>
+</div>
+{{end}}

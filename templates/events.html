@@ -31,12 +31,37 @@
                 <div><strong>👤 Организатор:</strong> {{.Creator.FirstName}} {{.Creator.LastName}}</div>
                 {{if .MaxParticipants}}<div><strong>👥 Участников:</strong> до {{.MaxParticipants}} человек</div>{{end}}
                 {{if .IsPrivate}}<div><strong>🔒 Приватное событие</strong></div>{{end}}
+                
+                <!-- Информация о подписчиках -->
+                {{if .SubscribersCount}}
+                <div style="margin-top: 10px; padding: 8px 12px; background: var(--bg-secondary); border-radius: var(--radius);">
+                    <strong>🔔 Подписчиков:</strong> {{.SubscribersCount}}
+                </div>
+                {{end}}
             </div>
 
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                 <a href="/event/{{.ID}}" class="btn btn-outline btn-small">Подробнее</a>
+                
+                <!-- Кнопки подписки в списке событий -->
+                {{if $.CurrentUser}}
+                    {{if .IsSubscribed}}
+                    <form action="/event/{{.ID}}/unsubscribe" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-outline btn-small">✅ Отписаться</button>
+                    </form>
+                    {{else}}
+                    <form action="/event/{{.ID}}/subscribe" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-primary btn-small">🔔 Подписаться</button>
+                    </form>
+                    {{end}}
+                {{end}}
+                
                 {{if eq .CreatorID $.CurrentUser.ID}}
-                <a href="/event/delete/{{.ID}}" class="btn btn-danger btn-small" onclick="return confirm('Удалить событие?')">Удалить</a>
+                <a href="/event/edit/{{.ID}}" class="btn btn-outline btn-small">Редактировать</a>
+                <form action="/event/delete/{{.ID}}" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger btn-small" 
+                            onclick="return confirm('Удалить событие?')">Удалить</button>
+                </form>
                 {{end}}
             </div>
         </div>
@@ -51,6 +76,9 @@
 
     <div class="page-actions">
         <a href="/create-event" class="btn btn-success">Создать событие</a>
+        {{if .CurrentUser}}
+        <a href="/event-subscriptions" class="btn btn-outline">📋 Мои подписки</a>
+        {{end}}
     </div>
 </div>
 {{end}}
