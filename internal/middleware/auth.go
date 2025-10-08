@@ -3,10 +3,8 @@ package middleware
 import (
 	"event_social_platform/internal/models"
 	"event_social_platform/internal/repository"
-	"net/http"
 	"time"
-
-	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin" // ← Добавьте если нет
 )
 
 func AuthMiddleware(userRepo *repository.UserRepository, sessionRepo *repository.SessionRepository) gin.HandlerFunc {
@@ -20,8 +18,7 @@ func AuthMiddleware(userRepo *repository.UserRepository, sessionRepo *repository
 		// Проверяем куку с токеном
 		token, err := c.Cookie("session_token")
 		if err != nil {
-			c.Redirect(http.StatusSeeOther, "/login")
-			c.Abort()
+			c.Next() // Продолжаем без аутентификации
 			return
 		}
 
@@ -29,8 +26,7 @@ func AuthMiddleware(userRepo *repository.UserRepository, sessionRepo *repository
 		session, err := sessionRepo.GetSessionByToken(token)
 		if err != nil {
 			c.SetCookie("session_token", "", -1, "/", "", false, true)
-			c.Redirect(http.StatusSeeOther, "/login")
-			c.Abort()
+			c.Next() // Продолжаем без аутентификации
 			return
 		}
 
@@ -38,8 +34,7 @@ func AuthMiddleware(userRepo *repository.UserRepository, sessionRepo *repository
 		if time.Now().After(session.ExpiresAt) {
 			sessionRepo.DeleteSession(token)
 			c.SetCookie("session_token", "", -1, "/", "", false, true)
-			c.Redirect(http.StatusSeeOther, "/login")
-			c.Abort()
+			c.Next() // Продолжаем без аутентификации
 			return
 		}
 
@@ -47,14 +42,14 @@ func AuthMiddleware(userRepo *repository.UserRepository, sessionRepo *repository
 		user, err := userRepo.GetUserByID(session.UserID)
 		if err != nil {
 			c.SetCookie("session_token", "", -1, "/", "", false, true)
-			c.Redirect(http.StatusSeeOther, "/login")
-			c.Abort()
+			c.Next() // Продолжаем без аутентификации
 			return
 		}
 
 		c.Set("is_authenticated", true)
 		c.Set("user", user)
 		c.Set("user_id", user.ID)
+		c.Set("CurrentUser", user) // ← ДОБАВЬТЕ ЭТУ СТРОКУ
 		c.Next()
 	}
 }

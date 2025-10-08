@@ -33,7 +33,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	// ==================== МАРШРУТЫ БЕЗ АУТЕНТИФИКАЦИИ ====================
 
 	// Главная страница
-	router.GET("/", userHandler.ShowHomePage)
+	router.GET("/", authMiddleware, userHandler.ShowHomePage)
 
 	// Аутентификация
 	router.GET("/login", authHandler.ShowLoginForm)
