@@ -4,6 +4,16 @@
         <h2>Все события</h2>
     </div>
 
+    <!-- Блок сообщений -->
+    {{if .Message}}
+    <div class="alert {{if eq .Message "subscribed"}}alert-success{{else if eq .Message "unsubscribed"}}alert-success{{else if eq .Message "already_subscribed"}}alert-error{{else}}alert-error{{end}}" style="margin-bottom: 20px;">
+        {{if eq .Message "subscribed"}}✅ Вы успешно подписались на событие{{end}}
+        {{if eq .Message "unsubscribed"}}✅ Вы отписались от события{{end}}
+        {{if eq .Message "already_subscribed"}}❌ Вы уже подписаны на это событие{{end}}
+        {{if eq .Message "error"}}❌ Произошла ошибка при подписке{{end}}
+    </div>
+    {{end}}
+
     {{if .Events}}
     <div class="grid grid-2">
         {{range .Events}}

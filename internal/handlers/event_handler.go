@@ -114,18 +114,22 @@ func (h *EventHandler) GetAllEvents(c *gin.Context) {
         // Добавляем информацию о подписках
         if currentUser != nil {
             isSubscribed, _ := h.eventSubRepo.IsSubscribed(currentUser.ID, event.ID)
-            event.IsSubscribed = isSubscribed // ← Нужно добавить это поле в модель Event
+            event.IsSubscribed = isSubscribed
         }
         
         subscribersCount, _ := h.eventSubRepo.GetSubscribersCount(event.ID)
-        event.SubscribersCount = subscribersCount // ← Нужно добавить это поле в модель Event
+        event.SubscribersCount = subscribersCount
     }
+
+    // Получаем сообщение из URL
+    message := c.Query("message")
 
     c.HTML(http.StatusOK, "base.html", gin.H{
         "Title":       "События",
         "NavActive":   "events",
         "Events":      eventsWithSubscriptions,
         "CurrentUser": currentUser,
+        "Message":     message, // ← ДОБАВЬТЕ ЭТО
     })
 }
 
