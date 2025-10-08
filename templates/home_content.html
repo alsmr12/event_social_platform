@@ -1,0 +1,89 @@
+{{define "home_content"}}
+<div style="max-width: 1200px; margin: 0 auto; padding: 40px 20px;">
+    {{if .CurrentUser}}
+        <!-- Контент для авторизованных пользователей -->
+        <div style="text-align: center; margin-bottom: 60px;">
+            <h1 style="font-size: 3em; margin-bottom: 20px; background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+                Добро пожаловать, {{.CurrentUser.Name}}!
+            </h1>
+            <p style="font-size: 1.2em; color: var(--text-secondary); margin-bottom: 40px;">
+                Рады видеть вас снова в SocialSphere
+            </p>
+        </div>
+
+        <!-- Быстрые действия -->
+        <div class="grid grid-3" style="margin-bottom: 60px;">
+            <div class="card" style="text-align: center;">
+                <div style="font-size: 3em; margin-bottom: 20px;">👥</div>
+                <h3 style="margin-bottom: 16px;">Друзья</h3>
+                <p style="color: var(--text-muted); margin-bottom: 24px;">Управляйте своими друзьями и общайтесь</p>
+                <a href="/friends" class="btn btn-primary">Перейти к друзьям</a>
+            </div>
+            
+            <div class="card" style="text-align: center;">
+                <div style="font-size: 3em; margin-bottom: 20px;">📅</div>
+                <h3 style="margin-bottom: 16px;">События</h3>
+                <p style="color: var(--text-muted); margin-bottom: 24px;">Создавайте и участвуйте в событиях</p>
+                <a href="/events" class="btn btn-primary">Посмотреть события</a>
+            </div>
+            
+            <div class="card" style="text-align: center;">
+                <div style="font-size: 3em; margin-bottom: 20px;">👤</div>
+                <h3 style="margin-bottom: 16px;">Профиль</h3>
+                <p style="color: var(--text-muted); margin-bottom: 24px;">Настройте свой профиль</p>
+                <a href="/profile" class="btn btn-outline">Редактировать профиль</a>
+            </div>
+        </div>
+
+        <!-- Лента событий/постов -->
+        <div class="card">
+            <h2 style="margin-bottom: 24px;">Последние обновления</h2>
+            <div class="empty-state">
+                <h3>Здесь будет ваша лента</h3>
+                <p style="margin-bottom: 20px;">Начните следить за друзьями и сообществами</p>
+                <a href="/profiles" class="btn btn-primary">Найти людей</a>
+            </div>
+        </div>
+
+    {{else}}
+        <!-- Контент для неавторизованных пользователей (текущий) -->
+        <div style="text-align: center; padding: 80px 20px;">
+            <h1 style="font-size: 4em; margin-bottom: 20px; background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+                SocialSphere
+            </h1>
+            <p style="font-size: 1.4em; color: var(--text-secondary); margin-bottom: 40px; max-width: 600px; margin-left: auto; margin-right: auto;">
+                Присоединяйтесь к социальной платформе нового поколения
+            </p>
+            
+            <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 60px;">
+                <a href="/create-profile" class="btn btn-primary" style="padding: 16px 32px; font-size: 1.1em;">
+                    🚀 Начать сейчас
+                </a>
+                <a href="/login" class="btn btn-outline" style="padding: 16px 32px; font-size: 1.1em;">
+                    🔑 Войти в аккаунт
+                </a>
+            </div>
+
+            <div class="grid grid-3" style="max-width: 1000px; margin: 0 auto;">
+                <div style="text-align: center; padding: 30px 20px;">
+                    <div style="font-size: 3em; margin-bottom: 20px;">👥</div>
+                    <h3 style="margin-bottom: 16px;">Найдите друзей</h3>
+                    <p style="color: var(--text-muted);">Общайтесь с людьми по интересам</p>
+                </div>
+                
+                <div style="text-align: center; padding: 30px 20px;">
+                    <div style="font-size: 3em; margin-bottom: 20px;">📅</div>
+                    <h3 style="margin-bottom: 16px;">Участвуйте в событиях</h3>
+                    <p style="color: var(--text-muted);">Создавайте и посещайте мероприятия</p>
+                </div>
+                
+                <div style="text-align: center; padding: 30px 20px;">
+                    <div style="font-size: 3em; margin-bottom: 20px;">🌐</div>
+                    <h3 style="margin-bottom: 16px;">Расширяйте кругозор</h3>
+                    <p style="color: var(--text-muted);">Откройте для себя новые сообщества</p>
+                </div>
+            </div>
+        </div>
+    {{end}}
+</div>
+{{end}}

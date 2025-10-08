@@ -4,7 +4,17 @@
     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
         <div>
             <h2>{{.Event.Title}}</h2>
-            <span class="badge" style="background: #007bff; color: white; border: 1px solid #0056b3; padding: 2px 6px; border-radius: 4px; font-size: 0.875em; font-weight: 600;">{{.Event.Type}}</span>
+            <span class="badge" style="background: #007bff; color: white; border: 1px solid #0056b3; padding: 2px 6px; border-radius: 4px; font-size: 0.875em; font-weight: 600;">
+                {{if eq .Event.Type "concert"}}Концерт
+                {{else if eq .Event.Type "lecture"}}Лекция
+                {{else if eq .Event.Type "sport"}}Спорт
+                {{else if eq .Event.Type "meetup"}}Встреча
+                {{else if eq .Event.Type "party"}}Вечеринка
+                {{else if eq .Event.Type "conference"}}Конференция
+                {{else if eq .Event.Type "exhibition"}}Выставка
+                {{else if eq .Event.Type "other"}}Другое
+                {{else}}{{.Event.Type}}{{end}}
+            </span>
             {{if .Event.IsPrivate}}<span class="badge" style="background: var(--danger-color); color: white;">🔒 Приватное</span>{{end}}
         </div>
         {{if eq .Event.CreatorID $.CurrentUser.ID}}

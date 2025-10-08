@@ -10,7 +10,17 @@
         <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
                 <h3 style="margin: 0;">{{.Title}}</h3>
-                <span class="badge" style="background: #007bff; color: white; border: 1px solid #0056b3; padding: 4px 8px; border-radius: 4px; font-size: 0.875em; font-weight: 600;">{{.Type}}</span>
+                <span class="badge" style="background: #007bff; color: white; border: 1px solid #0056b3; padding: 4px 8px; border-radius: 4px; font-size: 0.875em; font-weight: 600;">
+                    {{if eq .Type "concert"}}Концерт
+                    {{else if eq .Type "lecture"}}Лекция
+                    {{else if eq .Type "sport"}}Спорт
+                    {{else if eq .Type "meetup"}}Встреча
+                    {{else if eq .Type "party"}}Вечеринка
+                    {{else if eq .Type "conference"}}Конференция
+                    {{else if eq .Type "exhibition"}}Выставка
+                    {{else if eq .Type "other"}}Другое
+                    {{else}}{{.Type}}{{end}}
+                </span>
             </div>
 
             <p style="color: var(--text-muted); margin-bottom: 15px;">{{.Description}}</p>
@@ -41,7 +51,6 @@
 
     <div class="page-actions">
         <a href="/create-event" class="btn btn-success">Создать событие</a>
-        <a href="/profile" class="btn btn-outline">← Мой профиль</a>
     </div>
 </div>
 {{end}}
