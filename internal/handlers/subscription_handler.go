@@ -191,7 +191,7 @@ func (h *SubscriptionHandler) MySubscriptions(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "base.html", gin.H{
 		"Title":          "Мои подписки",
-		"NavActive":      "subscriptions", // УЖЕ ПРАВИЛЬНО
+		"NavActive":      "subscriptions",
 		"User":           currentUser,
 		"Following":      following,
 		"FollowersCount": followersCount,

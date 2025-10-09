@@ -1,27 +1,24 @@
 package middleware
 
 import (
+	"event_social_platform/internal/models"
 	"event_social_platform/internal/repository"
-	"time"
 	"github.com/gin-gonic/gin" // ← Добавьте если нет
+	"time"
 )
 
 func AuthMiddleware(userRepo *repository.UserRepository, sessionRepo *repository.SessionRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Пропускаем публичные маршруты
-		publicRoutes := []string{"/login", "/create-profile", "/"}
-		for _, route := range publicRoutes {
-			if c.Request.URL.Path == route {
-				c.Next()
-				return
-			}
+		// Пропускаем страницу логина без проверки
+		if c.Request.URL.Path == "/login" {
+			c.Next()
+			return
 		}
 
 		// Проверяем куку с токеном
 		token, err := c.Cookie("session_token")
 		if err != nil {
-			c.Redirect(302, "/login") // ← ИЗМЕНИТЕ: перенаправляем на логин
-			c.Abort()
+			c.Next() // Продолжаем без аутентификации
 			return
 		}
 
@@ -29,8 +26,7 @@ func AuthMiddleware(userRepo *repository.UserRepository, sessionRepo *repository
 		session, err := sessionRepo.GetSessionByToken(token)
 		if err != nil {
 			c.SetCookie("session_token", "", -1, "/", "", false, true)
-			c.Redirect(302, "/login") // ← ИЗМЕНИТЕ: перенаправляем на логин
-			c.Abort()
+			c.Next() // Продолжаем без аутентификации
 			return
 		}
 
@@ -38,8 +34,7 @@ func AuthMiddleware(userRepo *repository.UserRepository, sessionRepo *repository
 		if time.Now().After(session.ExpiresAt) {
 			sessionRepo.DeleteSession(token)
 			c.SetCookie("session_token", "", -1, "/", "", false, true)
-			c.Redirect(302, "/login") // ← ИЗМЕНИТЕ: перенаправляем на логин
-			c.Abort()
+			c.Next() // Продолжаем без аутентификации
 			return
 		}
 
@@ -47,15 +42,31 @@ func AuthMiddleware(userRepo *repository.UserRepository, sessionRepo *repository
 		user, err := userRepo.GetUserByID(session.UserID)
 		if err != nil {
 			c.SetCookie("session_token", "", -1, "/", "", false, true)
-			c.Redirect(302, "/login") // ← ИЗМЕНИТЕ: перенаправляем на логин
-			c.Abort()
+			c.Next() // Продолжаем без аутентификации
 			return
 		}
 
 		c.Set("is_authenticated", true)
 		c.Set("user", user)
 		c.Set("user_id", user.ID)
-		c.Set("CurrentUser", user)
+		c.Set("CurrentUser", user) // ← ДОБАВЬТЕ ЭТУ СТРОКУ
 		c.Next()
 	}
+}
+
+// Вспомогательные функции
+func GetUserFromContext(c *gin.Context) *models.User {
+	user, exists := c.Get("user")
+	if !exists {
+		return nil
+	}
+	return user.(*models.User)
+}
+
+func IsAuthenticated(c *gin.Context) bool {
+	isAuth, exists := c.Get("is_authenticated")
+	if !exists {
+		return false
+	}
+	return isAuth.(bool)
 }
