@@ -3,7 +3,7 @@ package middleware
 import (
 	"event_social_platform/internal/models"
 	"event_social_platform/internal/repository"
-	"github.com/gin-gonic/gin" // ← Добавьте если нет
+	"github.com/gin-gonic/gin"
 	"time"
 )
 
@@ -49,7 +49,7 @@ func AuthMiddleware(userRepo *repository.UserRepository, sessionRepo *repository
 		c.Set("is_authenticated", true)
 		c.Set("user", user)
 		c.Set("user_id", user.ID)
-		c.Set("CurrentUser", user) // ← ДОБАВЬТЕ ЭТУ СТРОКУ
+		c.Set("CurrentUser", user)
 		c.Next()
 	}
 }
