@@ -108,6 +108,13 @@ func (h *AuthHandler) ShowProfile(c *gin.Context) {
 		posts = []*models.WallPost{}
 	}
 
+	// Получаем социальные сети пользователя
+	socialRepo := repository.NewSocialLinkRepository(db)
+	socialLinks, err := socialRepo.GetByUserID(user.ID)
+	if err != nil {
+		socialLinks = []*models.SocialLink{}
+	}
+
 	// Получаем статистику подписок
 	subscriptionRepo := repository.NewSubscriptionRepository(db)
 	followersCount, _ := subscriptionRepo.GetFollowersCount(user.ID)
@@ -122,6 +129,7 @@ func (h *AuthHandler) ShowProfile(c *gin.Context) {
 		"NavActive":      "my_profile",
 		"User":           user,
 		"Posts":          posts,
+		"SocialLinks":    socialLinks,
 		"FollowersCount": followersCount,
 		"FollowingCount": followingCount,
 		"FriendsCount":   friendsCount,

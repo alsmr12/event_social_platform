@@ -55,13 +55,13 @@ func (h *UserHandler) CreateProfile(c *gin.Context) {
 	}
 
 	user := &models.User{
-		Email:       req.Email,
-		FirstName:   req.FirstName,
-		LastName:    req.LastName,
-		Gender:      req.Gender,
-		Age:         req.Age,
-		Phone:       req.Phone,
-		SocialLinks: req.SocialLinks,
+		Email:     req.Email,
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+		Gender:    req.Gender,
+		Age:       req.Age,
+		Phone:     req.Phone,
+		//SocialLinks: req.SocialLinks,
 	}
 
 	if err := user.HashPassword(req.Password); err != nil {
@@ -115,6 +115,13 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		posts = []*models.WallPost{}
 	}
 
+	// Получаем социальные сети пользователя
+	socialRepo := repository.NewSocialLinkRepository(db)
+	socialLinks, err := socialRepo.GetByUserID(uint(id))
+	if err != nil {
+		socialLinks = []*models.SocialLink{}
+	}
+
 	currentUser := GetUserFromContext(c)
 
 	// Получаем статистику подписок
@@ -152,10 +159,11 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "base.html", gin.H{
 		"Title":             "Профиль " + user.FirstName + " " + user.LastName,
-		"NavActive":         "profile", // ИСПРАВЛЕНО (было "profiles")
+		"NavActive":         "profile",
 		"CurrentUser":       currentUser,
 		"User":              user,
 		"Posts":             posts,
+		"SocialLinks":       socialLinks,
 		"FollowersCount":    followersCount,
 		"FollowingCount":    followingCount,
 		"FriendsCount":      friendsCount,
@@ -236,11 +244,19 @@ func (h *UserHandler) ShowEditProfileForm(c *gin.Context) {
 		return
 	}
 
+	db := h.userRepo.GetDB()
+	socialRepo := repository.NewSocialLinkRepository(db)
+	socialLinks, err := socialRepo.GetByUserID(currentUser.ID)
+	if err != nil {
+		socialLinks = []*models.SocialLink{}
+	}
+
 	c.HTML(http.StatusOK, "base.html", gin.H{
 		"Title":       "Редактирование профиля",
 		"NavActive":   "edit_profile",
 		"User":        currentUser,
 		"CurrentUser": currentUser,
+		"SocialLinks": socialLinks,
 	})
 }
 
@@ -269,7 +285,7 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	currentUser.Gender = req.Gender
 	currentUser.Age = req.Age
 	currentUser.Phone = req.Phone
-	currentUser.SocialLinks = req.SocialLinks
+	//currentUser.SocialLinks = req.SocialLinks
 
 	if err := h.userRepo.UpdateUser(currentUser); err != nil {
 		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
@@ -281,6 +297,48 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 		})
 		return
 	}
+
+	db := h.userRepo.GetDB()
+	socialRepo := repository.NewSocialLinkRepository(db)
+
+	// Удаляем старые соцсети
+	if err := socialRepo.DeleteByUserID(currentUser.ID); err != nil {
+		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+			"Title":       "Редактирование профиля",
+			"NavActive":   "profile",
+			"Error":       "Ошибка обновления социальных сетей: " + err.Error(),
+			"User":        currentUser,
+			"CurrentUser": currentUser,
+		})
+		return
+	}
+
+	// Сохраняем новые соцсети
+	platforms := c.PostFormArray("platform[]")
+	usernames := c.PostFormArray("username[]")
+	customNames := c.PostFormArray("custom_name[]")
+
+	for i, platform := range platforms {
+		if platform != "" && i < len(usernames) && usernames[i] != "" {
+			socialLink := &models.SocialLink{
+				UserID:     currentUser.ID,
+				Platform:   platform,
+				Username:   usernames[i],
+				CustomName: customNames[i],
+			}
+			if err := socialRepo.Create(socialLink); err != nil {
+				c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+					"Title":       "Редактирование профиля",
+					"NavActive":   "profile",
+					"Error":       "Ошибка сохранения социальных сетей: " + err.Error(),
+					"User":        currentUser,
+					"CurrentUser": currentUser,
+				})
+				return
+			}
+		}
+	}
+	// === КОНЕЦ ОБРАБОТКИ СОЦСЕТЕЙ ===
 
 	c.Redirect(http.StatusSeeOther, "/profile")
 }

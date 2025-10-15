@@ -39,10 +39,30 @@
             </div>
         </div>
 
-        {{if .User.SocialLinks}}
+        {{if .SocialLinks}}
         <div>
             <h3>Социальные сети</h3>
-            <p>{{.User.SocialLinks}}</p>
+            <div class="social-links">
+                {{range .SocialLinks}}
+                {{if eq .Platform "vk"}}
+                <div class="social-link">
+                    <img src="/static/images/vk.png" alt="VK" class="social-icon">
+                    <a href="https://vk.com/{{.Username}}" target="_blank">{{.Username}}</a>
+                </div>
+                {{else if eq .Platform "tg"}}
+                <div class="social-link">
+                    <img src="/static/images/tg.png" alt="Telegram" class="social-icon">
+                    <a href="https://t.me/{{.Username}}" target="_blank">{{.Username}}</a>
+                </div>
+                {{else}}
+                <div class="social-link">
+                    {{if .CustomName}}<strong>{{.CustomName}}:</strong>
+                    {{else}}<strong>Соцсеть:</strong>{{end}}
+                    <a href="{{.Username}}" target="_blank">{{.Username}}</a>
+                </div>
+                {{end}}
+                {{end}}
+            </div>
         </div>
         {{end}}
     </div>

@@ -46,9 +46,62 @@
             <input type="tel" id="phone" name="phone" value="{{.User.Phone}}" class="form-control" placeholder="+7 (XXX) XXX-XX-XX">
         </div>
 
+        <!-- ЗАМЕНА: вместо textarea - форма для соцсетей -->
         <div class="form-group">
-            <label for="social_links">Социальные сети</label>
-            <textarea id="social_links" name="social_links" class="form-control" placeholder="Ссылки на ваши социальные сети...">{{.User.SocialLinks}}</textarea>
+            <label>Социальные сети</label>
+            <div id="social-links-container">
+                {{range .SocialLinks}}
+                <div class="social-link-item" style="margin-bottom: 15px; padding: 15px; border: 1px solid var(--border-color); border-radius: 8px;">
+                    <div class="grid grid-3" style="gap: 10px;">
+                        <div>
+                            <label>Платформа</label>
+                            <select name="platform[]" class="form-control">
+                                <option value="">Выберите платформу</option>
+                                <option value="vk" {{if eq .Platform "vk"}}selected{{end}}>VK</option>
+                                <option value="tg" {{if eq .Platform "tg"}}selected{{end}}>Telegram</option>
+                                <option value="custom" {{if eq .Platform "custom"}}selected{{end}}>Другая сеть</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Username/Ссылка</label>
+                            <input type="text" name="username[]" class="form-control" value="{{.Username}}" placeholder="username или ссылка" required>
+                        </div>
+                        <div>
+                            <label>Название (для кастомных)</label>
+                            <input type="text" name="custom_name[]" class="form-control" value="{{.CustomName}}" placeholder="Название соцсети">
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-danger btn-small" onclick="removeSocialLink(this)" style="margin-top: 10px;">Удалить</button>
+                </div>
+                {{else}}
+                <div class="social-link-item" style="margin-bottom: 15px; padding: 15px; border: 1px solid var(--border-color); border-radius: 8px;">
+                    <div class="grid grid-3" style="gap: 10px;">
+                        <div>
+                            <label>Платформа</label>
+                            <select name="platform[]" class="form-control">
+                                <option value="">Выберите платформу</option>
+                                <option value="vk">VK</option>
+                                <option value="tg">Telegram</option>
+                                <option value="custom">Другая сеть</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Username/Ссылка</label>
+                            <input type="text" name="username[]" class="form-control" placeholder="username или ссылка" required>
+                        </div>
+                        <div>
+                            <label>Название (для кастомных)</label>
+                            <input type="text" name="custom_name[]" class="form-control" placeholder="Название соцсети">
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-danger btn-small" onclick="removeSocialLink(this)" style="margin-top: 10px;">Удалить</button>
+                </div>
+                {{end}}
+            </div>
+
+            <div style="margin: 10px 0;">
+                <button type="button" class="btn btn-outline" onclick="addSocialLink()">+ Добавить соцсеть</button>
+            </div>
         </div>
 
         <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border-color);">
@@ -57,4 +110,46 @@
         </div>
     </form>
 </div>
+
+<script>
+    function addSocialLink() {
+        const container = document.getElementById('social-links-container');
+        const newItem = document.createElement('div');
+        newItem.className = 'social-link-item';
+        newItem.style.marginBottom = '15px';
+        newItem.style.padding = '15px';
+        newItem.style.border = '1px solid var(--border-color)';
+        newItem.style.borderRadius = '8px';
+
+        newItem.innerHTML = `
+        <div class="grid grid-3" style="gap: 10px;">
+            <div>
+                <label>Платформа</label>
+                <select name="platform[]" class="form-control">
+                    <option value="">Выберите платформу</option>
+                    <option value="vk">VK</option>
+                    <option value="tg">Telegram</option>
+                    <option value="custom">Другая сеть</option>
+                </select>
+            </div>
+            <div>
+                <label>Username/Ссылка</label>
+                <input type="text" name="username[]" class="form-control" placeholder="username или ссылка" required>
+            </div>
+            <div>
+                <label>Название (для кастомных)</label>
+                <input type="text" name="custom_name[]" class="form-control" placeholder="Название соцсети">
+            </div>
+        </div>
+        <button type="button" class="btn btn-danger btn-small" onclick="removeSocialLink(this)" style="margin-top: 10px;">Удалить</button>
+    `;
+
+        container.appendChild(newItem);
+    }
+
+    function removeSocialLink(button) {
+        const item = button.closest('.social-link-item');
+        item.remove();
+    }
+</script>
 {{end}}

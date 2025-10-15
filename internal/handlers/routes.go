@@ -8,23 +8,25 @@ import (
 )
 
 func SetupRoutes(router *gin.Engine, db *gorm.DB) {
-    // Инициализируем репозитории
-    userRepo := repository.NewUserRepository(db)
-    eventRepo := repository.NewEventRepository(db)
-    sessionRepo := repository.NewSessionRepository(db)
-    wallRepo := repository.NewWallRepository(db)
-    subscriptionRepo := repository.NewSubscriptionRepository(db)
-    friendshipRepo := repository.NewFriendshipRepository(db)
-    eventSubRepo := repository.NewEventSubscriptionRepository(db) // ← правильно
+	// Инициализируем репозитории
+	userRepo := repository.NewUserRepository(db)
+	eventRepo := repository.NewEventRepository(db)
+	sessionRepo := repository.NewSessionRepository(db)
+	wallRepo := repository.NewWallRepository(db)
+	subscriptionRepo := repository.NewSubscriptionRepository(db)
+	friendshipRepo := repository.NewFriendshipRepository(db)
+	eventSubRepo := repository.NewEventSubscriptionRepository(db)
+	socialRepo := repository.NewSocialLinkRepository(db)
 
-    // Инициализируем обработчики
-    userHandler := NewUserHandler(userRepo)
-    eventHandler := NewEventHandler(eventRepo, userRepo, eventSubRepo) // ← 3 параметра
-    authHandler := NewAuthHandler(userRepo, sessionRepo)
-    wallHandler := NewWallHandler(wallRepo, userRepo)
-    subscriptionHandler := NewSubscriptionHandler(subscriptionRepo, userRepo)
-    friendshipHandler := NewFriendshipHandler(friendshipRepo, userRepo)
-    eventSubHandler := NewEventSubscriptionHandler(eventSubRepo) // ← правильно
+	// Инициализируем обработчики
+	userHandler := NewUserHandler(userRepo)
+	eventHandler := NewEventHandler(eventRepo, userRepo, eventSubRepo)
+	authHandler := NewAuthHandler(userRepo, sessionRepo)
+	wallHandler := NewWallHandler(wallRepo, userRepo)
+	subscriptionHandler := NewSubscriptionHandler(subscriptionRepo, userRepo)
+	friendshipHandler := NewFriendshipHandler(friendshipRepo, userRepo)
+	eventSubHandler := NewEventSubscriptionHandler(eventSubRepo)
+	socialHandler := NewSocialHandler(socialRepo, userRepo)
 
 	// Middleware аутентификации
 	authMiddleware := middleware.AuthMiddleware(userRepo, sessionRepo)
@@ -55,6 +57,9 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 		protected.GET("/profiles", userHandler.GetAllProfiles)
 		protected.GET("/profile/:id", userHandler.GetProfile)
 		protected.GET("/profile", authHandler.ShowProfile)
+
+		protected.GET("/social-links", socialHandler.ShowSocialLinksForm)
+		protected.POST("/social-links", socialHandler.UpdateSocialLinks)
 
 		// События
 		protected.GET("/events", eventHandler.GetAllEvents)

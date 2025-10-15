@@ -51,8 +51,10 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.WallPost{},
 		&models.Subscription{},
 		&models.Friendship{},
-		&models.EventSubscription{}, // ← ДОБАВЬТЕ ЭТУ СТРОЧКУ
+		&models.EventSubscription{},
+		&models.SocialLink{},
 	)
+
 	if err != nil {
 		return fmt.Errorf("failed to auto-migrate database: %w", err)
 	}
