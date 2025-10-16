@@ -144,6 +144,9 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		if err != nil {
 			friendshipStatus = "none"
 		}
+		if friendshipStatus == "rejected" {
+			friendshipStatus = "none"
+		}
 
 		// Проверяем, является ли запрос входящим
 		if friendshipStatus == "pending" {

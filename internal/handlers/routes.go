@@ -30,6 +30,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 
 	// Middleware аутентификации
 	authMiddleware := middleware.AuthMiddleware(userRepo, sessionRepo)
+	strictAuth := middleware.StrictAuthMiddleware(userRepo, sessionRepo)
 
 	// Делает доступными файлы из папки static/
 	router.Static("/static", "./static")
@@ -51,7 +52,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 
 	// Группа защищенных маршрутов
 	protected := router.Group("/")
-	protected.Use(authMiddleware)
+	protected.Use(strictAuth)
 	{
 		// Профили
 		protected.GET("/profiles", userHandler.GetAllProfiles)

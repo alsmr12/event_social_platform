@@ -46,18 +46,18 @@
                 {{range .SocialLinks}}
                 {{if eq .Platform "vk"}}
                 <div class="social-link">
-                    <img src="/static/images/vk.png" alt="VK" class="social-icon">
+                    <img src="/static/images/vk1.png" alt="VK" class="social-icon">
                     <a href="https://vk.com/{{.Username}}" target="_blank">{{.Username}}</a>
                 </div>
                 {{else if eq .Platform "tg"}}
                 <div class="social-link">
-                    <img src="/static/images/tg.png" alt="Telegram" class="social-icon">
+                    <img src="/static/images/tg1.png" alt="Telegram" class="social-icon">
                     <a href="https://t.me/{{.Username}}" target="_blank">{{.Username}}</a>
                 </div>
                 {{else}}
                 <div class="social-link">
-                    {{if .CustomName}}<strong>{{.CustomName}}:</strong>
-                    {{else}}<strong>Соцсеть:</strong>{{end}}
+                    {{if .CustomName}}{{.CustomName}}:
+                    {{else}}Соцсеть:{{end}}
                     <a href="{{.Username}}" target="_blank">{{.Username}}</a>
                 </div>
                 {{end}}

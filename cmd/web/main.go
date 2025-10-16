@@ -11,9 +11,7 @@ import (
 func main() {
 	// Загружаем конфигурацию
 	cfg := config.Load()
-
 	// Подключение к базе данных
-	// ИСПРАВЬТЕ: передавайте указатель (&) вместо структуры
 	db, err := repository.ConnectDB(&repository.DBConfig{
 		Host:     cfg.DBHost,
 		Port:     cfg.DBPort,
@@ -24,12 +22,12 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
-	
+
 	err = repository.AutoMigrate(db)
 	if err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}
-	
+
 	sessionRepo := repository.NewSessionRepository(db)
 	sessionRepo.CleanExpiredSessions()
 

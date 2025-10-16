@@ -54,6 +54,54 @@ func AuthMiddleware(userRepo *repository.UserRepository, sessionRepo *repository
 	}
 }
 
+// StrictAuthMiddleware - строгая проверка (редирект на логин)
+func StrictAuthMiddleware(userRepo *repository.UserRepository, sessionRepo *repository.SessionRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Пропускаем страницу логина и регистрации без проверки
+		if c.Request.URL.Path == "/login" || c.Request.URL.Path == "/create-profile" {
+			c.Next()
+			return
+		}
+		// Проверяем куку с токеном
+		token, err := c.Cookie("session_token")
+		if err != nil {
+			c.Redirect(302, "/login")
+			c.Abort()
+			return
+		}
+		// Ищем сессию в базе
+		session, err := sessionRepo.GetSessionByToken(token)
+		if err != nil {
+			c.SetCookie("session_token", "", -1, "/", "", false, true)
+			c.Redirect(302, "/login")
+			c.Abort()
+			return
+		}
+		// Проверяем не просрочена ли сессия
+		if time.Now().After(session.ExpiresAt) {
+			sessionRepo.DeleteSession(token)
+			c.SetCookie("session_token", "", -1, "/", "", false, true)
+			c.Redirect(302, "/login")
+			c.Abort()
+			return
+		}
+		// Получаем пользователя
+		user, err := userRepo.GetUserByID(session.UserID)
+		if err != nil {
+			c.SetCookie("session_token", "", -1, "/", "", false, true)
+			c.Redirect(302, "/login")
+			c.Abort()
+			return
+		}
+		// Устанавливаем данные пользователя в контекст
+		c.Set("is_authenticated", true)
+		c.Set("user", user)
+		c.Set("user_id", user.ID)
+		c.Set("CurrentUser", user)
+		c.Next()
+	}
+}
+
 // Вспомогательные функции
 func GetUserFromContext(c *gin.Context) *models.User {
 	user, exists := c.Get("user")

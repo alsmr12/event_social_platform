@@ -27,9 +27,12 @@ func (r *FriendshipRepository) AcceptFriendship(userID, friendID uint) error {
 
 // Отклонить запрос на дружбу
 func (r *FriendshipRepository) RejectFriendship(userID, friendID uint) error {
-	return r.db.Model(&models.Friendship{}).
-		Where("user_id = ? AND friend_id = ? AND status = ?", friendID, userID, models.FriendshipPending).
-		Update("status", models.FriendshipRejected).Error
+	///return r.db.Model(&models.Friendship{}).
+	///Where("user_id = ? AND friend_id = ? AND status = ?", friendID, userID, models.FriendshipPending).
+	///Update("status", models.FriendshipRejected).Error
+	return r.db.Where("user_id = ? AND friend_id = ? AND status = ?",
+		friendID, userID, models.FriendshipPending).
+		Delete(&models.Friendship{}).Error
 }
 
 // Удалить друга (удаляет обе записи)
