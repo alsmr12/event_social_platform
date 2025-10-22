@@ -38,11 +38,19 @@
         <!-- Лента событий/постов -->
         <div class="card">
             <h2 style="margin-bottom: 24px;">Последние обновления</h2>
-            <div class="empty-state">
-                <h3>Здесь будет ваша лента</h3>
-                <p style="margin-bottom: 20px;">Начните следить за друзьями и сообществами</p>
-                <a href="/profiles" class="btn btn-primary">Найти людей</a>
-            </div>
+            {{if or .Posts .Events}}
+                <div style="margin-bottom: 20px;">
+                    <p>У вас есть новые обновления в ленте новостей</p>
+                    <a href="/news" class="btn btn-primary">Перейти к новостям</a>
+                </div>
+            {{else}}
+                <div class="empty-state">
+                    <h3>Здесь будет ваша лента</h3>
+                    <p style="margin-bottom: 20px;">Начните следить за друзьями и сообществами</p>
+                    <a href="/profiles" class="btn btn-primary">Найти людей</a>
+                    <a href="/news" class="btn btn-outline" style="margin-left: 10px;">Мои новости</a>
+                </div>
+            {{end}}
         </div>
 
     {{else}}

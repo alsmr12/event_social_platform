@@ -634,6 +634,9 @@
                 </button>
             </li>
             <li><a href="/" class="{{if eq .NavActive "home"}}active{{end}}">🏠 Главная</a></li>
+            {{if .CurrentUser}}
+            <li><a href="/news" class="{{if eq .NavActive "news"}}active{{end}}">📰 Новости</a></li> <!-- ← ДОБАВЬТЕ ЭТУ СТРОЧКУ -->
+            {{end}}
             <li><a href="/events" class="{{if eq .NavActive "events"}}active{{end}}">📅 События</a></li>
             <li><a href="/profiles" class="{{if eq .NavActive "profiles"}}active{{end}}">👥 Люди</a></li>
             {{if .CurrentUser}}
@@ -680,6 +683,8 @@
     {{template "edit_event_content" .}}
     {{else if eq .NavActive "event_subscriptions"}}
     {{template "event_subscriptions_content" .}}
+    {{else if eq .NavActive "news"}}
+    {{template "news_content" .}}
     {{else}}
     {{block "content" .}}{{end}}
     {{end}}
