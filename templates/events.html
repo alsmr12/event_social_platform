@@ -7,88 +7,164 @@
     <!-- Блок сообщений -->
     {{if .Message}}
     <div class="alert {{if eq .Message "subscribed"}}alert-success{{else if eq .Message "unsubscribed"}}alert-success{{else if eq .Message "already_subscribed"}}alert-error{{else}}alert-error{{end}}" style="margin-bottom: 20px;">
-        {{if eq .Message "subscribed"}}✅ Вы успешно подписались на событие{{end}}
-        {{if eq .Message "unsubscribed"}}✅ Вы отписались от события{{end}}
-        {{if eq .Message "already_subscribed"}}❌ Вы уже подписаны на это событие{{end}}
-        {{if eq .Message "error"}}❌ Произошла ошибка при подписке{{end}}
-    </div>
-    {{end}}
+    {{if eq .Message "subscribed"}}✅ Вы успешно подписались на событие{{end}}
+    {{if eq .Message "unsubscribed"}}✅ Вы отписались от события{{end}}
+    {{if eq .Message "already_subscribed"}}❌ Вы уже подписаны на это событие{{end}}
+    {{if eq .Message "error"}}❌ Произошла ошибка при подписке{{end}}
+</div>
+{{end}}
 
-    {{if .Events}}
-    <div class="grid grid-2">
-        {{range .Events}}
-        <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
-                <h3 style="margin: 0;">{{.Title}}</h3>
+<!-- Вкладки -->
+<div class="tabs" style="margin-bottom: 20px;">
+    <button class="tab-btn {{if not .ShowPastEvents}}active{{end}}" onclick="switchTab('upcoming')">Предстоящие события</button>
+    <button class="tab-btn {{if .ShowPastEvents}}active{{end}}" onclick="switchTab('past')">Прошедшие события</button>
+</div>
+
+{{if .Events}}
+<div class="grid grid-2">
+    {{range .Events}}
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+            <h3 style="margin: 0;">{{.Title}}</h3>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                {{if .IsPast}}
+                <span class="badge" style="background: #6c757d; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75em; font-weight: 600;">
+                        Завершено
+                    </span>
+                {{end}}
                 <span class="badge" style="background: #007bff; color: white; border: 1px solid #0056b3; padding: 4px 8px; border-radius: 4px; font-size: 0.875em; font-weight: 600;">
-                    {{if eq .Type "concert"}}Концерт
-                    {{else if eq .Type "lecture"}}Лекция
-                    {{else if eq .Type "sport"}}Спорт
-                    {{else if eq .Type "meetup"}}Встреча
-                    {{else if eq .Type "party"}}Вечеринка
-                    {{else if eq .Type "conference"}}Конференция
-                    {{else if eq .Type "exhibition"}}Выставка
-                    {{else if eq .Type "other"}}Другое
-                    {{else}}{{.Type}}{{end}}
-                </span>
-            </div>
-
-            <p style="color: var(--text-muted); margin-bottom: 15px;">{{.Description}}</p>
-
-            <div style="line-height: 1.8; margin-bottom: 20px;">
-                <div><strong>📅 Когда:</strong> {{.DateTime.Format "02.01.2006 15:04"}}</div>
-                <div><strong>📍 Где:</strong> {{.Location}}</div>
-                <div><strong>👤 Организатор:</strong> {{.Creator.FirstName}} {{.Creator.LastName}}</div>
-                {{if .MaxParticipants}}<div><strong>👥 Участников:</strong> до {{.MaxParticipants}} человек</div>{{end}}
-                {{if .IsPrivate}}<div><strong>🔒 Приватное событие</strong></div>{{end}}
-                
-                <!-- Информация о подписчиках -->
-                {{if .SubscribersCount}}
-                <div style="margin-top: 10px; padding: 8px 12px; background: var(--bg-secondary); border-radius: var(--radius);">
-                    <strong>🔔 Подписчиков:</strong> {{.SubscribersCount}}
-                </div>
-                {{end}}
-            </div>
-
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <a href="/event/{{.ID}}" class="btn btn-outline btn-small">Подробнее</a>
-                
-                <!-- Кнопки подписки в списке событий -->
-                {{if $.CurrentUser}}
-                    {{if .IsSubscribed}}
-                    <form action="/event/{{.ID}}/unsubscribe" method="POST" style="display: inline;">
-                        <button type="submit" class="btn btn-outline btn-small">✅ Отписаться</button>
-                    </form>
-                    {{else}}
-                    <form action="/event/{{.ID}}/subscribe" method="POST" style="display: inline;">
-                        <button type="submit" class="btn btn-primary btn-small">🔔 Подписаться</button>
-                    </form>
-                    {{end}}
-                {{end}}
-                
-                {{if eq .CreatorID $.CurrentUser.ID}}
-                <a href="/event/edit/{{.ID}}" class="btn btn-outline btn-small">Редактировать</a>
-                <form action="/event/delete/{{.ID}}" method="POST" style="display: inline;">
-                    <button type="submit" class="btn btn-danger btn-small" 
-                            onclick="return confirm('Удалить событие?')">Удалить</button>
-                </form>
-                {{end}}
+                        {{if eq .Type "concert"}}Концерт
+                        {{else if eq .Type "lecture"}}Лекция
+                        {{else if eq .Type "sport"}}Спорт
+                        {{else if eq .Type "meetup"}}Встреча
+                        {{else if eq .Type "party"}}Вечеринка
+                        {{else if eq .Type "conference"}}Конференция
+                        {{else if eq .Type "exhibition"}}Выставка
+                        {{else if eq .Type "other"}}Другое
+                        {{else}}{{.Type}}{{end}}
+                    </span>
             </div>
         </div>
-        {{end}}
-    </div>
-    {{else}}
-    <div class="empty-state">
-        <p>Пока нет событий.</p>
-        <a href="/create-event" class="btn btn-primary">Создать первое событие</a>
+
+        <p style="color: var(--text-muted); margin-bottom: 15px;">{{.Description}}</p>
+
+        <div style="line-height: 1.8; margin-bottom: 20px;">
+            <div><strong>📅 Когда:</strong> {{.DateTime.Format "02.01.2006 15:04"}}</div>
+            <div><strong>📍 Где:</strong> {{.Location}}</div>
+            <div><strong>👤 Организатор:</strong> {{.Creator.FirstName}} {{.Creator.LastName}}</div>
+            {{if .MaxParticipants}}<div><strong>👥 Участников:</strong> до {{.MaxParticipants}} человек</div>{{end}}
+            {{if .IsPrivate}}<div><strong>🔒 Приватное событие</strong></div>{{end}}
+
+            <!-- Информация о подписчиках -->
+            {{if .SubscribersCount}}
+            <div style="margin-top: 10px; padding: 8px 12px; background: var(--bg-secondary); border-radius: var(--radius);">
+                <strong>🔔 Подписчиков:</strong> {{.SubscribersCount}}
+            </div>
+            {{end}}
+        </div>
+
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <a href="/event/{{.ID}}" class="btn btn-outline btn-small">Подробнее</a>
+
+            <!-- Кнопки подписки в списке событий -->
+            {{if $.CurrentUser}}
+            {{if .IsPast}}
+            <button class="btn btn-outline btn-small" disabled>Событие завершено</button>
+            {{else}}
+            {{if .IsSubscribed}}
+            <form action="/event/{{.ID}}/unsubscribe" method="POST" style="display: inline;">
+                <button type="submit" class="btn btn-outline btn-small">✅ Отписаться</button>
+            </form>
+            {{else}}
+            <form action="/event/{{.ID}}/subscribe" method="POST" style="display: inline;">
+                <button type="submit" class="btn btn-primary btn-small">🔔 Подписаться</button>
+            </form>
+            {{end}}
+            {{end}}
+            {{end}}
+
+            {{if eq .CreatorID $.CurrentUser.ID}}
+            <a href="/event/edit/{{.ID}}" class="btn btn-outline btn-small">Редактировать</a>
+            <form action="/event/delete/{{.ID}}" method="POST" style="display: inline;">
+                <button type="submit" class="btn btn-danger btn-small"
+                        onclick="return confirm('Удалить событие?')">Удалить</button>
+            </form>
+            {{end}}
+        </div>
     </div>
     {{end}}
-
-    <div class="page-actions">
-        <a href="/create-event" class="btn btn-success">Создать событие</a>
-        {{if .CurrentUser}}
-        <a href="/event-subscriptions" class="btn btn-outline">📋 Мои подписки</a>
-        {{end}}
-    </div>
 </div>
+{{else}}
+<div class="empty-state">
+    {{if .ShowPastEvents}}
+    <p>Нет прошедших событий.</p>
+    {{else}}
+    <p>Пока нет событий.</p>
+    {{end}}
+    <a href="/create-event" class="btn btn-primary">Создать первое событие</a>
+</div>
+{{end}}
+
+<div class="page-actions">
+    <a href="/create-event" class="btn btn-success">Создать событие</a>
+    {{if .CurrentUser}}
+    <a href="/event-subscriptions" class="btn btn-outline">📋 Мои подписки</a>
+    {{end}}
+</div>
+</div>
+
+<style>
+    .tabs {
+        display: flex;
+        border-bottom: 1px solid #dee2e6;
+        margin-bottom: 1rem;
+    }
+
+    .tab-btn {
+        padding: 0.75rem 1.5rem;
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+        font-size: 1rem;
+        color: #6c757d;
+        transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+        color: #007bff;
+    }
+
+    .tab-btn.active {
+        color: #007bff;
+        border-bottom-color: #007bff;
+        font-weight: 600;
+    }
+
+    /* Убрали стили для .past-event, чтобы прошедшие события выглядели одинаково */
+</style>
+
+<script>
+    function switchTab(tab) {
+        if (tab === 'upcoming') {
+            window.location.href = '/events?filter=upcoming';
+        } else if (tab === 'past') {
+            window.location.href = '/events?filter=past';
+        }
+    }
+
+    // Определяем активную вкладку на основе URL параметра
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const filter = urlParams.get('filter');
+
+        if (filter === 'past') {
+            document.querySelectorAll('.tab-btn')[1].classList.add('active');
+            document.querySelectorAll('.tab-btn')[0].classList.remove('active');
+        } else {
+            document.querySelectorAll('.tab-btn')[0].classList.add('active');
+            document.querySelectorAll('.tab-btn')[1].classList.remove('active');
+        }
+    });
+</script>
 {{end}}

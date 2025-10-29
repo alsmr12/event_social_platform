@@ -5,6 +5,7 @@ import (
 	"event_social_platform/internal/repository"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"log"
 )
 
 func SetupRoutes(router *gin.Engine, db *gorm.DB) {
@@ -18,6 +19,28 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	eventSubRepo := repository.NewEventSubscriptionRepository(db)
 	socialRepo := repository.NewSocialLinkRepository(db)
 	newsRepo := repository.NewNewsRepository(db)
+	achievementRepo := repository.NewAchievementRepository(db)
+
+	// Очистить старые награды
+	if err := achievementRepo.ClearAchievements(); err != nil {
+		log.Printf("Warning: Could not clear achievements: %v", err)
+	} else {
+		log.Println("Achievements cleared successfully")
+	}
+
+	// Инициализируем достижения
+	if err := achievementRepo.InitializeAchievements(); err != nil {
+		log.Printf("Warning: Could not initialize achievements: %v", err)
+	} else {
+		log.Println("Achievements initialized successfully")
+	}
+
+	// Обновляем прогресс всех пользователей
+	if err := achievementRepo.UpdateAllUsersProgress(); err != nil {
+		log.Printf("Warning: Could not update users progress: %v", err)
+	} else {
+		log.Println("Users progress updated successfully")
+	}
 
 	// Инициализируем обработчики
 	userHandler := NewUserHandler(userRepo)
@@ -26,9 +49,10 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	wallHandler := NewWallHandler(wallRepo, userRepo)
 	subscriptionHandler := NewSubscriptionHandler(subscriptionRepo, userRepo)
 	friendshipHandler := NewFriendshipHandler(friendshipRepo, userRepo)
-	eventSubHandler := NewEventSubscriptionHandler(eventSubRepo)
+	eventSubHandler := NewEventSubscriptionHandler(eventSubRepo, eventRepo)
 	socialHandler := NewSocialHandler(socialRepo, userRepo)
 	newsHandler := NewNewsHandler(newsRepo)
+	achievementHandler := NewAchievementHandler(achievementRepo)
 
 	// Middleware аутентификации
 	authMiddleware := middleware.AuthMiddleware(userRepo, sessionRepo)
@@ -56,7 +80,6 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	protected := router.Group("/")
 	protected.Use(strictAuth)
 	{
-
 		// Новости
 		protected.GET("/news", newsHandler.ShowNewsFeed)
 
@@ -100,10 +123,17 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 		protected.GET("/friends/reject/:id", friendshipHandler.RejectFriendRequest)
 		protected.GET("/friends/remove/:id", friendshipHandler.RemoveFriend)
 
+		// Награды и рейтинг ← ДОБАВИТЬ ЭТИ МАРШРУТЫ
+		protected.GET("/ratings", achievementHandler.ShowRatings)
+		protected.GET("/my-achievements", achievementHandler.ShowMyAchievements)
+
 		protected.GET("/edit-profile", userHandler.ShowEditProfileForm)
 		protected.POST("/edit-profile", userHandler.UpdateProfile)
 
 		// Выход
 		protected.GET("/logout", authHandler.Logout)
 	}
+
+	// Инициализируем базовые достижения
+	achievementRepo.InitializeAchievements()
 }

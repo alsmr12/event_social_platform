@@ -633,20 +633,21 @@
                     <span class="theme-icon">🌙</span>
                 </button>
             </li>
-            <li><a href="/" class="{{if eq .NavActive "home"}}active{{end}}">🏠 Главная</a></li>
+            <li><a href="/" class="{{if eq .NavActive "home"}}active{{end}}">Главная</a></li>
             {{if .CurrentUser}}
-            <li><a href="/news" class="{{if eq .NavActive "news"}}active{{end}}">📰 Новости</a></li> <!-- ← ДОБАВЬТЕ ЭТУ СТРОЧКУ -->
+            <li><a href="/news" class="{{if eq .NavActive "news"}}active{{end}}">Новости</a></li>
             {{end}}
-            <li><a href="/events" class="{{if eq .NavActive "events"}}active{{end}}">📅 События</a></li>
-            <li><a href="/profiles" class="{{if eq .NavActive "profiles"}}active{{end}}">👥 Люди</a></li>
+            <li><a href="/events" class="{{if eq .NavActive "events"}}active{{end}}">События</a></li>
+            <li><a href="/profiles" class="{{if eq .NavActive "profiles"}}active{{end}}">Люди</a></li>
             {{if .CurrentUser}}
-            <li><a href="/profile" class="{{if eq .NavActive "my_profile"}}active{{end}}">👤 Профиль</a></li>
-            <li><a href="/friends" class="{{if eq .NavActive "friends"}}active{{end}}">🤝 Друзья</a></li>
-            <li><a href="/subscriptions" class="{{if eq .NavActive "subscriptions"}}active{{end}}">🔔 Подписки</a></li>
-            <li><a href="/logout" class="btn btn-outline btn-small">🚪 Выйти</a></li>
+            <li><a href="/my-achievements" class="{{if eq .NavActive "my_achievements"}}active{{end}}">Достижения</a></li>
+            <li><a href="/profile" class="{{if eq .NavActive "my_profile"}}active{{end}}">Профиль</a></li>
+            <li><a href="/friends" class="{{if eq .NavActive "friends"}}active{{end}}">Друзья</a></li>
+            <li><a href="/subscriptions" class="{{if eq .NavActive "subscriptions"}}active{{end}}">Подписки</a></li>
+            <li><a href="/logout" class="btn btn-outline btn-small">Выйти</a></li>
             {{else}}
-            <li><a href="/login" class="{{if eq .NavActive "login"}}active{{end}}">🔑 Войти</a></li>
-            <li><a href="/create-profile" class="btn btn-primary btn-small">✨ Регистрация</a></li>
+            <li><a href="/login" class="{{if eq .NavActive "login"}}active{{end}}">Войти</a></li>
+            <li><a href="/create-profile" class="btn btn-primary btn-small">Регистрация</a></li>
             {{end}}
         </ul>
     </div>
@@ -683,6 +684,10 @@
     {{template "edit_event_content" .}}
     {{else if eq .NavActive "event_subscriptions"}}
     {{template "event_subscriptions_content" .}}
+    {{else if eq .NavActive "my_achievements"}}
+    {{template "my_achievements_content" .}}
+    {{else if eq .NavActive "ratings"}}
+    {{template "ratings_content" .}}
     {{else if eq .NavActive "news"}}
     {{template "news_content" .}}
     {{else}}

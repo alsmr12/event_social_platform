@@ -83,3 +83,10 @@ func (r *SubscriptionRepository) GetFollowingCount(userID uint) (int64, error) {
 		Count(&count).Error
 	return count, err
 }
+
+// Получить количество подписок пользователя
+func (r *SubscriptionRepository) GetSubscriptionCount(userID uint, count *int64) error {
+	return r.db.Model(&models.Subscription{}).
+		Where("follower_id = ?", userID).
+		Count(count).Error
+}

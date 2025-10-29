@@ -3,6 +3,7 @@ package repository
 import (
 	"event_social_platform/internal/models"
 	"gorm.io/gorm"
+	"time"
 )
 
 type EventSubscriptionRepository struct {
@@ -36,12 +37,36 @@ func (r *EventSubscriptionRepository) IsSubscribed(userID, eventID uint) (bool, 
 	return count > 0, err
 }
 
-// Получить подписки пользователя
+// Получить все подписки пользователя
 func (r *EventSubscriptionRepository) GetUserSubscriptions(userID uint) ([]*models.EventSubscription, error) {
 	var subscriptions []*models.EventSubscription
 	err := r.db.Preload("Event").Preload("Event.Creator").
 		Where("user_id = ?", userID).
 		Order("created_at DESC").
+		Find(&subscriptions).Error
+	return subscriptions, err
+}
+
+// Получить предстоящие подписки пользователя
+func (r *EventSubscriptionRepository) GetUserUpcomingSubscriptions(userID uint) ([]*models.EventSubscription, error) {
+	var subscriptions []*models.EventSubscription
+	now := time.Now()
+	err := r.db.Preload("Event").Preload("Event.Creator").
+		Where("user_id = ? AND events.date_time >= ?", userID, now).
+		Joins("JOIN events ON event_subscriptions.event_id = events.id").
+		Order("events.date_time ASC").
+		Find(&subscriptions).Error
+	return subscriptions, err
+}
+
+// Получить прошедшие подписки пользователя
+func (r *EventSubscriptionRepository) GetUserPastSubscriptions(userID uint) ([]*models.EventSubscription, error) {
+	var subscriptions []*models.EventSubscription
+	now := time.Now()
+	err := r.db.Preload("Event").Preload("Event.Creator").
+		Where("user_id = ? AND events.date_time < ?", userID, now).
+		Joins("JOIN events ON event_subscriptions.event_id = events.id").
+		Order("events.date_time DESC").
 		Find(&subscriptions).Error
 	return subscriptions, err
 }
@@ -63,4 +88,11 @@ func (r *EventSubscriptionRepository) GetSubscribersCount(eventID uint) (int64, 
 		Where("event_id = ?", eventID).
 		Count(&count).Error
 	return count, err
+}
+
+// Получить количество подписок пользователя
+func (r *EventSubscriptionRepository) GetUserSubscriptionsCount(userID uint, count *int64) error {
+	return r.db.Model(&models.EventSubscription{}).
+		Where("user_id = ?", userID).
+		Count(count).Error
 }

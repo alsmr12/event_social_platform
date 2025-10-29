@@ -4,15 +4,15 @@ import (
 	"event_social_platform/config"
 	"event_social_platform/internal/handlers"
 	"event_social_platform/internal/repository"
-	"html/template" // ← ДОБАВЬТЕ ЭТОТ ИМПОРТ
 	"github.com/gin-gonic/gin"
+	"html/template"
 	"log"
 )
 
 func main() {
 	// Загружаем конфигурацию
 	cfg := config.Load()
-	
+
 	// Подключение к базе данных
 	db, err := repository.ConnectDB(&repository.DBConfig{
 		Host:     cfg.DBHost,
@@ -34,8 +34,7 @@ func main() {
 	sessionRepo.CleanExpiredSessions()
 
 	router := gin.Default()
-	
-	// ДОБАВЬТЕ ЭТОТ БЛОК - функции для шаблонов
+
 	router.SetFuncMap(template.FuncMap{
 		"add": func(a, b int) int { return a + b },
 		"sub": func(a, b int) int { return a - b },
@@ -47,7 +46,7 @@ func main() {
 			return sequence
 		},
 	})
-	
+
 	router.LoadHTMLGlob("templates/*")
 	handlers.SetupRoutes(router, db)
 

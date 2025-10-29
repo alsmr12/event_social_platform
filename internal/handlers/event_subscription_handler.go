@@ -1,21 +1,25 @@
 package handlers
 
 import (
-
+	"event_social_platform/internal/models" // ← ДОБАВЬ ЭТОТ ИМПОРТ
 	"event_social_platform/internal/repository"
 	"net/http"
 	"strconv"
-	"strings" // ← ДОБАВЬТЕ ЭТОТ ИМПОРТ
+	"strings"
+	"time"
+
 	"github.com/gin-gonic/gin"
 )
 
 type EventSubscriptionHandler struct {
 	eventSubRepo *repository.EventSubscriptionRepository
+	eventRepo    *repository.EventRepository
 }
 
-func NewEventSubscriptionHandler(eventSubRepo *repository.EventSubscriptionRepository) *EventSubscriptionHandler {
+func NewEventSubscriptionHandler(eventSubRepo *repository.EventSubscriptionRepository, eventRepo *repository.EventRepository) *EventSubscriptionHandler {
 	return &EventSubscriptionHandler{
 		eventSubRepo: eventSubRepo,
+		eventRepo:    eventRepo,
 	}
 }
 
@@ -31,6 +35,19 @@ func (h *EventSubscriptionHandler) Subscribe(c *gin.Context) {
 	id, err := strconv.ParseUint(eventID, 10, 32)
 	if err != nil {
 		c.Redirect(http.StatusSeeOther, "/events")
+		return
+	}
+
+	// Проверяем, не является ли событие прошедшим
+	event, err := h.eventRepo.GetEventByID(uint(id))
+	if err != nil {
+		c.Redirect(http.StatusSeeOther, "/events?message=error")
+		return
+	}
+
+	// Если событие уже прошло, запрещаем подписку
+	if time.Now().After(event.DateTime) {
+		c.Redirect(http.StatusSeeOther, "/event/"+eventID+"?message=event_ended")
 		return
 	}
 
@@ -78,7 +95,7 @@ func (h *EventSubscriptionHandler) Unsubscribe(c *gin.Context) {
 
 	// Отписываемся
 	err = h.eventSubRepo.Unsubscribe(currentUser.ID, uint(id))
-	
+
 	var message string
 	if err != nil {
 		message = "?message=error"
@@ -105,7 +122,18 @@ func (h *EventSubscriptionHandler) GetUserSubscriptions(c *gin.Context) {
 		return
 	}
 
-	subscriptions, err := h.eventSubRepo.GetUserSubscriptions(currentUser.ID)
+	// Получаем параметр фильтра из URL
+	filter := c.DefaultQuery("filter", "upcoming")
+
+	var subscriptions []*models.EventSubscription
+	var err error
+
+	if filter == "past" {
+		subscriptions, err = h.eventSubRepo.GetUserPastSubscriptions(currentUser.ID)
+	} else {
+		subscriptions, err = h.eventSubRepo.GetUserUpcomingSubscriptions(currentUser.ID)
+	}
+
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
 			"Title":       "Мои подписки",
@@ -116,10 +144,18 @@ func (h *EventSubscriptionHandler) GetUserSubscriptions(c *gin.Context) {
 		return
 	}
 
+	// Добавляем информацию о подписчиках и статусе события
+	for _, subscription := range subscriptions {
+		subscribersCount, _ := h.eventSubRepo.GetSubscribersCount(subscription.EventID)
+		subscription.Event.SubscribersCount = subscribersCount
+		subscription.Event.IsPast = time.Now().After(subscription.Event.DateTime)
+	}
+
 	c.HTML(http.StatusOK, "base.html", gin.H{
-		"Title":         "Мои подписки на события",
-		"NavActive":     "event_subscriptions",
-		"Subscriptions": subscriptions,
-		"CurrentUser":   currentUser,
+		"Title":          "Мои подписки на события",
+		"NavActive":      "event_subscriptions",
+		"Subscriptions":  subscriptions,
+		"CurrentUser":    currentUser,
+		"ShowPastEvents": filter == "past",
 	})
 }

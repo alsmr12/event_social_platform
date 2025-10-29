@@ -146,3 +146,10 @@ func (r *FriendshipRepository) AreFriends(userID, friendID uint) (bool, error) {
 		Count(&count).Error
 	return count > 0, err
 }
+
+// Получить количество друзей пользователя
+func (r *FriendshipRepository) GetFriendCount(userID uint, count *int64) error {
+	return r.db.Model(&models.Friendship{}).
+		Where("(user_id = ? OR friend_id = ?) AND status = 'accepted'", userID, userID).
+		Count(count).Error
+}
