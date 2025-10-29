@@ -13,6 +13,17 @@
 </div>
 {{end}}
 
+<!-- Предупреждение о приватности -->
+{{if .Event.IsPrivate}}
+<div class="alert alert-warning" style="margin-bottom: 20px;">
+    <strong>🔒 Приватное событие</strong>
+    <p style="margin: 10px 0 0 0; font-size: 0.9em;">
+        Это приватное событие. Оно не отображается в общем списке событий.
+        Вы можете поделиться ссылкой с другими пользователями.
+    </p>
+</div>
+{{end}}
+
 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
     <div>
         <h2>{{.Event.Title}}</h2>
@@ -21,7 +32,7 @@
                     {{if eq .Event.Type "concert"}}Концерт
                     {{else if eq .Event.Type "lecture"}}Лекция
                     {{else if eq .Event.Type "sport"}}Спорт
-                    {{else if eq .Event.Type "meetup"}}Встреча
+                    {{else if eq .Event.Type "meeting"}}Встреча
                     {{else if eq .Event.Type "party"}}Вечеринка
                     {{else if eq .Event.Type "conference"}}Конференция
                     {{else if eq .Event.Type "exhibition"}}Выставка
@@ -100,6 +111,7 @@
             {{if .Event.MaxParticipants}}<div><strong>👥 Макс. участников:</strong> {{.Event.MaxParticipants}}</div>{{end}}
             <div><strong>📅 Создано:</strong> {{.Event.CreatedAt.Format "02.01.2006"}}</div>
             {{if .Event.IsPast}}<div><strong>📊 Статус:</strong> <span style="color: #6c757d;">Завершено</span></div>{{end}}
+            {{if .Event.IsPrivate}}<div><strong>🔐 Доступ:</strong> <span style="color: #e9c46a;">Приватное (по ссылке)</span></div>{{end}}
         </div>
     </div>
 </div>

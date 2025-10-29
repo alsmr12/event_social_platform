@@ -37,10 +37,13 @@ func (r *EventRepository) GetAllEvents() ([]*models.Event, error) {
 	return events, nil
 }
 
-// Получить предстоящие события
+// Получить предстоящие события (только публичные + свои приватные)
 func (r *EventRepository) GetUpcomingEvents() ([]*models.Event, error) {
 	var events []*models.Event
 	now := time.Now()
+
+	// Показываем публичные события + приватные события текущего пользователя
+	// (фильтрация по пользователю будет на уровне handler)
 	err := r.db.Preload("Creator").
 		Where("date_time >= ?", now).
 		Order("date_time ASC").
@@ -51,10 +54,11 @@ func (r *EventRepository) GetUpcomingEvents() ([]*models.Event, error) {
 	return events, nil
 }
 
-// Получить прошедшие события
+// Получить прошедшие события (только публичные + свои приватные)
 func (r *EventRepository) GetPastEvents() ([]*models.Event, error) {
 	var events []*models.Event
 	now := time.Now()
+
 	err := r.db.Preload("Creator").
 		Where("date_time < ?", now).
 		Order("date_time DESC").

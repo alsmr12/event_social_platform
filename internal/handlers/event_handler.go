@@ -118,8 +118,21 @@ func (h *EventHandler) GetAllEvents(c *gin.Context) {
 
 	currentUser := GetUserFromContext(c)
 
-	// Для каждого события получаем информацию о подписках и определяем, прошло ли оно
+	// ФИЛЬТРУЕМ: убираем приватные события, если пользователь не создатель
+	var filteredEvents []*models.Event
 	for _, event := range events {
+		if !event.IsPrivate {
+			// Публичное событие - показываем всем
+			filteredEvents = append(filteredEvents, event)
+		} else if currentUser != nil && event.CreatorID == currentUser.ID {
+			// Приватное событие, но пользователь - создатель
+			filteredEvents = append(filteredEvents, event)
+		}
+		// Приватное событие другого пользователя - не показываем
+	}
+
+	// Для каждого события получаем информацию о подписках и определяем, прошло ли оно
+	for _, event := range filteredEvents {
 		// Добавляем информацию о подписках
 		if currentUser != nil {
 			isSubscribed, _ := h.eventSubRepo.IsSubscribed(currentUser.ID, event.ID)
@@ -139,10 +152,10 @@ func (h *EventHandler) GetAllEvents(c *gin.Context) {
 	c.HTML(http.StatusOK, "base.html", gin.H{
 		"Title":          "События",
 		"NavActive":      "events",
-		"Events":         events,
+		"Events":         filteredEvents, // ← используем отфильтрованный список
 		"CurrentUser":    currentUser,
 		"Message":        message,
-		"ShowPastEvents": filter == "past", // Передаем информацию о текущем фильтре в шаблон
+		"ShowPastEvents": filter == "past",
 	})
 }
 
@@ -171,6 +184,8 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 	}
 
 	currentUser := GetUserFromContext(c)
+
+	// УБИРАЕМ ПРОВЕРКИ ДОСТУПА - приватные события открываются для всех по ссылке
 
 	// Получаем информацию о подписке
 	var isSubscribed bool
