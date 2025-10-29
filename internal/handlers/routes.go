@@ -17,7 +17,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	friendshipRepo := repository.NewFriendshipRepository(db)
 	eventSubRepo := repository.NewEventSubscriptionRepository(db)
 	socialRepo := repository.NewSocialLinkRepository(db)
-	newsRepo := repository.NewNewsRepository(db) // ← ДОБАВЬТЕ
+	newsRepo := repository.NewNewsRepository(db)
 
 	// Инициализируем обработчики
 	userHandler := NewUserHandler(userRepo)
@@ -28,7 +28,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	friendshipHandler := NewFriendshipHandler(friendshipRepo, userRepo)
 	eventSubHandler := NewEventSubscriptionHandler(eventSubRepo)
 	socialHandler := NewSocialHandler(socialRepo, userRepo)
-	newsHandler := NewNewsHandler(newsRepo) // ← ДОБАВЬТЕ
+	newsHandler := NewNewsHandler(newsRepo)
 
 	// Middleware аутентификации
 	authMiddleware := middleware.AuthMiddleware(userRepo, sessionRepo)
@@ -58,8 +58,8 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	{
 
 		// Новости
-        protected.GET("/news", newsHandler.ShowNewsFeed) // ← ДОБАВЬТЕ
-		
+		protected.GET("/news", newsHandler.ShowNewsFeed)
+
 		// Профили
 		protected.GET("/profiles", userHandler.GetAllProfiles)
 		protected.GET("/profile/:id", userHandler.GetProfile)

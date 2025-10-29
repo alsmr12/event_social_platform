@@ -37,19 +37,171 @@
 
         <!-- Лента событий/постов -->
         <div class="card">
-            <h2 style="margin-bottom: 24px;">Последние обновления</h2>
+            <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 30px;">
+                <h2>Внимание!</h2>
+            </div>
+
             {{if or .Posts .Events}}
-                <div style="margin-bottom: 20px;">
-                    <p>У вас есть новые обновления в ленте новостей</p>
-                    <a href="/news" class="btn btn-primary">Перейти к новостям</a>
+            <div class="grid grid-2">
+                <!-- Левая колонка - посты -->
+                <div>
+                    <h3 style="margin-bottom: 20px;">Последние записи</h3>
+
+                    {{if .Posts}}
+                    <div class="posts">
+                        {{range .Posts}}
+                        <div class="post">
+                            <div class="post-header">
+                        <span class="post-author">
+                            <a href="/profile/{{.Author.ID}}" style="text-decoration: none; color: var(--text-primary);">
+                                {{.Author.FirstName}} {{.Author.LastName}}
+                            </a>
+                        </span>
+                                <span class="post-date">{{.CreatedAt.Format "02.01.2006 15:04"}}</span>
+                            </div>
+                            <div class="post-content">{{.Content}}</div>
+                            <div class="post-actions">
+                                {{if and $.CurrentUser (eq $.CurrentUser.ID .AuthorID)}}
+                                <a href="/wall/edit/{{.ID}}" class="btn btn-outline btn-small">Редактировать</a>
+                                <a href="/wall/delete/{{.ID}}" class="btn btn-danger btn-small" onclick="return confirm('Удалить запись?')">Удалить</a>
+                                {{end}}
+                            </div>
+                        </div>
+                        {{end}}
+                    </div>
+                    {{else}}
+                    <div class="empty-state">
+                        <p>Пока нет записей от ваших друзей и подписок.</p>
+                    </div>
+                    {{end}}
                 </div>
+
+                <!-- Правая колонка - события -->
+                <div>
+                    <h3 style="margin-bottom: 20px;">Новые события</h3>
+
+                    {{if .Events}}
+                    <div class="events-feed">
+                        {{range .Events}}
+                        <div class="card" style="margin-bottom: 16px; padding: 16px;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                                <h4 style="margin: 0; font-size: 1.1em;">{{.Title}}</h4>
+                                <span class="badge" style="background: #007bff; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75em;">
+                            {{if eq .Type "concert"}}Концерт
+                            {{else if eq .Type "lecture"}}Лекция
+                            {{else if eq .Type "sport"}}Спорт
+                            {{else if eq .Type "meetup"}}Встреча
+                            {{else if eq .Type "party"}}Вечеринка
+                            {{else if eq .Type "conference"}}Конференция
+                            {{else if eq .Type "exhibition"}}Выставка
+                            {{else if eq .Type "other"}}Другое
+                            {{else}}{{.Type}}{{end}}
+                        </span>
+                            </div>
+
+                            <p style="color: var(--text-muted); font-size: 0.9em; margin-bottom: 12px;">{{.Description}}</p>
+
+                            <div style="font-size: 0.85em; line-height: 1.6; margin-bottom: 12px;">
+                                <div><strong>📅</strong> {{.DateTime.Format "02.01.2006 15:04"}}</div>
+                                <div><strong>📍</strong> {{.Location}}</div>
+                                <div><strong>👤</strong>
+                                    <a href="/profile/{{.Creator.ID}}" style="text-decoration: none; color: var(--text-primary);">
+                                        {{.Creator.FirstName}} {{.Creator.LastName}}
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 8px;">
+                                <a href="/event/{{.ID}}" class="btn btn-outline btn-small">Подробнее</a>
+                                {{if and $.CurrentUser (eq .CreatorID $.CurrentUser.ID)}}
+                                <a href="/event/edit/{{.ID}}" class="btn btn-outline btn-small">Редактировать</a>
+                                {{end}}
+                            </div>
+                        </div>
+                        {{end}}
+                    </div>
+                    {{else}}
+                    <div class="empty-state">
+                        <p>Пока нет событий от ваших друзей и подписок.</p>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+
+            <!-- Пагинация -->
+            {{if gt .TotalPages 1}}
+            <div style="display: flex; justify-content: center; align-items: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <!-- Кнопка "Назад" -->
+                    {{if gt .CurrentPage 1}}
+                    <a href="/news?page={{sub .CurrentPage 1}}" class="btn btn-outline btn-small">← Назад</a>
+                    {{else}}
+                    <span class="btn btn-outline btn-small" style="opacity: 0.5; cursor: not-allowed;">← Назад</span>
+                    {{end}}
+
+                    <!-- Номера страниц -->
+                    {{$current := .CurrentPage}}
+                    {{$total := .TotalPages}}
+
+                    <!-- Первая страница -->
+                    {{if gt $current 3}}
+                    <a href="/news?page=1" class="btn btn-outline btn-small">1</a>
+                    {{if gt $current 4}}<span style="padding: 0 8px;">...</span>{{end}}
+                    {{end}}
+
+                    <!-- Страницы вокруг текущей -->
+                    {{$start := sub $current 2}}
+                    {{$end := add $current 2}}
+                    {{if lt $start 1}}
+                    {{$start = 1}}
+                    {{$end = 5}}
+                    {{end}}
+                    {{if gt $end $total}}
+                    {{$end = $total}}
+                    {{$start = sub $total 4}}
+                    {{if lt $start 1}}
+                    {{$start = 1}}
+                    {{end}}
+                    {{end}}
+
+                    {{range $i := seq $start $end}}
+                    {{if eq $i $current}}
+                    <span class="btn btn-primary btn-small" style="cursor: default;">{{$i}}</span>
+                    {{else}}
+                    <a href="/news?page={{$i}}" class="btn btn-outline btn-small">{{$i}}</a>
+                    {{end}}
+                    {{end}}
+
+                    <!-- Последняя страница -->
+                    {{if lt $current (sub $total 2)}}
+                    {{if lt $current (sub $total 3)}}<span style="padding: 0 8px;">...</span>{{end}}
+                    <a href="/news?page={{$total}}" class="btn btn-outline btn-small">{{$total}}</a>
+                    {{end}}
+
+                    <!-- Кнопка "Вперед" -->
+                    {{if lt .CurrentPage .TotalPages}}
+                    <a href="/news?page={{add .CurrentPage 1}}" class="btn btn-outline btn-small">Вперед →</a>
+                    {{else}}
+                    <span class="btn btn-outline btn-small" style="opacity: 0.5; cursor: not-allowed;">Вперед →</span>
+                    {{end}}
+                </div>
+
+                <!-- Информация о странице -->
+                <div style="margin-left: 20px; color: var(--text-muted); font-size: 0.9em;">
+                    Страница {{.CurrentPage}} из {{.TotalPages}}
+                </div>
+            </div>
+            {{end}}
+
             {{else}}
-                <div class="empty-state">
-                    <h3>Здесь будет ваша лента</h3>
-                    <p style="margin-bottom: 20px;">Начните следить за друзьями и сообществами</p>
+            <div class="empty-state">
+                <h3>Спасибо за внимание!</h3>
+                <p style="margin-bottom: 20px;">Начните добавлять друзей и подписываться на людей, чтобы видеть их обновления здесь.</p>
+                <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
                     <a href="/profiles" class="btn btn-primary">Найти людей</a>
-                    <a href="/news" class="btn btn-outline" style="margin-left: 10px;">Мои новости</a>
+                    <a href="/events" class="btn btn-outline">Посмотреть события</a>
                 </div>
+            </div>
             {{end}}
         </div>
 
