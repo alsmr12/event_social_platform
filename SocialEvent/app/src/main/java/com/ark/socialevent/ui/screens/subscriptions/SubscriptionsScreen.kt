@@ -22,6 +22,6 @@ fun SubscriptionsScreen() {
         Spacer(modifier = Modifier.height(16.dp))
 
         // TODO: Добавить список подписок на события и пользователей
-        Text("Здесь будут ваши подписки")
+        Text("Здесь  подписки")
     }
 }

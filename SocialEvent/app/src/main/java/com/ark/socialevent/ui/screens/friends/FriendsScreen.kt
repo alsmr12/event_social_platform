@@ -22,6 +22,6 @@ fun FriendsScreen() {
         Spacer(modifier = Modifier.height(16.dp))
 
         // TODO: Добавить список друзей, заявки в друзья
-        Text("Здесь будет список ваших друзей")
+        Text("Здесь х друзmz")
     }
 }
