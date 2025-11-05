@@ -49,7 +49,7 @@ router.POST("/login", authHandler.Login)
 router.POST("/api/login", authHandler.LoginJSON)
 router.POST("/api/register", authHandler.RegisterJSON)
 router.GET("/api/profile", authHandler.ProfileJSON)
-
+router.GET("/api/profiles", userHandler.GetAllProfilesJSON)
 
 	// Создание профиля (регистрация)
 	router.GET("/create-profile", userHandler.ShowCreateProfileForm)

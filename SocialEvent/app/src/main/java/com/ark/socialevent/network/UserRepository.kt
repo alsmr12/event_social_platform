@@ -124,4 +124,24 @@ class UserRepository {
             }
         })
     }
+
+    fun getAllProfiles(callback: (List<UserProfile>?, String?) -> Unit) {
+        api.getAllProfiles().enqueue(object : Callback<List<UserProfile>> {
+            override fun onResponse(
+                call: Call<List<UserProfile>>,
+                response: Response<List<UserProfile>>
+            ) {
+                if (response.isSuccessful) {
+                    callback(response.body(), null)
+                } else {
+                    callback(null, "Ошибка: ${response.code()}")
+                }
+            }
+
+            override fun onFailure(call: Call<List<UserProfile>>, t: Throwable) {
+                callback(null, "Ошибка сети: ${t.message}")
+            }
+        })
+    }
+
 }

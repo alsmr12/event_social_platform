@@ -68,4 +68,7 @@ interface ApiService {
 
     @GET("/api/profile")
     fun getProfile(): Call<ProfileResponse>
+
+    @GET("/api/profiles")
+    fun getAllProfiles(): Call<List<UserProfile>>
 }
