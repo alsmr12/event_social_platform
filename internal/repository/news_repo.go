@@ -76,6 +76,7 @@ func (r *NewsRepository) GetNewsFeed(userID uint, limit int, offset int) ([]*mod
 }
 
 // Получить ленту событий для пользователя с пагинацией
+// Получить ленту событий для пользователя с пагинацией
 func (r *NewsRepository) GetEventsFeed(userID uint, limit int, offset int) ([]*models.Event, error) {
     // 1. Получаем друзей
     var friendIDs []uint
@@ -133,8 +134,34 @@ func (r *NewsRepository) GetEventsFeed(userID uint, limit int, offset int) ([]*m
         Limit(limit).
         Offset(offset).
         Find(&events).Error
+
+    if err != nil {
+        return nil, err
+    }
+
+    // 7. ФИЛЬТРУЕМ: оставляем только события, к которым пользователь имеет доступ
+    var accessibleEvents []*models.Event
+    for _, event := range events {
+        // Для публичных событий - всегда доступ
+        if !event.IsPrivate {
+            accessibleEvents = append(accessibleEvents, event)
+            continue
+        }
+
+        // Для приватных событий проверяем доступ через подписку на событие
+        var eventSubscriptionCount int64
+        r.db.Model(&models.EventSubscription{}).
+            Where("user_id = ? AND event_id = ?", userID, event.ID).
+            Count(&eventSubscriptionCount)
         
-    return events, err
+        if eventSubscriptionCount > 0 {
+            // Пользователь подписан на это приватное событие - показываем
+            accessibleEvents = append(accessibleEvents, event)
+        }
+        // Остальные приватные события не показываем
+    }
+        
+    return accessibleEvents, nil
 }
 
 // Получить общее количество постов для пагинации
@@ -197,6 +224,7 @@ func (r *NewsRepository) GetTotalPostsCount(userID uint) (int64, error) {
 }
 
 // Получить общее количество событий для пагинации
+// Получить общее количество событий для пагинации
 func (r *NewsRepository) GetTotalEventsCount(userID uint) (int64, error) {
     // 1. Получаем друзей
     var friendIDs []uint
@@ -245,12 +273,36 @@ func (r *NewsRepository) GetTotalEventsCount(userID uint) (int64, error) {
         return 0, nil
     }
 
-    // 6. Считаем общее количество
-    var count int64
+    // 6. Получаем ВСЕ события друзей и подписок
+    var allEvents []*models.Event
     err = r.db.Model(&models.Event{}).
         Where("creator_id IN (?)", finalIDs).
         Where("deleted_at IS NULL").
-        Count(&count).Error
+        Find(&allEvents).Error
         
-    return count, err
+    if err != nil {
+        return 0, err
+    }
+
+    // 7. Считаем только те события, к которым пользователь имеет доступ
+    var count int64
+    for _, event := range allEvents {
+        if !event.IsPrivate {
+            // Публичные события всегда доступны
+            count++
+            continue
+        }
+
+        // Для приватных событий проверяем подписку
+        var eventSubscriptionCount int64
+        r.db.Model(&models.EventSubscription{}).
+            Where("user_id = ? AND event_id = ?", userID, event.ID).
+            Count(&eventSubscriptionCount)
+        
+        if eventSubscriptionCount > 0 {
+            count++
+        }
+    }
+        
+    return count, nil
 }

@@ -57,6 +57,8 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	// Middleware аутентификации
 	authMiddleware := middleware.AuthMiddleware(userRepo, sessionRepo)
 	strictAuth := middleware.StrictAuthMiddleware(userRepo, sessionRepo)
+	// Добавляем middleware для проверки доступа к событиям
+	eventAccessMiddleware := middleware.EventAccessMiddleware(eventRepo)
 
 	// Делает доступными файлы из папки static/
 	router.Static("/static", "./static")
@@ -91,14 +93,28 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 		protected.GET("/social-links", socialHandler.ShowSocialLinksForm)
 		protected.POST("/social-links", socialHandler.UpdateSocialLinks)
 
-		// События
+		// События - общие маршруты
 		protected.GET("/events", eventHandler.GetAllEvents)
-		protected.GET("/event/:id", eventHandler.GetEvent)
 		protected.GET("/create-event", eventHandler.ShowCreateEventForm)
 		protected.POST("/create-event", eventHandler.CreateEvent)
-		protected.POST("/event/delete/:id", eventHandler.DeleteEvent)
-		protected.GET("/event/edit/:id", eventHandler.ShowEditEventForm)
-		protected.POST("/event/edit/:id", eventHandler.UpdateEvent)
+
+		// Доступ по коду приглашения
+		protected.GET("/invite/:code", eventHandler.AccessByInviteCode)
+
+		// Защищенные маршруты событий (с проверкой доступа)
+		eventProtected := protected.Group("/event")
+		eventProtected.Use(eventAccessMiddleware)
+		{
+			eventProtected.GET("/:id", eventHandler.GetEvent)
+			eventProtected.POST("/delete/:id", eventHandler.DeleteEvent)
+			eventProtected.GET("/edit/:id", eventHandler.ShowEditEventForm)
+			eventProtected.POST("/edit/:id", eventHandler.UpdateEvent)
+		}
+
+		// Подписки на события (без проверки доступа к событию)
+		protected.POST("/event/:id/subscribe", eventSubHandler.Subscribe)
+		protected.POST("/event/:id/unsubscribe", eventSubHandler.Unsubscribe)
+		protected.GET("/event-subscriptions", eventSubHandler.GetUserSubscriptions)
 
 		// Действия со стеной
 		protected.POST("/wall/post", wallHandler.CreatePost)
@@ -111,11 +127,6 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 		protected.GET("/subscribe/:id", subscriptionHandler.Subscribe)
 		protected.GET("/unsubscribe/:id", subscriptionHandler.Unsubscribe)
 
-		// Подписки на события
-		protected.POST("/event/:id/subscribe", eventSubHandler.Subscribe)
-		protected.POST("/event/:id/unsubscribe", eventSubHandler.Unsubscribe)
-		protected.GET("/event-subscriptions", eventSubHandler.GetUserSubscriptions)
-
 		// Друзья
 		protected.GET("/friends", friendshipHandler.FriendsPage)
 		protected.GET("/friends/add/:id", friendshipHandler.SendFriendRequest)
@@ -123,7 +134,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 		protected.GET("/friends/reject/:id", friendshipHandler.RejectFriendRequest)
 		protected.GET("/friends/remove/:id", friendshipHandler.RemoveFriend)
 
-		// Награды и рейтинг ← ДОБАВИТЬ ЭТИ МАРШРУТЫ
+		// Награды и рейтинг
 		protected.GET("/ratings", achievementHandler.ShowRatings)
 		protected.GET("/my-achievements", achievementHandler.ShowMyAchievements)
 

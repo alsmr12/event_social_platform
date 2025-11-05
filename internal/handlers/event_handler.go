@@ -79,6 +79,11 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 		MaxParticipants: req.MaxParticipants,
 	}
 
+	// Генерируем код приглашения для приватных событий
+	if event.IsPrivate {
+		event.GenerateInviteCode()
+	}
+
 	if err := h.eventRepo.CreateEvent(event); err != nil {
 		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
 			"Title":       "Создание события",
@@ -93,70 +98,66 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 }
 
 func (h *EventHandler) GetAllEvents(c *gin.Context) {
-	// Получаем параметр фильтра из URL
-	filter := c.DefaultQuery("filter", "upcoming")
+    // Получаем параметр фильтра из URL
+    filter := c.DefaultQuery("filter", "upcoming")
 
-	var events []*models.Event
-	var err error
+    var events []*models.Event
+    var err error
 
-	// Получаем события в зависимости от фильтра
-	if filter == "past" {
-		events, err = h.eventRepo.GetPastEvents()
-	} else {
-		events, err = h.eventRepo.GetUpcomingEvents()
-	}
+    // Получаем события в зависимости от фильтра
+    if filter == "past" {
+        events, err = h.eventRepo.GetPastEvents()
+    } else {
+        events, err = h.eventRepo.GetUpcomingEvents()
+    }
 
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
-			"Title":       "События",
-			"NavActive":   "events",
-			"Error":       "Ошибка получения событий",
-			"CurrentUser": GetUserFromContext(c),
-		})
-		return
-	}
+    if err != nil {
+        c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+            "Title":       "События",
+            "NavActive":   "events",
+            "Error":       "Ошибка получения событий",
+            "CurrentUser": GetUserFromContext(c),
+        })
+        return
+    }
 
-	currentUser := GetUserFromContext(c)
+    currentUser := GetUserFromContext(c)
 
-	// ФИЛЬТРУЕМ: убираем приватные события, если пользователь не создатель
-	var filteredEvents []*models.Event
-	for _, event := range events {
-		if !event.IsPrivate {
-			// Публичное событие - показываем всем
-			filteredEvents = append(filteredEvents, event)
-		} else if currentUser != nil && event.CreatorID == currentUser.ID {
-			// Приватное событие, но пользователь - создатель
-			filteredEvents = append(filteredEvents, event)
-		}
-		// Приватное событие другого пользователя - не показываем
-	}
+    // ФИЛЬТРУЕМ: показываем в общем списке ТОЛЬКО события, к которым пользователь имеет доступ
+    var filteredEvents []*models.Event
+    for _, event := range events {
+        hasAccess, _ := h.eventRepo.CanUserAccessEvent(currentUser.ID, event.ID)
+        if hasAccess {
+            filteredEvents = append(filteredEvents, event)
+        }
+    }
 
-	// Для каждого события получаем информацию о подписках и определяем, прошло ли оно
-	for _, event := range filteredEvents {
-		// Добавляем информацию о подписках
-		if currentUser != nil {
-			isSubscribed, _ := h.eventSubRepo.IsSubscribed(currentUser.ID, event.ID)
-			event.IsSubscribed = isSubscribed
-		}
+    // Для каждого события получаем информацию о подписках и определяем, прошло ли оно
+    for _, event := range filteredEvents {
+        // Добавляем информацию о подписках
+        if currentUser != nil {
+            isSubscribed, _ := h.eventSubRepo.IsSubscribed(currentUser.ID, event.ID)
+            event.IsSubscribed = isSubscribed
+        }
 
-		subscribersCount, _ := h.eventSubRepo.GetSubscribersCount(event.ID)
-		event.SubscribersCount = subscribersCount
+        subscribersCount, _ := h.eventSubRepo.GetSubscribersCount(event.ID)
+        event.SubscribersCount = subscribersCount
 
-		// Определяем, является ли событие прошедшим
-		event.IsPast = time.Now().After(event.DateTime)
-	}
+        // Определяем, является ли событие прошедшим
+        event.IsPast = time.Now().After(event.DateTime)
+    }
 
-	// Получаем сообщение из URL
-	message := c.Query("message")
+    // Получаем сообщение из URL
+    message := c.Query("message")
 
-	c.HTML(http.StatusOK, "base.html", gin.H{
-		"Title":          "События",
-		"NavActive":      "events",
-		"Events":         filteredEvents, // ← используем отфильтрованный список
-		"CurrentUser":    currentUser,
-		"Message":        message,
-		"ShowPastEvents": filter == "past",
-	})
+    c.HTML(http.StatusOK, "base.html", gin.H{
+        "Title":          "События",
+        "NavActive":      "events",
+        "Events":         filteredEvents,
+        "CurrentUser":    currentUser,
+        "Message":        message,
+        "ShowPastEvents": filter == "past",
+    })
 }
 
 func (h *EventHandler) GetEvent(c *gin.Context) {
@@ -185,8 +186,6 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 
 	currentUser := GetUserFromContext(c)
 
-	// УБИРАЕМ ПРОВЕРКИ ДОСТУПА - приватные события открываются для всех по ссылке
-
 	// Получаем информацию о подписке
 	var isSubscribed bool
 	var subscribersCount int64
@@ -198,6 +197,9 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 	// Определяем, является ли событие прошедшим
 	event.IsPast = time.Now().After(event.DateTime)
 
+	// Получаем базовый URL для формирования ссылки
+	baseURL := getBaseURL(c)
+
 	message := c.Query("message")
 	c.HTML(http.StatusOK, "base.html", gin.H{
 		"Title":            event.Title,
@@ -207,18 +209,41 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 		"IsSubscribed":     isSubscribed,
 		"SubscribersCount": subscribersCount,
 		"Message":          message,
+		"BaseURL":          baseURL, // ← ДОБАВЛЕНО: передаем BaseURL в шаблон
 	})
 }
 
-func (h *EventHandler) DeleteEvent(c *gin.Context) {
-	// Получаем текущего пользователя из контекста
-	currentUser, exists := c.Get("CurrentUser")
-	if !exists {
-		c.Redirect(302, "/login")
+// AccessByInviteCode - доступ к событию по коду приглашения
+func (h *EventHandler) AccessByInviteCode(c *gin.Context) {
+	code := c.Param("code")
+	currentUser := GetUserFromContext(c)
+	
+	if currentUser == nil {
+		c.Redirect(http.StatusSeeOther, "/login")
 		return
 	}
 
-	user := currentUser.(*models.User)
+	event, err := h.eventRepo.GetEventByInviteCode(code)
+	if err != nil {
+		c.HTML(http.StatusNotFound, "base.html", gin.H{
+			"Title":       "Событие не найдено",
+			"NavActive":   "events",
+			"Error":       "Неверный код приглашения или событие было удалено",
+			"CurrentUser": currentUser,
+		})
+		return
+	}
+
+	// Перенаправляем на страницу события
+	c.Redirect(http.StatusSeeOther, "/event/"+strconv.Itoa(int(event.ID)))
+}
+
+func (h *EventHandler) DeleteEvent(c *gin.Context) {
+	currentUser := GetUserFromContext(c)
+	if currentUser == nil {
+		c.Redirect(302, "/login")
+		return
+	}
 
 	// Получаем ID события из URL
 	eventID := c.Param("id")
@@ -238,7 +263,7 @@ func (h *EventHandler) DeleteEvent(c *gin.Context) {
 	}
 
 	// Проверяем, является ли пользователь создателем события
-	if event.CreatorID != user.ID {
+	if event.CreatorID != currentUser.ID {
 		c.JSON(403, gin.H{"error": "Access denied"})
 		return
 	}
@@ -291,11 +316,15 @@ func (h *EventHandler) ShowEditEventForm(c *gin.Context) {
 		return
 	}
 
+	// Передаем BaseURL для формы редактирования
+	baseURL := getBaseURL(c)
+
 	c.HTML(200, "base.html", gin.H{
 		"Title":       "Редактировать событие",
 		"NavActive":   "edit_event",
 		"Event":       event,
 		"CurrentUser": currentUser,
+		"BaseURL":     baseURL, // ← ДОБАВЛЕНО
 	})
 }
 
@@ -373,6 +402,11 @@ func (h *EventHandler) UpdateEvent(c *gin.Context) {
 	existingEvent.IsPrivate = form.IsPrivate
 	existingEvent.MaxParticipants = form.MaxParticipants
 
+	// Если событие стало приватным и у него нет кода - генерируем
+	if existingEvent.IsPrivate && existingEvent.InviteCode == "" {
+		existingEvent.GenerateInviteCode()
+	}
+
 	// Обрабатываем координаты
 	if form.Latitude != "" {
 		if lat, err := strconv.ParseFloat(form.Latitude, 64); err == nil {
@@ -400,4 +434,13 @@ func (h *EventHandler) UpdateEvent(c *gin.Context) {
 
 	// Перенаправляем на страницу события
 	c.Redirect(302, "/event/"+eventID)
+}
+
+// getBaseURL - вспомогательная функция для получения базового URL
+func getBaseURL(c *gin.Context) string {
+	scheme := "http"
+	if c.Request.TLS != nil || c.Request.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	return scheme + "://" + c.Request.Host
 }
