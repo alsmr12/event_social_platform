@@ -41,8 +41,15 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	router.GET("/", authMiddleware, userHandler.ShowHomePage)
 
 	// Аутентификация
-	router.GET("/login", authHandler.ShowLoginForm)
-	router.POST("/login", authHandler.Login)
+// Веб
+router.GET("/login", authHandler.ShowLoginForm)
+router.POST("/login", authHandler.Login)
+
+// Android / JSON API
+router.POST("/api/login", authHandler.LoginJSON)
+router.POST("/api/register", authHandler.RegisterJSON)
+router.GET("/api/profile", authHandler.ProfileJSON)
+
 
 	// Создание профиля (регистрация)
 	router.GET("/create-profile", userHandler.ShowCreateProfileForm)

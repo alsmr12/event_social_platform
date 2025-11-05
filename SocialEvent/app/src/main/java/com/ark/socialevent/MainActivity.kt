@@ -3,17 +3,36 @@ package com.ark.socialevent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import com.ark.socialevent.navigation.NavGraph
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.*
+import com.ark.socialevent.network.UserRepository
+import com.ark.socialevent.ui.screens.LoginScreen
+import com.ark.socialevent.ui.screens.MainContent
+import com.ark.socialevent.ui.screens.RegisterScreen
 import com.ark.socialevent.ui.theme.SocialEventTheme
-import com.ark.socialevent.ui.theme.ThemedCircleBackground
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        val userRepo = UserRepository()
+
         setContent {
             SocialEventTheme {
-                ThemedCircleBackground {
-                    NavGraph()
+                var currentScreen by remember { mutableStateOf("login") }
+
+                when (currentScreen) {
+                    "login" -> LoginScreen(
+                        userRepo = userRepo,
+                        onLoginSuccess = { currentScreen = "main" },
+                        onNavigateToRegister = { currentScreen = "register" }
+                    )
+                    "register" -> RegisterScreen(
+                        userRepo = userRepo,
+                        onRegisterSuccess = { currentScreen = "login" },
+                        onNavigateToLogin = { currentScreen = "login" }
+                    )
+                    "main" -> MainContent()
                 }
             }
         }
