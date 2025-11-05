@@ -59,6 +59,13 @@ data class ProfileResponse(
     @SerializedName("friends_count") val friendsCount: Int
 )
 
+data class ProfilesResponse(
+    val success: Boolean,
+    val data: List<UserProfile>? = null,
+    val message: String? = null
+)
+
+
 interface ApiService {
     @POST("/api/register")
     fun register(@Body request: RegisterRequest): Call<RegisterResponse>
@@ -68,7 +75,6 @@ interface ApiService {
 
     @GET("/api/profile")
     fun getProfile(): Call<ProfileResponse>
-
     @GET("/api/profiles")
-    fun getAllProfiles(): Call<List<UserProfile>>
+    fun getAllProfiles(): Call<ProfilesResponse>  // Используем новый класс
 }

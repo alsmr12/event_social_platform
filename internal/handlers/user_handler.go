@@ -345,3 +345,19 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 
 	c.Redirect(http.StatusSeeOther, "/profile")
 }
+
+func (h *UserHandler) GetAllProfilesJSON(c *gin.Context) {
+    users, err := h.userRepo.GetAllUsers()
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "success": false,
+            "message": "Ошибка получения пользователей",
+        })
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "data": users,
+    })
+}

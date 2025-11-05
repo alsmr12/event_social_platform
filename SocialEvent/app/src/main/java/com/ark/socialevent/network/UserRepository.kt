@@ -126,19 +126,27 @@ class UserRepository {
     }
 
     fun getAllProfiles(callback: (List<UserProfile>?, String?) -> Unit) {
-        api.getAllProfiles().enqueue(object : Callback<List<UserProfile>> {
+        api.getAllProfiles().enqueue(object : Callback<ProfilesResponse> {
             override fun onResponse(
-                call: Call<List<UserProfile>>,
-                response: Response<List<UserProfile>>
+                call: Call<ProfilesResponse>,
+                response: Response<ProfilesResponse>
             ) {
                 if (response.isSuccessful) {
-                    callback(response.body(), null)
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        Log.d("UserRepository", "Loaded ${body.data?.size ?: 0} users")
+                        callback(body.data ?: emptyList(), null)
+                    } else {
+                        val errorMsg = body?.message ?: "Неизвестная ошибка"
+                        callback(null, errorMsg)
+                    }
                 } else {
-                    callback(null, "Ошибка: ${response.code()}")
+                    val errorMsg = "Ошибка сервера: ${response.code()}"
+                    callback(null, errorMsg)
                 }
             }
 
-            override fun onFailure(call: Call<List<UserProfile>>, t: Throwable) {
+            override fun onFailure(call: Call<ProfilesResponse>, t: Throwable) {
                 callback(null, "Ошибка сети: ${t.message}")
             }
         })

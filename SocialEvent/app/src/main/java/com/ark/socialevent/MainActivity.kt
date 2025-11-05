@@ -34,6 +34,7 @@ class MainActivity : ComponentActivity() {
                         onNavigateToLogin = { currentScreen = "login" }
                     )
                     "main" -> MainScreen(
+                        userRepository = userRepo, // Передаем репозиторий
                         onLogout = { currentScreen = "login" }
                     )
                 }

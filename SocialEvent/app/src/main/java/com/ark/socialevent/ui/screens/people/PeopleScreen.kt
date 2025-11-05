@@ -11,15 +11,25 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.ark.socialevent.network.UserProfile
+import com.ark.socialevent.network.UserRepository
 
 @Composable
-fun PeopleScreen() {
-    // Временные тестовые данные
-    val testUsers = listOf(
-        TestUser(1, "user1@test.com", "Иван", "Иванов", "Мужской", 25, "+7 (123) 456-78-90"),
-        TestUser(2, "user2@test.com", "Мария", "Петрова", "Женский", 22, "+7 (987) 654-32-10"),
-        TestUser(3, "user3@test.com", "Алексей", "Сидоров", "Мужской", 30, "+7 (111) 222-33-44")
-    )
+fun PeopleScreen(userRepository: UserRepository) {
+    var users by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        userRepository.getAllProfiles { usersList, error ->
+            isLoading = false
+            if (error != null) {
+                errorMessage = error
+            } else {
+                users = usersList ?: emptyList()
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -33,28 +43,61 @@ fun PeopleScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        LazyColumn {
-            items(testUsers) { user ->
-                UserCard(user = user)
-                Spacer(modifier = Modifier.height(8.dp))
+        if (isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else if (errorMessage != null) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        errorMessage ?: "Ошибка загрузки",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(onClick = {
+                        isLoading = true
+                        errorMessage = null
+                        userRepository.getAllProfiles { usersList, error ->
+                            isLoading = false
+                            if (error != null) {
+                                errorMessage = error
+                            } else {
+                                users = usersList ?: emptyList()
+                            }
+                        }
+                    }) {
+                        Text("Повторить")
+                    }
+                }
+            }
+        } else if (users.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Пользователи не найдены")
+            }
+        } else {
+            LazyColumn {
+                items(users) { user ->
+                    UserCard(user = user)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
             }
         }
     }
 }
 
-// Временный класс для теста
-data class TestUser(
-    val id: Int,
-    val email: String,
-    val firstName: String,
-    val lastName: String,
-    val gender: String,
-    val age: Int,
-    val phone: String
-)
-
 @Composable
-fun UserCard(user: TestUser) {
+fun UserCard(user: UserProfile) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -82,7 +125,12 @@ fun UserCard(user: TestUser) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Возраст: ${user.age}",
+                    text = "Возраст: ${user.age} • ${user.gender}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = user.phone,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

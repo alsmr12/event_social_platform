@@ -46,7 +46,7 @@ import com.ark.socialevent.ui.screens.profile.ProfileScreen
 import com.ark.socialevent.ui.screens.friends.FriendsScreen
 import com.ark.socialevent.ui.screens.subscriptions.SubscriptionsScreen
 import kotlinx.coroutines.launch
-
+import com.ark.socialevent.network.UserRepository
 sealed class DrawerScreens(
     val route: String,
     val title: String,
@@ -65,6 +65,7 @@ sealed class DrawerScreens(
 @Composable
 fun MainScreen(
     onLogout: () -> Unit,
+    userRepository: UserRepository
 
 ) {
     var currentScreen by remember { mutableStateOf<DrawerScreens>(DrawerScreens.Home) }
@@ -150,7 +151,7 @@ fun MainScreen(
                 when (currentScreen) {
                     DrawerScreens.Home -> HomeScreen()
                     DrawerScreens.Events -> EventsScreen()
-                    DrawerScreens.People -> PeopleScreen()
+                    DrawerScreens.People -> PeopleScreen(userRepository = userRepository)
                     DrawerScreens.Profile -> ProfileScreen()
                     DrawerScreens.Friends -> FriendsScreen()
                     DrawerScreens.Subscriptions -> SubscriptionsScreen()
