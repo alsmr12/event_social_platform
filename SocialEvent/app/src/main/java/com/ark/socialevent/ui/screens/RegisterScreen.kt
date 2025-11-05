@@ -41,6 +41,34 @@ fun RegisterScreen(
     val genders = listOf("Мужской", "Женский")
     var genderExpanded by remember { mutableStateOf(false) }
 
+    // Функция для вычисления возраста из даты рождения
+    fun calculateAge(birthday: String): Int {
+        return try {
+            val parts = birthday.split("/")
+            if (parts.size != 3) return 0
+
+            val day = parts[0].toInt()
+            val month = parts[1].toInt() - 1 // Calendar месяцы с 0
+            val year = parts[2].toInt()
+
+            val birthDate = Calendar.getInstance().apply {
+                set(year, month, day)
+            }
+            val today = Calendar.getInstance()
+
+            var age = today.get(Calendar.YEAR) - birthDate.get(Calendar.YEAR)
+
+            // Проверяем, был ли уже день рождения в этом году
+            if (today.get(Calendar.DAY_OF_YEAR) < birthDate.get(Calendar.DAY_OF_YEAR)) {
+                age--
+            }
+
+            age
+        } catch (e: Exception) {
+            0
+        }
+    }
+
     val calendar = Calendar.getInstance()
     val datePicker = DatePickerDialog(
         context,
@@ -51,7 +79,10 @@ fun RegisterScreen(
         calendar.get(Calendar.YEAR),
         calendar.get(Calendar.MONTH),
         calendar.get(Calendar.DAY_OF_MONTH)
-    )
+    ).apply {
+        // Устанавливаем максимальную дату - сегодня
+        datePicker?.maxDate = calendar.timeInMillis
+    }
 
     Column(
         modifier = Modifier
@@ -254,6 +285,15 @@ fun RegisterScreen(
         // Кнопка создания профиля
         Button(
             onClick = {
+                // Сброс ошибок
+                firstNameError = ""
+                lastNameError = ""
+                emailError = ""
+                passwordError = ""
+                genderError = ""
+                birthdayError = ""
+                phoneError = ""
+
                 // Проверки
                 var hasError = false
 
@@ -265,7 +305,7 @@ fun RegisterScreen(
                     lastNameError = "Введите фамилию"
                     hasError = true
                 }
-                if (!email.contains("@")) {
+                if (!email.contains("@") || !email.contains(".")) {
                     emailError = "Неверный формат email"
                     hasError = true
                 }
@@ -281,15 +321,41 @@ fun RegisterScreen(
                     birthdayError = "Выберите дату рождения"
                     hasError = true
                 }
-                if (!Regex("""\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}""").matches(phone)) {
-                    phoneError = "Введите корректный номер телефона"
+
+                // Проверка формата телефона
+                val phoneRegex = Regex("""\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}""")
+                if (!phoneRegex.matches(phone)) {
+                    phoneError = "Введите корректный номер телефона в формате +7 (xxx) xxx-xx-xx"
                     hasError = true
                 }
 
                 if (!hasError) {
+                    // ВЫЧИСЛЯЕМ ВОЗРАСТ из даты рождения
+                    val age = calculateAge(birthday)
+
+                    // Проверяем что возраст корректен
+                    if (age < 14) {
+                        birthdayError = "Возраст должен быть не менее 14 лет"
+                        return@Button
+                    }
+                    if (age > 100) {
+                        birthdayError = "Возраст должен быть не более 100 лет"
+                        return@Button
+                    }
+
+                    // ОТЛАДОЧНАЯ ИНФОРМАЦИЯ
+                    android.util.Log.d("RegisterScreen", "Отправка данных:")
+                    android.util.Log.d("RegisterScreen", "Имя: $firstName")
+                    android.util.Log.d("RegisterScreen", "Фамилия: $lastName")
+                    android.util.Log.d("RegisterScreen", "Email: $email")
+                    android.util.Log.d("RegisterScreen", "Пароль: ${password.length} символов")
+                    android.util.Log.d("RegisterScreen", "Пол: $gender")
+                    android.util.Log.d("RegisterScreen", "Возраст: $age")
+                    android.util.Log.d("RegisterScreen", "Телефон: $phone")
+
                     userRepo.register(
                         email, password, firstName, lastName, gender,
-                        0, // сервер обрабатывает дату рождения
+                        age, // ВОТ ТУТ ПЕРЕДАЕМ ВЫЧИСЛЕННЫЙ ВОЗРАСТ, а не 0
                         phone
                     ) { success, msg ->
                         if (success) {

@@ -12,7 +12,7 @@ class UserRepository {
 
     init {
         val retrofit = Retrofit.Builder()
-            .baseUrl(ApiClient.BASE_URL)
+            .baseUrl("http://10.0.2.2:8080/")
             .addConverterFactory(GsonConverterFactory.create())
             .build()
 
@@ -30,16 +30,34 @@ class UserRepository {
         phone: String,
         callback: (Boolean, String?) -> Unit
     ) {
-        val request = RegisterRequest(email, password, firstName, lastName, gender, age, phone)
-        api.register(request).enqueue(object : Callback<ApiResponse<Unit>> {
-            override fun onResponse(call: Call<ApiResponse<Unit>>, response: Response<ApiResponse<Unit>>) {
-                val body = response.body()
-                callback(body?.success == true, body?.message)
+        val request = RegisterRequest(firstName, lastName, email, password, gender, age, phone)
+        api.register(request).enqueue(object : Callback<RegisterResponse> {
+            override fun onResponse(call: Call<RegisterResponse>, response: Response<RegisterResponse>) {
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        Log.d("UserRepository", "Register successful")
+                        callback(true, body.message ?: "Регистрация успешна")
+                    } else {
+                        val errorMsg = body?.message ?: "Неизвестная ошибка регистрации"
+                        Log.e("UserRepository", "Register failed: $errorMsg")
+                        callback(false, errorMsg)
+                    }
+                } else {
+                    val errorMsg = when (response.code()) {
+                        400 -> "Некорректные данные"
+                        409 -> "Пользователь с таким email уже существует"
+                        500 -> "Ошибка сервера"
+                        else -> "Ошибка: ${response.code()}"
+                    }
+                    Log.e("UserRepository", "Register HTTP error: ${response.code()}")
+                    callback(false, errorMsg)
+                }
             }
 
-            override fun onFailure(call: Call<ApiResponse<Unit>>, t: Throwable) {
-                Log.e("UserRepository", "Register failed: ${t.message}")
-                callback(false, t.message)
+            override fun onFailure(call: Call<RegisterResponse>, t: Throwable) {
+                Log.e("UserRepository", "Register network failed: ${t.message}")
+                callback(false, "Ошибка сети: ${t.message}")
             }
         })
     }
@@ -47,36 +65,61 @@ class UserRepository {
     // Логин пользователя
     fun login(email: String, password: String, callback: (Boolean, String?) -> Unit) {
         val request = LoginRequest(email, password)
-        api.login(request).enqueue(object : Callback<ApiResponse<Unit>> {
-            override fun onResponse(call: Call<ApiResponse<Unit>>, response: Response<ApiResponse<Unit>>) {
-                val body = response.body()
-                callback(body?.success == true, body?.message)
+        api.login(request).enqueue(object : Callback<LoginResponse> {
+            override fun onResponse(call: Call<LoginResponse>, response: Response<LoginResponse>) {
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        Log.d("UserRepository", "Login successful")
+                        callback(true, body.message ?: "Вход выполнен")
+                    } else {
+                        val errorMsg = body?.message ?: "Неверный email или пароль"
+                        Log.e("UserRepository", "Login failed: $errorMsg")
+                        callback(false, errorMsg)
+                    }
+                } else {
+                    val errorMsg = when (response.code()) {
+                        400 -> "Некорректные данные"
+                        401 -> "Неверный email или пароль"
+                        500 -> "Ошибка сервера"
+                        else -> "Ошибка: ${response.code()}"
+                    }
+                    Log.e("UserRepository", "Login HTTP error: ${response.code()}")
+                    callback(false, errorMsg)
+                }
             }
 
-            override fun onFailure(call: Call<ApiResponse<Unit>>, t: Throwable) {
-                Log.e("UserRepository", "Login failed: ${t.message}")
-                callback(false, t.message)
+            override fun onFailure(call: Call<LoginResponse>, t: Throwable) {
+                Log.e("UserRepository", "Login network failed: ${t.message}")
+                callback(false, "Ошибка сети: ${t.message}")
             }
         })
     }
 
-    // Получение профиля текущего пользователя
-    fun getProfile(callback: (ProfileResponse?) -> Unit) {
-        api.getProfile().enqueue(object : Callback<ApiResponse<ProfileResponse>> {
+    // Получение профиля текущего пользователя - ИСПРАВЛЕНО
+    fun getProfile(callback: (UserProfile?) -> Unit) {
+        api.getProfile().enqueue(object : Callback<ProfileResponse> {
             override fun onResponse(
-                call: Call<ApiResponse<ProfileResponse>>,
-                response: Response<ApiResponse<ProfileResponse>>
+                call: Call<ProfileResponse>,
+                response: Response<ProfileResponse>
             ) {
-                val body = response.body()
-                if (body?.success == true) {
-                    callback(body.data)
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null) {
+                        Log.d("UserRepository", "Get profile successful")
+                        callback(body.user) // Используем body.user вместо body.data
+                    } else {
+                        Log.e("UserRepository", "Get profile: empty body")
+                        callback(null)
+                    }
                 } else {
+                    Log.e("UserRepository", "Get profile HTTP error: ${response.code()}")
                     callback(null)
                 }
             }
 
-            override fun onFailure(call: Call<ApiResponse<ProfileResponse>>, t: Throwable) {
-                Log.e("UserRepository", "Get profile failed: ${t.message}")
+            override fun onFailure(call: Call<ProfileResponse>, t: Throwable) {
+                Log.e("UserRepository", "Get profile network failed: ${t.message}")
                 callback(null)
             }
         })

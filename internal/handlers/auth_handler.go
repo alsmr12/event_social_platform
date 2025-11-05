@@ -208,55 +208,64 @@ func (h *AuthHandler) ProfileJSON(c *gin.Context) {
 }
 // RegisterJSON — метод для Android/JSON регистрации
 func (h *AuthHandler) RegisterJSON(c *gin.Context) {
-	var req models.RegisterRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "Некорректные данные регистрации",
-		})
-		return
-	}
+    var req models.RegisterRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "success": false,
+            "message": "Некорректные данные регистрации",
+        })
+        return
+    }
 
-	// Проверяем, есть ли уже пользователь с таким email
-	existingUser, _ := h.userRepo.GetUserByEmail(req.Email)
-	if existingUser != nil {
-		c.JSON(http.StatusConflict, gin.H{
-			"success": false,
-			"message": "Пользователь с таким email уже существует",
-		})
-		return
-	}
+    // Проверяем, есть ли уже пользователь с таким email
+    existingUser, _ := h.userRepo.GetUserByEmail(req.Email)
+    if existingUser != nil {
+        c.JSON(http.StatusConflict, gin.H{
+            "success": false,
+            "message": "Пользователь с таким email уже существует",
+        })
+        return
+    }
 
-	// Создаём нового пользователя
-	user := &models.User{
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
-		Email:     req.Email,
-		Password:  req.Password, // лучше хэшировать пароль в UserRepository
-		Gender:    req.Gender,
-		Age:       req.Age,
-		Phone:     req.Phone,
-	}
+    // Создаём нового пользователя
+    user := &models.User{
+        FirstName: req.FirstName,
+        LastName:  req.LastName,
+        Email:     req.Email,
+        Password:  req.Password, // пока plain text
+        Gender:    req.Gender,
+        Age:       req.Age,
+        Phone:     req.Phone,
+    }
 
-	if err := h.userRepo.CreateUser(user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "Ошибка создания пользователя",
-		})
-		return
-	}
+    // ХЕШИРУЕМ ПАРОЛЬ перед сохранением
+    if err := user.HashPassword(req.Password); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "success": false,
+            "message": "Ошибка обработки пароля",
+        })
+        return
+    }
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Пользователь успешно создан",
-		"user": gin.H{
-			"id":         user.ID,
-			"email":      user.Email,
-			"first_name": user.FirstName,
-			"last_name":  user.LastName,
-			"gender":     user.Gender,
-			"age":        user.Age,
-			"phone":      user.Phone,
-		},
-	})
+    if err := h.userRepo.CreateUser(user); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "success": false,
+            "message": "Ошибка создания пользователя",
+        })
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "message": "Пользователь успешно создан",
+        "user": gin.H{
+            "id":         user.ID,
+            "email":      user.Email,
+            "first_name": user.FirstName,
+            "last_name":  user.LastName,
+            "gender":     user.Gender,
+            "age":        user.Age,
+            "phone":      user.Phone,
+        },
+    })
 }
