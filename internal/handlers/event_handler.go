@@ -11,16 +11,18 @@ import (
 )
 
 type EventHandler struct {
-	eventRepo    *repository.EventRepository
-	userRepo     *repository.UserRepository
-	eventSubRepo *repository.EventSubscriptionRepository
+	eventRepo       *repository.EventRepository
+	userRepo        *repository.UserRepository
+	eventSubRepo    *repository.EventSubscriptionRepository
+	achievementRepo *repository.AchievementRepository
 }
 
-func NewEventHandler(eventRepo *repository.EventRepository, userRepo *repository.UserRepository, eventSubRepo *repository.EventSubscriptionRepository) *EventHandler {
+func NewEventHandler(eventRepo *repository.EventRepository, userRepo *repository.UserRepository, eventSubRepo *repository.EventSubscriptionRepository, achievementRepo *repository.AchievementRepository) *EventHandler {
 	return &EventHandler{
-		eventRepo:    eventRepo,
-		userRepo:     userRepo,
-		eventSubRepo: eventSubRepo,
+		eventRepo:       eventRepo,
+		userRepo:        userRepo,
+		eventSubRepo:    eventSubRepo,
+		achievementRepo: achievementRepo,
 	}
 }
 
@@ -88,7 +90,9 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 		})
 		return
 	}
-
+	if h.achievementRepo != nil {
+		go h.achievementRepo.UpdateAchievementsOnEventCreated(currentUser.ID)
+	}
 	c.Redirect(http.StatusSeeOther, "/events")
 }
 
@@ -171,7 +175,6 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 		})
 		return
 	}
-
 	event, err := h.eventRepo.GetEventByID(uint(id))
 	if err != nil {
 		c.HTML(http.StatusNotFound, "base.html", gin.H{

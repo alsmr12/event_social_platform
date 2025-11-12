@@ -12,14 +12,16 @@ import (
 )
 
 type EventSubscriptionHandler struct {
-	eventSubRepo *repository.EventSubscriptionRepository
-	eventRepo    *repository.EventRepository
+	eventSubRepo    *repository.EventSubscriptionRepository
+	eventRepo       *repository.EventRepository
+	achievementRepo *repository.AchievementRepository
 }
 
-func NewEventSubscriptionHandler(eventSubRepo *repository.EventSubscriptionRepository, eventRepo *repository.EventRepository) *EventSubscriptionHandler {
+func NewEventSubscriptionHandler(eventSubRepo *repository.EventSubscriptionRepository, eventRepo *repository.EventRepository, achievementRepo *repository.AchievementRepository) *EventSubscriptionHandler {
 	return &EventSubscriptionHandler{
-		eventSubRepo: eventSubRepo,
-		eventRepo:    eventRepo,
+		eventSubRepo:    eventSubRepo,
+		eventRepo:       eventRepo,
+		achievementRepo: achievementRepo,
 	}
 }
 
@@ -64,6 +66,10 @@ func (h *EventSubscriptionHandler) Subscribe(c *gin.Context) {
 			message = "?message=error"
 		} else {
 			message = "?message=subscribed"
+			// Обновляем достижения при подписке на событие
+			if h.achievementRepo != nil {
+				go h.achievementRepo.UpdateAchievementsOnEventSubscribed(currentUser.ID)
+			}
 		}
 	}
 

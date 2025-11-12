@@ -28,6 +28,13 @@ func (r *AchievementRepository) GetAllAchievements() ([]*models.Achievement, err
 	return achievements, err
 }
 
+// Получить достижения по типу
+func (r *AchievementRepository) GetAchievementsByType(achievementType string) ([]*models.Achievement, error) {
+	var achievements []*models.Achievement
+	err := r.db.Where("type = ?", achievementType).Find(&achievements).Error
+	return achievements, err
+}
+
 // Получить достижения пользователя
 func (r *AchievementRepository) GetUserAchievements(userID uint) ([]*models.UserAchievement, error) {
 	var userAchievements []*models.UserAchievement
@@ -97,6 +104,144 @@ func (r *AchievementRepository) UpdateAchievementProgress(userID, achievementID 
 	}
 
 	return r.db.Save(&userAchievement).Error
+}
+
+// REAL-TIME МЕТОДЫ ДЛЯ ОБНОВЛЕНИЯ ДОСТИЖЕНИЙ
+
+// UpdateAchievementsOnEventCreated - обновить достижения при создании события
+func (r *AchievementRepository) UpdateAchievementsOnEventCreated(userID uint) error {
+	achievements, err := r.GetAchievementsByType("event_creator")
+	if err != nil {
+		return err
+	}
+
+	currentProgress, err := r.getEventCreationCount(userID)
+	if err != nil {
+		return err
+	}
+
+	for _, achievement := range achievements {
+		if err := r.UpdateAchievementProgress(userID, achievement.ID, currentProgress); err != nil {
+			log.Printf("Error updating achievement %d for user %d: %v", achievement.ID, userID, err)
+		}
+	}
+	return nil
+}
+
+// UpdateAchievementsOnEventSubscribed - при подписке на событие
+func (r *AchievementRepository) UpdateAchievementsOnEventSubscribed(userID uint) error {
+	achievements, err := r.GetAchievementsByType("event_subscriber")
+	if err != nil {
+		return err
+	}
+
+	currentProgress, err := r.getEventSubscriptionCount(userID)
+	if err != nil {
+		return err
+	}
+
+	for _, achievement := range achievements {
+		if err := r.UpdateAchievementProgress(userID, achievement.ID, currentProgress); err != nil {
+			log.Printf("Error updating achievement %d for user %d: %v", achievement.ID, userID, err)
+		}
+	}
+	return nil
+}
+
+// UpdateAchievementsOnEventParticipated - при участии в событии (после окончания)
+func (r *AchievementRepository) UpdateAchievementsOnEventParticipated(userID uint) error {
+	achievements, err := r.GetAchievementsByType("event_participant")
+	if err != nil {
+		return err
+	}
+
+	currentProgress, err := r.getEventParticipationCount(userID)
+	if err != nil {
+		return err
+	}
+
+	for _, achievement := range achievements {
+		if err := r.UpdateAchievementProgress(userID, achievement.ID, currentProgress); err != nil {
+			log.Printf("Error updating achievement %d for user %d: %v", achievement.ID, userID, err)
+		}
+	}
+	return nil
+}
+
+// UpdateAchievementsOnUserSubscribed - при подписке на пользователя
+func (r *AchievementRepository) UpdateAchievementsOnUserSubscribed(userID uint) error {
+	achievements, err := r.GetAchievementsByType("social_subscription")
+	if err != nil {
+		return err
+	}
+
+	currentProgress, err := r.getUserSubscriptionCount(userID)
+	if err != nil {
+		return err
+	}
+
+	for _, achievement := range achievements {
+		if err := r.UpdateAchievementProgress(userID, achievement.ID, currentProgress); err != nil {
+			log.Printf("Error updating achievement %d for user %d: %v", achievement.ID, userID, err)
+		}
+	}
+	return nil
+}
+
+// UpdateAchievementsOnFriendshipAdded - при добавлении друга
+func (r *AchievementRepository) UpdateAchievementsOnFriendshipAdded(userID uint) error {
+	achievements, err := r.GetAchievementsByType("friends")
+	if err != nil {
+		return err
+	}
+
+	currentProgress, err := r.getFriendsCount(userID)
+	if err != nil {
+		return err
+	}
+
+	for _, achievement := range achievements {
+		if err := r.UpdateAchievementProgress(userID, achievement.ID, currentProgress); err != nil {
+			log.Printf("Error updating achievement %d for user %d: %v", achievement.ID, userID, err)
+		}
+	}
+	return nil
+}
+
+// Вспомогательные методы для получения текущих счетчиков
+func (r *AchievementRepository) getEventCreationCount(userID uint) (int, error) {
+	var count int64
+	err := r.db.Model(&models.Event{}).Where("creator_id = ?", userID).Count(&count).Error
+	return int(count), err
+}
+
+func (r *AchievementRepository) getEventSubscriptionCount(userID uint) (int, error) {
+	var count int64
+	err := r.db.Model(&models.EventSubscription{}).Where("user_id = ?", userID).Count(&count).Error
+	return int(count), err
+}
+
+func (r *AchievementRepository) getEventParticipationCount(userID uint) (int, error) {
+	var count int64
+	err := r.db.Model(&models.EventSubscription{}).
+		Joins("JOIN events ON event_subscriptions.event_id = events.id").
+		Where("event_subscriptions.user_id = ? AND events.date_time < ?", userID, time.Now()).
+		Count(&count).Error
+	return int(count), err
+}
+
+func (r *AchievementRepository) getUserSubscriptionCount(userID uint) (int, error) {
+	var count int64
+	err := r.db.Model(&models.Subscription{}).Where("follower_id = ?", userID).Count(&count).Error
+	return int(count), err
+}
+
+func (r *AchievementRepository) getFriendsCount(userID uint) (int, error) {
+	var count int64
+	err := r.db.Model(&models.Friendship{}).
+		Where("(user_id = ? OR friend_id = ?) AND status = ?", userID, userID, "accepted").
+		Count(&count).Error
+	return int(count), err
 }
 
 // Получить рейтинг пользователей

@@ -10,14 +10,16 @@ import (
 )
 
 type FriendshipHandler struct {
-	friendshipRepo *repository.FriendshipRepository
-	userRepo       *repository.UserRepository
+	friendshipRepo  *repository.FriendshipRepository
+	userRepo        *repository.UserRepository
+	achievementRepo *repository.AchievementRepository
 }
 
-func NewFriendshipHandler(friendshipRepo *repository.FriendshipRepository, userRepo *repository.UserRepository) *FriendshipHandler {
+func NewFriendshipHandler(friendshipRepo *repository.FriendshipRepository, userRepo *repository.UserRepository, achievementRepo *repository.AchievementRepository) *FriendshipHandler {
 	return &FriendshipHandler{
-		friendshipRepo: friendshipRepo,
-		userRepo:       userRepo,
+		friendshipRepo:  friendshipRepo,
+		userRepo:        userRepo,
+		achievementRepo: achievementRepo,
 	}
 }
 
@@ -137,7 +139,11 @@ func (h *FriendshipHandler) AcceptFriendRequest(c *gin.Context) {
 		})
 		return
 	}
-
+	//  Обновляем достижения при добавлении друга (для обоих пользователей)
+	if h.achievementRepo != nil {
+		go h.achievementRepo.UpdateAchievementsOnFriendshipAdded(currentUser.ID)
+		go h.achievementRepo.UpdateAchievementsOnFriendshipAdded(uint(friendID))
+	}
 	// Возвращаем на предыдущую страницу
 	referer := c.Request.Header.Get("Referer")
 	if referer == "" {
