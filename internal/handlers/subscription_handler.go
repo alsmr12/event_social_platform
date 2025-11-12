@@ -12,12 +12,14 @@ import (
 type SubscriptionHandler struct {
 	subscriptionRepo *repository.SubscriptionRepository
 	userRepo         *repository.UserRepository
+	achievementRepo  *repository.AchievementRepository
 }
 
-func NewSubscriptionHandler(subscriptionRepo *repository.SubscriptionRepository, userRepo *repository.UserRepository) *SubscriptionHandler {
+func NewSubscriptionHandler(subscriptionRepo *repository.SubscriptionRepository, userRepo *repository.UserRepository, achievementRepo *repository.AchievementRepository) *SubscriptionHandler {
 	return &SubscriptionHandler{
 		subscriptionRepo: subscriptionRepo,
 		userRepo:         userRepo,
+		achievementRepo:  achievementRepo,
 	}
 }
 
@@ -99,7 +101,10 @@ func (h *SubscriptionHandler) Subscribe(c *gin.Context) {
 		})
 		return
 	}
-
+	// Обновляем достижения при подписке на пользователя
+	if h.achievementRepo != nil {
+		go h.achievementRepo.UpdateAchievementsOnUserSubscribed(currentUser.ID)
+	}
 	// Возвращаем на предыдущую страницу
 	referer := c.Request.Header.Get("Referer")
 	if referer == "" {

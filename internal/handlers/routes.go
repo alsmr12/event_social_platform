@@ -21,13 +21,6 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	newsRepo := repository.NewNewsRepository(db)
 	achievementRepo := repository.NewAchievementRepository(db)
 
-	// Очистить старые награды
-	if err := achievementRepo.ClearAchievements(); err != nil {
-		log.Printf("Warning: Could not clear achievements: %v", err)
-	} else {
-		log.Println("Achievements cleared successfully")
-	}
-
 	// Инициализируем достижения
 	if err := achievementRepo.InitializeAchievements(); err != nil {
 		log.Printf("Warning: Could not initialize achievements: %v", err)
@@ -44,12 +37,12 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 
 	// Инициализируем обработчики
 	userHandler := NewUserHandler(userRepo)
-	eventHandler := NewEventHandler(eventRepo, userRepo, eventSubRepo)
+	eventHandler := NewEventHandler(eventRepo, userRepo, eventSubRepo, achievementRepo)
 	authHandler := NewAuthHandler(userRepo, sessionRepo)
 	wallHandler := NewWallHandler(wallRepo, userRepo)
-	subscriptionHandler := NewSubscriptionHandler(subscriptionRepo, userRepo)
-	friendshipHandler := NewFriendshipHandler(friendshipRepo, userRepo)
-	eventSubHandler := NewEventSubscriptionHandler(eventSubRepo, eventRepo)
+	subscriptionHandler := NewSubscriptionHandler(subscriptionRepo, userRepo, achievementRepo)
+	friendshipHandler := NewFriendshipHandler(friendshipRepo, userRepo, achievementRepo)
+	eventSubHandler := NewEventSubscriptionHandler(eventSubRepo, eventRepo, achievementRepo)
 	socialHandler := NewSocialHandler(socialRepo, userRepo)
 	newsHandler := NewNewsHandler(newsRepo)
 	achievementHandler := NewAchievementHandler(achievementRepo)
