@@ -2,6 +2,10 @@ package com.ark.socialevent.network
 
 import okhttp3.JavaNetCookieJar
 import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import com.google.gson.GsonBuilder
 import java.net.CookieManager
 import java.net.CookiePolicy
 
@@ -11,11 +15,34 @@ object ApiClient {
         setCookiePolicy(CookiePolicy.ACCEPT_ALL)
     }
 
+    // Добавляем logging interceptor для отладки
+    private val loggingInterceptor = HttpLoggingInterceptor().apply {
+        level = HttpLoggingInterceptor.Level.BODY
+    }
+
     val client: OkHttpClient by lazy {
         OkHttpClient.Builder()
-            .cookieJar(JavaNetCookieJar(cookieManager)) // поддержка сессий через куки
+            .cookieJar(JavaNetCookieJar(cookieManager))
+            .addInterceptor(loggingInterceptor) // Добавляем логирование
             .build()
     }
 
-    const val BASE_URL = "http://10.0.2.2:8080" // эмулятор → localhost
+    // Создаем Gson с разрешением нестрогого JSON
+    private val gson = GsonBuilder()
+        .setLenient() // Разрешаем нестрогий JSON
+        .create()
+
+    val retrofit: Retrofit by lazy {
+        Retrofit.Builder()
+            .baseUrl("http://10.0.2.2:8080/")
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+    }
+
+    val apiService: ApiService by lazy {
+        retrofit.create(ApiService::class.java)
+    }
+
+    const val BASE_URL = "http://10.0.2.2:8080"
 }

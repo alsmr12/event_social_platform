@@ -2,9 +2,7 @@ package com.ark.socialevent.network
 
 import com.google.gson.annotations.SerializedName
 import retrofit2.Call
-import retrofit2.http.Body
-import retrofit2.http.GET
-import retrofit2.http.POST
+import retrofit2.http.*
 
 // Запрос на регистрацию
 data class RegisterRequest(
@@ -65,6 +63,54 @@ data class ProfilesResponse(
     val message: String? = null
 )
 
+// ========== FRIENDS MODELS ==========
+
+// Модель друга
+data class Friend(
+    val id: Int,
+    @SerializedName("first_name") val firstName: String,
+    @SerializedName("last_name") val lastName: String,
+    val email: String,
+    val gender: String,
+    val age: Int,
+    val phone: String
+)
+
+// Модель заявки в друзья
+data class FriendRequest(
+    val id: Int,
+    val user: UserProfile,
+    val friend: UserProfile,
+    val status: String,
+    @SerializedName("created_at") val createdAt: String
+)
+
+// Ответ для списка друзей
+data class FriendsResponse(
+    val success: Boolean,
+    val friends: List<Friend>? = null,
+    val message: String? = null
+)
+
+// Ответ для заявок в друзья
+data class FriendRequestsResponse(
+    val success: Boolean,
+    val requests: List<FriendRequest>? = null,
+    val message: String? = null
+)
+
+// Ответ для статуса дружбы
+data class FriendshipStatusResponse(
+    val success: Boolean,
+    val status: String? = null,
+    val message: String? = null
+)
+
+// Базовый ответ для операций с друзьями
+data class FriendOperationResponse(
+    val success: Boolean,
+    val message: String? = null
+)
 
 interface ApiService {
     @POST("/api/register")
@@ -75,6 +121,33 @@ interface ApiService {
 
     @GET("/api/profile")
     fun getProfile(): Call<ProfileResponse>
+
     @GET("/api/profiles")
-    fun getAllProfiles(): Call<ProfilesResponse>  // Используем новый класс
+    fun getAllProfiles(): Call<ProfilesResponse>
+
+    // ========== FRIENDS ENDPOINTS ==========
+
+    @GET("/api/friends")
+    fun getFriends(): Call<FriendsResponse>
+
+    @GET("/api/friends/pending")
+    fun getPendingRequests(): Call<FriendRequestsResponse>
+
+    @GET("/api/friends/sent")
+    fun getSentRequests(): Call<FriendRequestsResponse>
+
+    @GET("/api/friends/status/{id}")
+    fun getFriendshipStatus(@Path("id") userId: Int): Call<FriendshipStatusResponse>
+
+    @POST("/api/friends/add/{id}")
+    fun sendFriendRequest(@Path("id") userId: Int): Call<FriendOperationResponse>
+
+    @POST("/api/friends/accept/{id}")
+    fun acceptFriendRequest(@Path("id") userId: Int): Call<FriendOperationResponse>
+
+    @POST("/api/friends/reject/{id}")
+    fun rejectFriendRequest(@Path("id") userId: Int): Call<FriendOperationResponse>
+
+    @POST("/api/friends/remove/{id}")
+    fun removeFriend(@Path("id") userId: Int): Call<FriendOperationResponse>
 }

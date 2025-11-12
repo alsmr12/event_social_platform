@@ -1,4 +1,3 @@
-// app/src/main/java/com/ark/socialevent/ui/screens/profile/EditProfileScreen.kt
 package com.ark.socialevent.ui.screens.profile
 
 import androidx.compose.foundation.layout.*

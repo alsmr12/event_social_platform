@@ -153,7 +153,7 @@ fun MainScreen(
                     DrawerScreens.Events -> EventsScreen()
                     DrawerScreens.People -> PeopleScreen(userRepository = userRepository)
                     DrawerScreens.Profile -> ProfileScreen()
-                    DrawerScreens.Friends -> FriendsScreen()
+                    DrawerScreens.Friends -> FriendsScreen(userRepository = userRepository)
                     DrawerScreens.Subscriptions -> SubscriptionsScreen()
                     DrawerScreens.Logout -> HomeScreen() // fallback
                 }

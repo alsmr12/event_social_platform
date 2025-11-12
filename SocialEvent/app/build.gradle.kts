@@ -45,7 +45,7 @@ dependencies {
     implementation("androidx.compose.material3:material3:1.3.0")
     implementation("com.squareup.okhttp3:okhttp:4.11.0")
     implementation("com.squareup.okhttp3:okhttp-urlconnection:4.11.0")
-
+    implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
     // Compose BOM
     implementation(platform("androidx.compose:compose-bom:2024.02.02"))
     implementation("androidx.compose.ui:ui")
