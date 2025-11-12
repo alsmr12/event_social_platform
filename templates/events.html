@@ -14,6 +14,59 @@
 </div>
 {{end}}
 
+<!-- ФОРМА ФИЛЬТРАЦИИ -->
+<div class="card" style="margin-bottom: 20px; background: var(--bg-secondary);">
+    <h3 style="margin-bottom: 15px;">🔍 Фильтры событий</h3>
+    <form method="GET" action="/events" class="filter-form">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+            <!-- Фильтр по типу -->
+            <div>
+                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: var(--text-primary);">Тип события</label>
+                <select name="type" class="form-select">
+                    <option value="all" {{if eq .SelectedType "all"}}selected{{end}}>Все типы</option>
+                    {{range .EventTypes}}
+                    <option value="{{.}}" {{if eq $.SelectedType .}}selected{{end}}>
+                        {{if eq . "concert"}}Концерт
+                        {{else if eq . "lecture"}}Лекция
+                        {{else if eq . "sport"}}Спорт
+                        {{else if eq . "meeting"}}Встреча
+                        {{else if eq . "party"}}Вечеринка
+                        {{else if eq . "conference"}}Конференция
+                        {{else if eq . "exhibition"}}Выставка
+                        {{else if eq . "other"}}Другое
+                        {{else}}{{.}}{{end}}
+                    </option>
+                    {{end}}
+                </select>
+            </div>
+
+            <!-- Фильтр по дате "от" -->
+            <div>
+                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: var(--text-primary);">Дата с</label>
+                <input type="date" name="date_from" value="{{.DateFrom}}" class="form-input">
+            </div>
+
+            <!-- Фильтр по дате "до" -->
+            <div>
+                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: var(--text-primary);">Дата по</label>
+                <input type="date" name="date_to" value="{{.DateTo}}" class="form-input">
+            </div>
+
+            <!-- Фильтр по радиусу - ТЕКСТОВОЕ ПОЛЕ -->
+            <div>
+                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: var(--text-primary);">Радиус (км)</label>
+                <input type="number" name="radius" value="{{.SelectedRadius}}" class="form-input" placeholder="0" min="0" step="1">
+                <small style="color: var(--text-muted); font-size: 0.8rem;">0 = любой радиус</small>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <button type="submit" class="btn btn-primary">Применить фильтры</button>
+            <a href="/events?filter={{.TimeFilter}}" class="btn btn-outline">Сбросить фильтры</a>
+        </div>
+    </form>
+</div>
+
 <!-- Вкладки -->
 <div class="tabs" style="margin-bottom: 20px;">
     <button class="tab-btn {{if not .ShowPastEvents}}active{{end}}" onclick="switchTab('upcoming')">Предстоящие события</button>
@@ -23,6 +76,12 @@
 {{if .Events}}
 <div class="grid grid-2">
     {{range .Events}}
+    {{$distance := 0.0}}
+    {{if and .Latitude .Longitude}}
+    <!-- Вычисляем дистанцию динамически в шаблоне -->
+    {{$distance = call $.CalculateDistance $.UserLat $.UserLng .Latitude .Longitude}}
+    {{end}}
+
     <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
             <h3 style="margin: 0; color: var(--text-primary);">{{.Title}}</h3>
@@ -54,6 +113,7 @@
             <div><strong>👤 Организатор:</strong> {{.Creator.FirstName}} {{.Creator.LastName}}</div>
             {{if .MaxParticipants}}<div><strong>👥 Участников:</strong> до {{.MaxParticipants}} человек</div>{{end}}
             {{if .IsPrivate}}<div><strong>🔒 Приватное событие</strong></div>{{end}}
+            {{if and .Latitude .Longitude}}<div><strong>📏 Расстояние:</strong> {{printf "%.1f" $distance}} км</div>{{end}}
 
             <!-- Информация о подписчиках -->
             {{if .SubscribersCount}}
@@ -140,29 +200,82 @@
         border-bottom-color: var(--primary-color);
         font-weight: 600;
     }
+
+    .filter-form .form-input,
+    .filter-form .form-select {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        font-size: 0.9rem;
+    }
+
+    .filter-form .form-input:focus,
+    .filter-form .form-select:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+    }
 </style>
 
 <script>
     function switchTab(tab) {
-        if (tab === 'upcoming') {
-            window.location.href = '/events?filter=upcoming';
-        } else if (tab === 'past') {
-            window.location.href = '/events?filter=past';
-        }
+        const urlParams = new URLSearchParams(window.location.search);
+
+        // Сохраняем текущие параметры фильтрации
+        const type = urlParams.get('type') || 'all';
+        const dateFrom = urlParams.get('date_from') || '';
+        const dateTo = urlParams.get('date_to') || '';
+        const radius = urlParams.get('radius') || '0';
+
+        let newUrl = '/events?filter=' + tab;
+
+        // Добавляем параметры фильтрации
+        if (type !== 'all') newUrl += '&type=' + type;
+        if (dateFrom) newUrl += '&date_from=' + dateFrom;
+        if (dateTo) newUrl += '&date_to=' + dateTo;
+        if (radius !== '0') newUrl += '&radius=' + radius;
+
+        window.location.href = newUrl;
     }
 
     // Определяем активную вкладку на основе URL параметра
     document.addEventListener('DOMContentLoaded', function() {
         const urlParams = new URLSearchParams(window.location.search);
-        const filter = urlParams.get('filter');
+        const filter = urlParams.get('filter') || 'upcoming';
 
+        // Устанавливаем активную вкладку
+        const tabButtons = document.querySelectorAll('.tab-btn');
         if (filter === 'past') {
-            document.querySelectorAll('.tab-btn')[1].classList.add('active');
-            document.querySelectorAll('.tab-btn')[0].classList.remove('active');
+            tabButtons[1].classList.add('active');
+            tabButtons[0].classList.remove('active');
         } else {
-            document.querySelectorAll('.tab-btn')[0].classList.add('active');
-            document.querySelectorAll('.tab-btn')[1].classList.remove('active');
+            tabButtons[0].classList.add('active');
+            tabButtons[1].classList.remove('active');
         }
     });
+
+    // Функция для вычисления расстояния (копия Go функции на JavaScript)
+    function calculateDistance(lat1, lng1, lat2, lng2) {
+        const R = 6371; // Радиус Земли в км
+        const toRad = (degree) => degree * Math.PI / 180;
+
+        const lat1Rad = toRad(lat1);
+        const lng1Rad = toRad(lng1);
+        const lat2Rad = toRad(lat2);
+        const lng2Rad = toRad(lng2);
+
+        const dlat = lat2Rad - lat1Rad;
+        const dlng = lng2Rad - lng1Rad;
+
+        const a = Math.sin(dlat/2) * Math.sin(dlat/2) +
+            Math.cos(lat1Rad) * Math.cos(lat2Rad) *
+            Math.sin(dlng/2) * Math.sin(dlng/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+        return R * c;
+    }
 </script>
 {{end}}
