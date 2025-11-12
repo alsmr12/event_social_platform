@@ -1,0 +1,188 @@
+{{define "ratings_content"}}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h2>Рейтинг и награды</h2>
+    </div>
+
+    <!-- Вкладки -->
+    <div class="tabs" style="margin-bottom: 20px;">
+        <a href="/ratings" class="tab-btn {{if eq .NavActive "ratings"}}active{{end}}">Рейтинг</a>
+        <a href="/my-achievements" class="tab-btn {{if eq .NavActive "my_achievements"}}active{{end}}">Мои награды</a>
+    </div>
+
+    <!-- Поиск -->
+    <div style="margin-bottom: 20px;">
+        <form method="GET" action="/ratings" class="search-form">
+            <input type="text" name="search" value="{{.Search}}" placeholder="Поиск по имени..."
+                   style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 4px; width: 300px; color: var(--text-primary); background: var(--bg-primary);">
+            <button type="submit" class="btn btn-primary">Найти</button>
+            {{if .Search}}<a href="/ratings" class="btn btn-outline">Очистить</a>{{end}}
+        </form>
+    </div>
+
+    {{if .Ratings}}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Место</th>
+                <th>Пользователь</th>
+                <th>Очки</th>
+                <th>Награды</th>
+            </tr>
+            </thead>
+            <tbody>
+            {{range $index, $rating := .Ratings}}
+            <tr>
+                <td>
+                    <div class="rank-badge">
+                        {{if eq $index 0}}1
+                        {{else if eq $index 1}}2
+                        {{else if eq $index 2}}3
+                        {{else}}{{add $index 1}}{{end}}
+                    </div>
+                </td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary-color); display: flex; align-items: center; justify-content: center; color: var(--text-light); font-weight: bold;"
+                             class="user-initials"
+                             data-first="{{.first_name}}"
+                             data-last="{{.last_name}}">
+                            {{slice .first_name 0 1}}{{slice .last_name 0 1}}
+                        </div>
+                        <div>
+                            <strong>{{.first_name}} {{.last_name}}</strong>
+                            {{if eq .user_id $.CurrentUser.ID}}<span class="badge" style="background: var(--success-color); color: var(--text-light);">Вы</span>{{end}}
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span class="points">{{.points}}</span> очков
+                </td>
+                <td>
+                    <a href="/profile/{{.user_id}}" class="btn btn-outline btn-small">Профиль</a>
+                </td>
+            </tr>
+            {{end}}
+            </tbody>
+        </table>
+    </div>
+    {{else}}
+    <div class="empty-state">
+        <p>Пользователи не найдены.</p>
+        {{if .Search}}<a href="/ratings" class="btn btn-primary">Показать всех</a>{{end}}
+    </div>
+    {{end}}
+</div>
+
+<style>
+    .tabs {
+        display: flex;
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 1rem;
+    }
+
+    .tab-btn {
+        padding: 0.75rem 1.5rem;
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+        font-size: 1rem;
+        color: var(--text-muted);
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .tab-btn:hover {
+        color: var(--primary-color);
+        text-decoration: none;
+    }
+
+    .tab-btn.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+        font-weight: 600;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table th, .table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .table th {
+        background-color: var(--bg-secondary);
+        font-weight: 600;
+    }
+
+    .rank-badge {
+        font-size: 1.2em;
+        font-weight: bold;
+        text-align: center;
+        min-width: 40px;
+    }
+
+    .points {
+        font-size: 1.1em;
+        font-weight: bold;
+        color: var(--warning-color);
+    }
+
+    .search-form {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    @media (max-width: 768px) {
+        .search-form {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .search-form input {
+            width: 100% !important;
+        }
+
+        .tabs {
+            flex-direction: column;
+        }
+
+        .tab-btn {
+            text-align: center;
+        }
+    }
+</style>
+
+<script>
+    // Исправляем инициалы для кириллицы
+    document.addEventListener('DOMContentLoaded', function() {
+        const initialsElements = document.querySelectorAll('.user-initials');
+
+        initialsElements.forEach(element => {
+            const firstName = element.getAttribute('data-first');
+            const lastName = element.getAttribute('data-last');
+
+            if (firstName && lastName) {
+                // Берем первые символы (работает с UTF-8)
+                const firstInitial = firstName.charAt(0);
+                const lastInitial = lastName.charAt(0);
+                const initials = firstInitial + lastInitial;
+
+                element.textContent = initials;
+            }
+        });
+    });
+</script>
+{{end}}

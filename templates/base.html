@@ -224,6 +224,88 @@
             color: white;
         }
 
+        /* Выпадающие меню */
+        .dropdown {
+            position: relative;
+        }
+
+        .dropdown-toggle {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 12px 20px;
+            border-radius: var(--radius-lg);
+            transition: all 0.3s ease;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: inherit;
+            font-size: inherit;
+        }
+
+        .dropdown-toggle:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .dropdown-toggle::after {
+            content: '▼';
+            font-size: 0.7em;
+            margin-left: 4px;
+            transition: transform 0.3s ease;
+        }
+
+        .dropdown-toggle.active::after {
+            transform: rotate(180deg);
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            min-width: 200px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .dropdown-menu.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-item {
+            display: block;
+            padding: 12px 20px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-item:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .dropdown-item.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
         /* Переключатель темы - ПЕРВЫЙ в меню */
         .theme-toggle {
             background: none;
@@ -496,12 +578,6 @@
             font-size: 0.9em;
         }
 
-        .post-content {
-            margin-bottom: 20px;
-            line-height: 1.6;
-            color: var(--text-primary);
-        }
-
         .post-actions {
             display: flex;
             gap: 12px;
@@ -577,6 +653,21 @@
                 justify-content: center;
             }
 
+            .dropdown-menu {
+                position: static;
+                opacity: 1;
+                visibility: visible;
+                transform: none;
+                box-shadow: none;
+                border: none;
+                background: transparent;
+                display: none;
+            }
+
+            .dropdown-menu.show {
+                display: block;
+            }
+
             .form-row {
                 grid-template-columns: 1fr;
             }
@@ -633,17 +724,45 @@
                     <span class="theme-icon">🌙</span>
                 </button>
             </li>
-            <li><a href="/" class="{{if eq .NavActive "home"}}active{{end}}">🏠 Главная</a></li>
-            <li><a href="/events" class="{{if eq .NavActive "events"}}active{{end}}">📅 События</a></li>
-            <li><a href="/profiles" class="{{if eq .NavActive "profiles"}}active{{end}}">👥 Люди</a></li>
+
+            <!-- Главная страница -->
+            <li><a href="/" class="{{if eq .NavActive "home"}}active{{end}}">Главная</a></li>
+
+            <!-- Выпадающее меню: Основное -->
+            <li class="dropdown">
+                <button class="dropdown-toggle" id="mainDropdown">
+                    Основное
+                </button>
+                <div class="dropdown-menu" id="mainDropdownMenu">
+                    {{if .CurrentUser}}
+                    <a href="/news" class="dropdown-item {{if eq .NavActive "news"}}active{{end}}">Новости</a>
+                    {{end}}
+                    <a href="/profile" class="dropdown-item {{if eq .NavActive "my_profile"}}active{{end}}">Профиль</a>
+                    <a href="/events" class="dropdown-item {{if eq .NavActive "events"}}active{{end}}">События</a>
+                </div>
+            </li>
+
+            <!-- Выпадающее меню: Социальное -->
+            <li class="dropdown">
+                <button class="dropdown-toggle" id="socialDropdown">
+                    Социальное
+                </button>
+                <div class="dropdown-menu" id="socialDropdownMenu">
+                    <a href="/profiles" class="dropdown-item {{if eq .NavActive "profiles"}}active{{end}}">Люди</a>
+                    {{if .CurrentUser}}
+                    <a href="/friends" class="dropdown-item {{if eq .NavActive "friends"}}active{{end}}">Друзья</a>
+                    <a href="/my-achievements" class="dropdown-item {{if eq .NavActive "my_achievements"}}active{{end}}">Достижения</a>
+                    <a href="/subscriptions" class="dropdown-item {{if eq .NavActive "subscriptions"}}active{{end}}">Подписки</a>
+                    {{end}}
+                </div>
+            </li>
+
+            <!-- Кнопки входа/выхода -->
             {{if .CurrentUser}}
-            <li><a href="/profile" class="{{if eq .NavActive "my_profile"}}active{{end}}">👤 Профиль</a></li>
-            <li><a href="/friends" class="{{if eq .NavActive "friends"}}active{{end}}">🤝 Друзья</a></li>
-            <li><a href="/subscriptions" class="{{if eq .NavActive "subscriptions"}}active{{end}}">🔔 Подписки</a></li>
-            <li><a href="/logout" class="btn btn-outline btn-small">🚪 Выйти</a></li>
+            <li><a href="/logout" class="btn btn-outline btn-small">Выйти</a></li>
             {{else}}
-            <li><a href="/login" class="{{if eq .NavActive "login"}}active{{end}}">🔑 Войти</a></li>
-            <li><a href="/create-profile" class="btn btn-primary btn-small">✨ Регистрация</a></li>
+            <li><a href="/login" class="{{if eq .NavActive "login"}}active{{end}}">Войти</a></li>
+            <li><a href="/create-profile" class="btn btn-primary btn-small">Регистрация</a></li>
             {{end}}
         </ul>
     </div>
@@ -680,6 +799,12 @@
     {{template "edit_event_content" .}}
     {{else if eq .NavActive "event_subscriptions"}}
     {{template "event_subscriptions_content" .}}
+    {{else if eq .NavActive "my_achievements"}}
+    {{template "my_achievements_content" .}}
+    {{else if eq .NavActive "ratings"}}
+    {{template "ratings_content" .}}
+    {{else if eq .NavActive "news"}}
+    {{template "news_content" .}}
     {{else}}
     {{block "content" .}}{{end}}
     {{end}}
@@ -742,10 +867,202 @@
         themeIcon.textContent = theme === 'light' ? '🌙' : '☀️';
     }
 
+    // Управление выпадающими меню
+    function initDropdowns() {
+        const dropdowns = document.querySelectorAll('.dropdown');
+
+        // Закрытие всех выпадающих меню
+        function closeAllDropdowns() {
+            dropdowns.forEach(dropdown => {
+                const toggle = dropdown.querySelector('.dropdown-toggle');
+                const menu = dropdown.querySelector('.dropdown-menu');
+                toggle.classList.remove('active');
+                menu.classList.remove('show');
+            });
+        }
+
+        // Обработчики для каждого выпадающего меню
+        dropdowns.forEach(dropdown => {
+            const toggle = dropdown.querySelector('.dropdown-toggle');
+            const menu = dropdown.querySelector('.dropdown-menu');
+
+            toggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = menu.classList.contains('show');
+
+                closeAllDropdowns();
+
+                if (!isOpen) {
+                    toggle.classList.add('active');
+                    menu.classList.add('show');
+                }
+            });
+
+            // Закрытие при клике на пункт меню
+            menu.querySelectorAll('.dropdown-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    closeAllDropdowns();
+                });
+            });
+        });
+
+        // Закрытие при клике вне меню
+        document.addEventListener('click', closeAllDropdowns);
+    }
+
     // Инициализация эффектов
     document.addEventListener('DOMContentLoaded', () => {
         createFloatingElements();
         initThemeToggle();
+        initDropdowns();
+    });
+</script>
+<script>
+    // Обработка AJAX форм
+    function initAjaxForms() {
+        // Обработчик для всех форм с классом ajax-form
+        document.addEventListener('submit', function(e) {
+            const form = e.target;
+
+            // Если форма не AJAX - пропускаем
+            if (!form.classList.contains('ajax-form')) {
+                return;
+            }
+
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const url = form.getAttribute('action');
+            const method = form.getAttribute('method') || 'POST';
+
+            // Показываем индикатор загрузки
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = 'Загрузка...';
+            submitBtn.disabled = true;
+
+            fetch(url, {
+                method: method,
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-Token': getCSRFToken() // если используете CSRF защиту
+                }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        // Успешное выполнение
+                        showMessage(data.message || 'Успешно!', 'success');
+
+                        // Обновляем интерфейс если нужно
+                        if (data.update_ui) {
+                            updateUI(data);
+                        }
+
+                        // Если нужно перезагрузить страницу (например, после создания события)
+                        if (data.redirect) {
+                            setTimeout(() => {
+                                window.location.href = data.redirect;
+                            }, 1000);
+                        }
+                    } else {
+                        showMessage(data.message || 'Произошла ошибка', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showMessage('Произошла ошибка при отправке формы', 'error');
+                })
+                .finally(() => {
+                    // Восстанавливаем кнопку
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                });
+        });
+
+        // Обработчик для AJAX ссылок
+        document.addEventListener('click', function(e) {
+            const link = e.target.closest('a.ajax-link');
+            if (link) {
+                e.preventDefault();
+                handleAjaxLink(link);
+            }
+        });
+    }
+
+    // Обработка AJAX ссылок
+    function handleAjaxLink(link) {
+        const url = link.getAttribute('href');
+        const method = link.getAttribute('data-method') || 'GET';
+
+        fetch(url, {
+            method: method,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-Token': getCSRFToken()
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message || 'Успешно!', 'success');
+                    if (data.update_ui) {
+                        updateUI(data);
+                    }
+                } else {
+                    showMessage(data.message || 'Ошибка', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('Произошла ошибка', 'error');
+            });
+    }
+
+    // Показ сообщений
+    function showMessage(message, type) {
+        // Удаляем старые сообщения
+        const oldMessages = document.querySelectorAll('.ajax-message');
+        oldMessages.forEach(msg => msg.remove());
+
+        // Создаем новое сообщение
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `alert alert-${type} ajax-message`;
+        messageDiv.style.cssText = 'position: fixed; top: 100px; right: 20px; z-index: 10000; max-width: 300px;';
+        messageDiv.textContent = message;
+
+        document.body.appendChild(messageDiv);
+
+        // Автоматически скрываем через 3 секунды
+        setTimeout(() => {
+            messageDiv.remove();
+        }, 3000);
+    }
+
+    // Получение CSRF токена (если используете)
+    function getCSRFToken() {
+        return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    }
+
+    // Обновление интерфейса
+    function updateUI(data) {
+        if (data.update_element) {
+            const element = document.querySelector(data.update_element);
+            if (element && data.html) {
+                element.innerHTML = data.html;
+            }
+        }
+    }
+
+    // Инициализация при загрузке
+    document.addEventListener('DOMContentLoaded', function() {
+        initAjaxForms();
     });
 </script>
 </body>

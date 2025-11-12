@@ -27,7 +27,6 @@ func NewDBConfig(host, port, user, password, dbName string) *DBConfig {
 	}
 }
 
-// GetDSN формирует строку подключения для Postgres
 func (config *DBConfig) GetDSN() string {
 	return fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
 		config.Host, config.User, config.Password, config.DBName, config.Port)
@@ -53,6 +52,8 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.Friendship{},
 		&models.EventSubscription{},
 		&models.SocialLink{},
+		&models.Achievement{},     // ← ДОБАВИТЬ
+		&models.UserAchievement{}, // ← ДОБАВИТЬ
 	)
 
 	if err != nil {
