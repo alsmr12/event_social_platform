@@ -94,13 +94,13 @@ func (r *EventRepository) UpdateEvent(event *models.Event) error {
 }
 
 // Получить количество событий пользователя
-// func (r *EventRepository) GetUserEventsCount(userID uint, count *int64) error {
-// 	return r.db.Model(&models.Event{}).
-// 		Where("creator_id = ?", userID).
-// 		Count(count).Error
-// }
+func (r *EventRepository) GetUserEventsCount(userID uint, count *int64) error {
+	return r.db.Model(&models.Event{}).
+		Where("creator_id = ?", userID).
+		Count(count).Error
+}
 
-func (r *EventRepository) GetUserEventsCount(userID uint) (int64, error) {
+func (r *EventRepository) GetUserEventsCountAndroid(userID uint) (int64, error) {
 	var count int64
 	err := r.db.Model(&models.Event{}).Where("creator_id = ?", userID).Count(&count).Error
 	return count, err

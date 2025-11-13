@@ -444,7 +444,7 @@ func (h *UserHandler) GetUserStatsJSON(c *gin.Context) {
 
 
 	eventRepo := repository.NewEventRepository(db)
-	userEventsCount, _ := eventRepo.GetUserEventsCount(currentUser.ID)
+	userEventsCount, _ := eventRepo.GetUserEventsCountAndroid(currentUser.ID)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
