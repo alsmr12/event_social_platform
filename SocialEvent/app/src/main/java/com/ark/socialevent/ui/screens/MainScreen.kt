@@ -1,5 +1,5 @@
 package com.ark.socialevent.ui.screens
-
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -47,6 +47,9 @@ import com.ark.socialevent.ui.screens.friends.FriendsScreen
 import com.ark.socialevent.ui.screens.subscriptions.SubscriptionsScreen
 import kotlinx.coroutines.launch
 import com.ark.socialevent.network.UserRepository
+import com.ark.socialevent.ui.screens.profile.EditProfileScreen
+import com.ark.socialevent.network.UserProfile
+
 sealed class DrawerScreens(
     val route: String,
     val title: String,
@@ -152,7 +155,32 @@ fun MainScreen(
                     DrawerScreens.Home -> HomeScreen()
                     DrawerScreens.Events -> EventsScreen()
                     DrawerScreens.People -> PeopleScreen(userRepository = userRepository)
-                    DrawerScreens.Profile -> ProfileScreen()
+                    DrawerScreens.Profile -> {
+                        var showEditProfile by remember { mutableStateOf(false) }
+
+                        if (showEditProfile) {
+                            // Получаем текущий профиль для редактирования
+                            var currentProfile by remember { mutableStateOf<UserProfile?>(null) }
+
+                            LaunchedEffect(Unit) {
+                                userRepository.getProfile { profile ->
+                                    currentProfile = profile
+                                }
+                            }
+
+                            EditProfileScreen(
+                                userRepository = userRepository,
+                                currentProfile = currentProfile,
+                                onBack = { showEditProfile = false },
+                                onSaveSuccess = { showEditProfile = false }
+                            )
+                        } else {
+                            ProfileScreen(
+                                userRepository = userRepository,
+                                onEditProfile = { showEditProfile = true }
+                            )
+                        }
+                    }
                     DrawerScreens.Friends -> FriendsScreen(userRepository = userRepository)
                     DrawerScreens.Subscriptions -> SubscriptionsScreen()
                     DrawerScreens.Logout -> HomeScreen() // fallback

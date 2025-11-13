@@ -112,6 +112,37 @@ data class FriendOperationResponse(
     val message: String? = null
 )
 
+// Запрос на обновление профиля
+data class UpdateProfileRequest(
+    @SerializedName("first_name") val firstName: String,
+    @SerializedName("last_name") val lastName: String,
+    val gender: String,
+    val age: Int,
+    val phone: String
+)
+
+// Ответ при обновлении профиля
+data class UpdateProfileResponse(
+    val success: Boolean,
+    val message: String? = null,
+    val user: UserProfile? = null
+)
+
+// Модель статистики
+data class UserStats(
+    @SerializedName("friends_count") val friendsCount: Int,
+    @SerializedName("followers_count") val followersCount: Int,
+    @SerializedName("following_count") val followingCount: Int,
+    @SerializedName("events_count") val eventsCount: Int
+)
+
+// Ответ для статистики
+data class UserStatsResponse(
+    val success: Boolean,
+    val stats: UserStats? = null,
+    val message: String? = null
+)
+
 interface ApiService {
     @POST("/api/register")
     fun register(@Body request: RegisterRequest): Call<RegisterResponse>
@@ -150,4 +181,10 @@ interface ApiService {
 
     @POST("/api/friends/remove/{id}")
     fun removeFriend(@Path("id") userId: Int): Call<FriendOperationResponse>
+
+    @PUT("/api/profile")
+    fun updateProfile(@Body request: UpdateProfileRequest): Call<UpdateProfileResponse>
+
+    @GET("/api/profile/stats")
+    fun getUserStats(): Call<UserStatsResponse>
 }

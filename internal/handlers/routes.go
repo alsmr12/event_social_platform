@@ -156,6 +156,7 @@ api.Use(strictAuth)
     api.POST("/friends/accept/:id", friendshipHandler.AcceptFriendRequestJSON)
     api.POST("/friends/reject/:id", friendshipHandler.RejectFriendRequestJSON)
     api.POST("/friends/remove/:id", friendshipHandler.RemoveFriendJSON)
+	api.PUT("/profile", userHandler.UpdateProfileJSON) 
+    api.GET("/profile/stats", userHandler.GetUserStatsJSON) 
 }
-
 }

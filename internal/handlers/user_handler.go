@@ -361,3 +361,98 @@ func (h *UserHandler) GetAllProfilesJSON(c *gin.Context) {
         "data": users,
     })
 }
+
+// ========== ANDROID/JSON API METHODS ==========
+
+// UpdateProfileJSON - обновление профиля пользователя
+func (h *UserHandler) UpdateProfileJSON(c *gin.Context) {
+	currentUser := GetUserFromContext(c)
+	if currentUser == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Не авторизован",
+		})
+		return
+	}
+
+	var req struct {
+		FirstName string `json:"first_name" binding:"required"`
+		LastName  string `json:"last_name" binding:"required"`
+		Gender    string `json:"gender" binding:"required"`
+		Age       int    `json:"age" binding:"required"`
+		Phone     string `json:"phone" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Неверные данные: " + err.Error(),
+		})
+		return
+	}
+
+	// Обновляем данные пользователя
+	currentUser.FirstName = req.FirstName
+	currentUser.LastName = req.LastName
+	currentUser.Gender = req.Gender
+	currentUser.Age = req.Age
+	currentUser.Phone = req.Phone
+
+	if err := h.userRepo.UpdateUser(currentUser); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Ошибка обновления профиля: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Профиль успешно обновлен",
+		"user": gin.H{
+			"id":         currentUser.ID,
+			"email":      currentUser.Email,
+			"first_name": currentUser.FirstName,
+			"last_name":  currentUser.LastName,
+			"gender":     currentUser.Gender,
+			"age":        currentUser.Age,
+			"phone":      currentUser.Phone,
+		},
+	})
+}
+
+// GetUserStatsJSON - получение статистики пользователя
+func (h *UserHandler) GetUserStatsJSON(c *gin.Context) {
+	currentUser := GetUserFromContext(c)
+	if currentUser == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Не авторизован",
+		})
+		return
+	}
+
+	db := h.userRepo.GetDB()
+	
+
+	friendshipRepo := repository.NewFriendshipRepository(db)
+	friendsCount, _ := friendshipRepo.GetFriendsCount(currentUser.ID)
+
+	subscriptionRepo := repository.NewSubscriptionRepository(db)
+	followersCount, _ := subscriptionRepo.GetFollowersCount(currentUser.ID)
+	followingCount, _ := subscriptionRepo.GetFollowingCount(currentUser.ID)
+
+
+	eventRepo := repository.NewEventRepository(db)
+	userEventsCount, _ := eventRepo.GetUserEventsCount(currentUser.ID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"stats": gin.H{
+			"friends_count":   friendsCount,
+			"followers_count": followersCount,
+			"following_count": followingCount,
+			"events_count":    userEventsCount,
+		},
+	})
+}

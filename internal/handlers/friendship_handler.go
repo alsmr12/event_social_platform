@@ -5,7 +5,7 @@ import (
 	"event_social_platform/internal/repository"
 	"net/http"
 	"strconv"
-
+	"log"
 	"github.com/gin-gonic/gin"
 )
 

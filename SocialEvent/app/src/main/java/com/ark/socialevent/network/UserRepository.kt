@@ -97,22 +97,33 @@ class UserRepository {
 
     // Получение профиля текущего пользователя - ИСПРАВЛЕНО
     fun getProfile(callback: (UserProfile?) -> Unit) {
+        Log.d("UserRepository", "Getting profile...")
         api.getProfile().enqueue(object : Callback<ProfileResponse> {
             override fun onResponse(
                 call: Call<ProfileResponse>,
                 response: Response<ProfileResponse>
             ) {
+                Log.d("UserRepository", "Profile response code: ${response.code()}")
+                Log.d("UserRepository", "Profile response headers: ${response.headers()}")
+
                 if (response.isSuccessful) {
                     val body = response.body()
                     if (body != null) {
                         Log.d("UserRepository", "Get profile successful")
-                        callback(body.user) // Используем body.user вместо body.data
+                        callback(body.user)
                     } else {
                         Log.e("UserRepository", "Get profile: empty body")
                         callback(null)
                     }
                 } else {
                     Log.e("UserRepository", "Get profile HTTP error: ${response.code()}")
+                    // Пробуем прочитать тело ошибки
+                    try {
+                        val errorBody = response.errorBody()?.string()
+                        Log.e("UserRepository", "Error body: $errorBody")
+                    } catch (e: Exception) {
+                        Log.e("UserRepository", "Error reading error body: ${e.message}")
+                    }
                     callback(null)
                 }
             }
@@ -370,6 +381,82 @@ class UserRepository {
             }
 
             override fun onFailure(call: Call<FriendshipStatusResponse>, t: Throwable) {
+                callback(null, "Ошибка сети: ${t.message}")
+            }
+        })
+    }
+
+    fun updateProfile(
+        firstName: String,
+        lastName: String,
+        gender: String,
+        age: Int,
+        phone: String,
+        callback: (Boolean, String?, UserProfile?) -> Unit
+    ) {
+        Log.d("UserRepository", "Updating profile: $firstName $lastName")
+
+        val request = UpdateProfileRequest(firstName, lastName, gender, age, phone)
+        api.updateProfile(request).enqueue(object : Callback<UpdateProfileResponse> {
+            override fun onResponse(
+                call: Call<UpdateProfileResponse>,
+                response: Response<UpdateProfileResponse>
+            ) {
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        Log.d("UserRepository", "Profile updated successfully")
+                        callback(true, body.message, body.user)
+                    } else {
+                        val errorMsg = body?.message ?: "Неизвестная ошибка"
+                        Log.e("UserRepository", "Update profile failed: $errorMsg")
+                        callback(false, errorMsg, null)
+                    }
+                } else {
+                    val errorMsg = when (response.code()) {
+                        400 -> "Некорректные данные"
+                        401 -> "Не авторизован"
+                        500 -> "Ошибка сервера"
+                        else -> "Ошибка: ${response.code()}"
+                    }
+                    Log.e("UserRepository", "Update profile HTTP error: ${response.code()}")
+                    callback(false, errorMsg, null)
+                }
+            }
+
+            override fun onFailure(call: Call<UpdateProfileResponse>, t: Throwable) {
+                Log.e("UserRepository", "Update profile network failed: ${t.message}")
+                callback(false, "Ошибка сети: ${t.message}", null)
+            }
+        })
+    }
+
+    // Добавьте метод для получения статистики
+    fun getUserStats(callback: (UserStats?, String?) -> Unit) {
+        Log.d("UserRepository", "Getting user stats...")
+        api.getUserStats().enqueue(object : Callback<UserStatsResponse> {
+            override fun onResponse(
+                call: Call<UserStatsResponse>,
+                response: Response<UserStatsResponse>
+            ) {
+                Log.d("UserRepository", "User stats response code: ${response.code()}")
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        Log.d("UserRepository", "User stats loaded successfully")
+                        callback(body.stats, null)
+                    } else {
+                        val errorMsg = body?.message ?: "Неизвестная ошибка"
+                        callback(null, errorMsg)
+                    }
+                } else {
+                    val errorMsg = "Ошибка сервера: ${response.code()}"
+                    callback(null, errorMsg)
+                }
+            }
+
+            override fun onFailure(call: Call<UserStatsResponse>, t: Throwable) {
+                Log.e("UserRepository", "User stats network failed: ${t.message}")
                 callback(null, "Ошибка сети: ${t.message}")
             }
         })
