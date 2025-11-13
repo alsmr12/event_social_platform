@@ -18,7 +18,8 @@ type Event struct {
     CreatorID       uint           `gorm:"not null" json:"creator_id"`
     Creator         User           `gorm:"foreignKey:CreatorID" json:"creator"`
     IsPrivate       bool           `gorm:"default:false" json:"is_private"`
-    InviteCode      string         `gorm:"size:20" json:"invite_code"` // ← УБРАТЬ uniqueIndex отсюда
+    InviteCode  string `gorm:"size:20" json:"invite_code"`    // без uniqueIndex
+    PrivateKey  string `gorm:"size:12" json:"private_key"`    // без uniqueIndex
     MaxParticipants int            `json:"max_participants"`
     CreatedAt       time.Time      `gorm:"autoCreateTime" json:"created_at"`
     UpdatedAt       time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
@@ -49,4 +50,14 @@ func (e *Event) GenerateInviteCode() {
 		code[i] = charset[rand.Intn(len(charset))]
 	}
 	e.InviteCode = string(code)
+}
+
+// GeneratePrivateKey генерирует уникальный ключ для приватных событий
+func (e *Event) GeneratePrivateKey() {
+	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	key := make([]byte, 8)
+	for i := range key {
+		key[i] = charset[rand.Intn(len(charset))]
+	}
+	e.PrivateKey = string(key)
 }

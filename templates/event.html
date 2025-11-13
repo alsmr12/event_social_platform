@@ -24,7 +24,7 @@
     </p>
     <div class="invite-link" style="display: flex; gap: 10px; align-items: center;">
         <input type="text" 
-               value="{{.BaseURL}}/invite/{{.Event.InviteCode}}" 
+               value="{{.BaseURL}}/event/private/{{.Event.PrivateKey}}" 
                readonly 
                id="inviteLink"
                style="flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9; font-family: monospace;">
@@ -153,6 +153,7 @@ function copyInviteLink() {
             {{if .Event.IsPrivate}}
             <div><strong>🔐 Доступ:</strong> <span style="color: #e9c46a;">Приватное (только по ссылке-приглашению)</span></div>
             <div><strong>🔑 Код приглашения:</strong> <code style="background: #f8f9fa; padding: 2px 6px; border-radius: 3px;">{{.Event.InviteCode}}</code></div>
+            <!-- УБРАН приватный ключ из интерфейса -->
             {{end}}
         </div>
     </div>

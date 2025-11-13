@@ -38,6 +38,16 @@ func (r *EventRepository) GetEventByInviteCode(code string) (*models.Event, erro
 	return &event, nil
 }
 
+// GetEventByPrivateKey получает событие по приватному ключу
+func (r *EventRepository) GetEventByPrivateKey(privateKey string) (*models.Event, error) {
+	var event models.Event
+	err := r.db.Preload("Creator").Where("private_key = ?", privateKey).First(&event).Error
+	if err != nil {
+		return nil, err
+	}
+	return &event, nil
+}
+
 // CanUserAccessEvent проверяет, имеет ли пользователь доступ к событию
 func (r *EventRepository) CanUserAccessEvent(userID, eventID uint) (bool, error) {
     var event models.Event
@@ -51,39 +61,14 @@ func (r *EventRepository) CanUserAccessEvent(userID, eventID uint) (bool, error)
         return true, nil
     }
 
-    // Для приватных событий проверяем различные уровни доступа
+    // Для приватных событий проверяем ТОЛЬКО прямые способы доступа
     
     // 1. Создатель события всегда имеет доступ
     if event.CreatorID == userID {
         return true, nil
     }
 
-    // 2. Проверяем дружбу с создателем
-    var friendshipCount int64
-    err = r.db.Model(&models.Friendship{}).
-        Where("(user_id = ? AND friend_id = ? AND status = 'accepted') OR (user_id = ? AND friend_id = ? AND status = 'accepted')",
-            userID, event.CreatorID, event.CreatorID, userID).
-        Count(&friendshipCount).Error
-    if err != nil {
-        return false, err
-    }
-    if friendshipCount > 0 {
-        return true, nil
-    }
-
-    // 3. Проверяем подписку на создателя
-    var subscriptionCount int64
-    err = r.db.Model(&models.Subscription{}).
-        Where("subscriber_id = ? AND target_id = ?", userID, event.CreatorID).
-        Count(&subscriptionCount).Error
-    if err != nil {
-        return false, err
-    }
-    if subscriptionCount > 0 {
-        return true, nil
-    }
-
-    // 4. Проверяем подписку на само событие ← ДОБАВЛЯЕМ ЭТУ ПРОВЕРКУ
+    // 2. Проверяем подписку на само событие - это ЕДИНСТВЕННЫЙ способ доступа для других пользователей
     var eventSubscriptionCount int64
     err = r.db.Model(&models.EventSubscription{}).
         Where("user_id = ? AND event_id = ?", userID, eventID).
@@ -95,7 +80,8 @@ func (r *EventRepository) CanUserAccessEvent(userID, eventID uint) (bool, error)
         return true, nil
     }
 
-    // 5. Если ничего не подошло - доступа нет
+    // 3. Дружба и подписка на пользователя НЕ дают доступ к приватным событиям
+    // 4. Если ничего не подошло - доступа нет
     return false, nil
 }
 
@@ -108,7 +94,7 @@ func (r *EventRepository) GetAllEvents() ([]*models.Event, error) {
 	return events, nil
 }
 
-/// Получить предстоящие события (ВСЕ - и публичные и приватные)
+// Получить предстоящие события (ВСЕ - и публичные и приватные)
 func (r *EventRepository) GetUpcomingEvents() ([]*models.Event, error) {
     var events []*models.Event
     now := time.Now()

@@ -50,8 +50,6 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	// Middleware аутентификации
 	authMiddleware := middleware.AuthMiddleware(userRepo, sessionRepo)
 	strictAuth := middleware.StrictAuthMiddleware(userRepo, sessionRepo)
-	// Добавляем middleware для проверки доступа к событиям
-	eventAccessMiddleware := middleware.EventAccessMiddleware(eventRepo)
 
 	// Делает доступными файлы из папки static/
 	router.Static("/static", "./static")
@@ -91,22 +89,32 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 		protected.GET("/create-event", eventHandler.ShowCreateEventForm)
 		protected.POST("/create-event", eventHandler.CreateEvent)
 
-		// Доступ по коду приглашения
+		// В разделе защищенных маршрутов добавь:
+		protected.GET("/invite", eventHandler.AccessByInviteCodeForm)
+
+		// И обнови существующий маршрут:
 		protected.GET("/invite/:code", eventHandler.AccessByInviteCode)
 
-		// Защищенные маршруты событий (с проверкой доступа)
-		eventProtected := protected.Group("/event")
-		eventProtected.Use(eventAccessMiddleware)
+		// Маршруты для событий
+		eventGroup := protected.Group("/event")
 		{
-			eventProtected.GET("/:id", eventHandler.GetEvent)
-			eventProtected.POST("/delete/:id", eventHandler.DeleteEvent)
-			eventProtected.GET("/edit/:id", eventHandler.ShowEditEventForm)
-			eventProtected.POST("/edit/:id", eventHandler.UpdateEvent)
+			// Публичные события по ID
+			eventGroup.GET("/:id", eventHandler.GetEvent)
+			
+			// Приватные события по уникальному ключу
+			eventGroup.GET("/private/:key", eventHandler.GetPrivateEvent)
+			
+			// Подписки на события
+			eventGroup.POST("/:id/subscribe", eventSubHandler.Subscribe)
+			eventGroup.POST("/:id/unsubscribe", eventSubHandler.Unsubscribe)
+			
+			// Управление событиями (только для создателя)
+			eventGroup.POST("/delete/:id", eventHandler.DeleteEvent)
+			eventGroup.GET("/edit/:id", eventHandler.ShowEditEventForm)
+			eventGroup.POST("/edit/:id", eventHandler.UpdateEvent)
 		}
 
-		// Подписки на события (без проверки доступа к событию)
-		protected.POST("/event/:id/subscribe", eventSubHandler.Subscribe)
-		protected.POST("/event/:id/unsubscribe", eventSubHandler.Unsubscribe)
+		// Подписки на события
 		protected.GET("/event-subscriptions", eventSubHandler.GetUserSubscriptions)
 
 		// Действия со стеной
