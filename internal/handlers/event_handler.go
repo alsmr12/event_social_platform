@@ -81,6 +81,18 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 		MaxParticipants: req.MaxParticipants,
 	}
 
+	// ДОБАВЛЯЕМ ОБРАБОТКУ КООРДИНАТ ПРИ СОЗДАНИИ СОБЫТИЯ
+	if req.Latitude != "" {
+		if lat, err := strconv.ParseFloat(req.Latitude, 64); err == nil {
+			event.Latitude = lat
+		}
+	}
+	if req.Longitude != "" {
+		if lng, err := strconv.ParseFloat(req.Longitude, 64); err == nil {
+			event.Longitude = lng
+		}
+	}
+
 	// Генерируем код приглашения и приватный ключ для приватных событий
 	if event.IsPrivate {
 		event.GenerateInviteCode()
