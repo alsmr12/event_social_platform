@@ -97,52 +97,19 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 }
 
 func (h *EventHandler) GetAllEvents(c *gin.Context) {
-	// Получаем параметры фильтрации из URL
-	filterType := c.DefaultQuery("type", "all")
-	dateFromStr := c.Query("date_from")
-	dateToStr := c.Query("date_to")
-	radiusStr := c.DefaultQuery("radius", "0")
-	timeFilter := c.DefaultQuery("filter", "upcoming")
+	// Получаем параметр фильтра из URL
+	filter := c.DefaultQuery("filter", "upcoming")
 
-	// Парсим радиус
-	radius, _ := strconv.ParseFloat(radiusStr, 64)
+	var events []*models.Event
+	var err error
 
-	// Парсим даты
-	var dateFrom, dateTo time.Time
-	now := time.Now()
-
-	// Если пользователь указал даты вручную - используем их
-	if dateFromStr != "" {
-		dateFrom, _ = time.Parse("2006-01-02", dateFromStr)
-	} else if timeFilter == "upcoming" {
-		// Если не указаны даты и выбрана вкладка "предстоящие" - фильтруем от текущего времени
-		dateFrom = now
+	// Получаем события в зависимости от фильтра
+	if filter == "past" {
+		events, err = h.eventRepo.GetPastEvents()
+	} else {
+		events, err = h.eventRepo.GetUpcomingEvents()
 	}
 
-	if dateToStr != "" {
-		dateTo, _ = time.Parse("2006-01-02", dateToStr)
-		dateTo = dateTo.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
-	} else if timeFilter == "past" {
-		// Если не указаны даты и выбрана вкладка "прошедшие" - фильтруем до текущего времени
-		dateTo = now
-	}
-
-	// Координаты пользователя (пока фиксированные 0,0)
-	userLat := 0.0
-	userLng := 0.0
-
-	// Создаем фильтр
-	filter := repository.EventFilter{
-		Type:      filterType,
-		DateFrom:  dateFrom,
-		DateTo:    dateTo,
-		Latitude:  userLat,
-		Longitude: userLng,
-		Radius:    radius,
-	}
-
-	// Получаем события с фильтрацией
-	events, err := h.eventRepo.GetEventsWithFilter(filter)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
 			"Title":       "События",
@@ -153,23 +120,24 @@ func (h *EventHandler) GetAllEvents(c *gin.Context) {
 		return
 	}
 
-	// Получаем все типы событий для фильтра
-	eventTypes, _ := h.eventRepo.GetEventTypes()
-
 	currentUser := GetUserFromContext(c)
 
 	// ФИЛЬТРУЕМ: убираем приватные события, если пользователь не создатель
 	var filteredEvents []*models.Event
 	for _, event := range events {
 		if !event.IsPrivate {
+			// Публичное событие - показываем всем
 			filteredEvents = append(filteredEvents, event)
 		} else if currentUser != nil && event.CreatorID == currentUser.ID {
+			// Приватное событие, но пользователь - создатель
 			filteredEvents = append(filteredEvents, event)
 		}
+		// Приватное событие другого пользователя - не показываем
 	}
 
-	// Для каждого события получаем информацию о подписках и вычисляем дистанцию
+	// Для каждого события получаем информацию о подписках и определяем, прошло ли оно
 	for _, event := range filteredEvents {
+		// Добавляем информацию о подписках
 		if currentUser != nil {
 			isSubscribed, _ := h.eventSubRepo.IsSubscribed(currentUser.ID, event.ID)
 			event.IsSubscribed = isSubscribed
@@ -177,6 +145,8 @@ func (h *EventHandler) GetAllEvents(c *gin.Context) {
 
 		subscribersCount, _ := h.eventSubRepo.GetSubscribersCount(event.ID)
 		event.SubscribersCount = subscribersCount
+
+		// Определяем, является ли событие прошедшим
 		event.IsPast = time.Now().After(event.DateTime)
 	}
 
@@ -184,21 +154,12 @@ func (h *EventHandler) GetAllEvents(c *gin.Context) {
 	message := c.Query("message")
 
 	c.HTML(http.StatusOK, "base.html", gin.H{
-		"Title":             "События",
-		"NavActive":         "events",
-		"Events":            filteredEvents,
-		"CurrentUser":       currentUser,
-		"Message":           message,
-		"EventTypes":        eventTypes,
-		"SelectedType":      filterType,
-		"DateFrom":          dateFromStr,
-		"DateTo":            dateToStr,
-		"SelectedRadius":    radius,
-		"UserLat":           userLat,
-		"UserLng":           userLng,
-		"TimeFilter":        timeFilter,
-		"ShowPastEvents":    timeFilter == "past",
-		"CalculateDistance": repository.CalculateDistance,
+		"Title":          "События",
+		"NavActive":      "events",
+		"Events":         filteredEvents, // ← используем отфильтрованный список
+		"CurrentUser":    currentUser,
+		"Message":        message,
+		"ShowPastEvents": filter == "past",
 	})
 }
 

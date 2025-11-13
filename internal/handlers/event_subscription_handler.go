@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"event_social_platform/internal/models" // ← ДОБАВЬ ЭТОТ ИМПОРТ
+	"event_social_platform/internal/models"
 	"event_social_platform/internal/repository"
 	"net/http"
 	"strconv"
@@ -40,14 +40,14 @@ func (h *EventSubscriptionHandler) Subscribe(c *gin.Context) {
 		return
 	}
 
-	// Проверяем, не является ли событие прошедшим
+	// Получаем информацию о событии
 	event, err := h.eventRepo.GetEventByID(uint(id))
 	if err != nil {
 		c.Redirect(http.StatusSeeOther, "/events?message=error")
 		return
 	}
 
-	// Если событие уже прошло, запрещаем подписку
+	// Проверяем, не является ли событие прошедшим
 	if time.Now().After(event.DateTime) {
 		c.Redirect(http.StatusSeeOther, "/event/"+eventID+"?message=event_ended")
 		return
@@ -73,11 +73,21 @@ func (h *EventSubscriptionHandler) Subscribe(c *gin.Context) {
 		}
 	}
 
+	// Определяем правильный URL для редиректа
+	var redirectURL string
+	if event.IsPrivate {
+		// Для приватных событий используем приватный URL
+		redirectURL = "/event/private/" + event.PrivateKey + message
+	} else {
+		// Для публичных событий используем обычный URL
+		redirectURL = "/event/" + eventID + message
+	}
+
 	// Определяем откуда пришел запрос и перенаправляем обратно
 	referer := c.Request.Header.Get("Referer")
-	if referer != "" && strings.Contains(referer, "/event/") {
+	if referer != "" && (strings.Contains(referer, "/event/") || strings.Contains(referer, "/event/private/")) {
 		// Если пришли со страницы события - остаемся на ней
-		c.Redirect(http.StatusSeeOther, "/event/"+eventID+message)
+		c.Redirect(http.StatusSeeOther, redirectURL)
 	} else {
 		// Иначе возвращаемся к списку событий
 		c.Redirect(http.StatusSeeOther, "/events"+message)
@@ -99,6 +109,13 @@ func (h *EventSubscriptionHandler) Unsubscribe(c *gin.Context) {
 		return
 	}
 
+	// Получаем информацию о событии для определения типа
+	event, err := h.eventRepo.GetEventByID(uint(id))
+	if err != nil {
+		c.Redirect(http.StatusSeeOther, "/events?message=error")
+		return
+	}
+
 	// Отписываемся
 	err = h.eventSubRepo.Unsubscribe(currentUser.ID, uint(id))
 
@@ -109,11 +126,21 @@ func (h *EventSubscriptionHandler) Unsubscribe(c *gin.Context) {
 		message = "?message=unsubscribed"
 	}
 
+	// Определяем правильный URL для редиректа
+	var redirectURL string
+	if event.IsPrivate {
+		// Для приватных событий используем приватный URL
+		redirectURL = "/event/private/" + event.PrivateKey + message
+	} else {
+		// Для публичных событий используем обычный URL
+		redirectURL = "/event/" + eventID + message
+	}
+
 	// Определяем откуда пришел запрос и перенаправляем обратно
 	referer := c.Request.Header.Get("Referer")
-	if referer != "" && strings.Contains(referer, "/event/") {
+	if referer != "" && (strings.Contains(referer, "/event/") || strings.Contains(referer, "/event/private/")) {
 		// Если пришли со страницы события - остаемся на ней
-		c.Redirect(http.StatusSeeOther, "/event/"+eventID+message)
+		c.Redirect(http.StatusSeeOther, redirectURL)
 	} else {
 		// Иначе возвращаемся к списку событий
 		c.Redirect(http.StatusSeeOther, "/events"+message)
