@@ -11,16 +11,18 @@ import (
 )
 
 type EventHandler struct {
-	eventRepo    *repository.EventRepository
-	userRepo     *repository.UserRepository
-	eventSubRepo *repository.EventSubscriptionRepository
+	eventRepo       *repository.EventRepository
+	userRepo        *repository.UserRepository
+	eventSubRepo    *repository.EventSubscriptionRepository
+	achievementRepo *repository.AchievementRepository
 }
 
-func NewEventHandler(eventRepo *repository.EventRepository, userRepo *repository.UserRepository, eventSubRepo *repository.EventSubscriptionRepository) *EventHandler {
+func NewEventHandler(eventRepo *repository.EventRepository, userRepo *repository.UserRepository, eventSubRepo *repository.EventSubscriptionRepository, achievementRepo *repository.AchievementRepository) *EventHandler {
 	return &EventHandler{
-		eventRepo:    eventRepo,
-		userRepo:     userRepo,
-		eventSubRepo: eventSubRepo,
+		eventRepo:       eventRepo,
+		userRepo:        userRepo,
+		eventSubRepo:    eventSubRepo,
+		achievementRepo: achievementRepo,
 	}
 }
 
@@ -79,6 +81,24 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 		MaxParticipants: req.MaxParticipants,
 	}
 
+	// ДОБАВЛЯЕМ ОБРАБОТКУ КООРДИНАТ ПРИ СОЗДАНИИ СОБЫТИЯ
+	if req.Latitude != "" {
+		if lat, err := strconv.ParseFloat(req.Latitude, 64); err == nil {
+			event.Latitude = lat
+		}
+	}
+	if req.Longitude != "" {
+		if lng, err := strconv.ParseFloat(req.Longitude, 64); err == nil {
+			event.Longitude = lng
+		}
+	}
+
+	// Генерируем код приглашения и приватный ключ для приватных событий
+	if event.IsPrivate {
+		event.GenerateInviteCode()
+		event.GeneratePrivateKey()
+	}
+
 	if err := h.eventRepo.CreateEvent(event); err != nil {
 		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
 			"Title":       "Создание события",
@@ -88,24 +108,59 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 		})
 		return
 	}
-
+	if h.achievementRepo != nil {
+		go h.achievementRepo.UpdateAchievementsOnEventCreated(currentUser.ID)
+	}
 	c.Redirect(http.StatusSeeOther, "/events")
 }
 
 func (h *EventHandler) GetAllEvents(c *gin.Context) {
-	// Получаем параметр фильтра из URL
-	filter := c.DefaultQuery("filter", "upcoming")
+	// Получаем параметры фильтрации из URL
+	filterType := c.DefaultQuery("type", "all")
+	dateFromStr := c.Query("date_from")
+	dateToStr := c.Query("date_to")
+	radiusStr := c.DefaultQuery("radius", "0")
+	timeFilter := c.DefaultQuery("filter", "upcoming")
 
-	var events []*models.Event
-	var err error
+	// Парсим радиус
+	radius, _ := strconv.ParseFloat(radiusStr, 64)
 
-	// Получаем события в зависимости от фильтра
-	if filter == "past" {
-		events, err = h.eventRepo.GetPastEvents()
-	} else {
-		events, err = h.eventRepo.GetUpcomingEvents()
+	// Парсим даты
+	var dateFrom, dateTo time.Time
+	now := time.Now()
+
+	// Если пользователь указал даты вручную - используем их
+	if dateFromStr != "" {
+		dateFrom, _ = time.Parse("2006-01-02", dateFromStr)
+	} else if timeFilter == "upcoming" {
+		// Если не указаны даты и выбрана вкладка "предстоящие" - фильтруем от текущего времени
+		dateFrom = now
 	}
 
+	if dateToStr != "" {
+		dateTo, _ = time.Parse("2006-01-02", dateToStr)
+		dateTo = dateTo.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
+	} else if timeFilter == "past" {
+		// Если не указаны даты и выбрана вкладка "прошедшие" - фильтруем до текущего времени
+		dateTo = now
+	}
+
+	// Координаты пользователя (пока фиксированные 0,0)
+	userLat := 0.0
+	userLng := 0.0
+
+	// Создаем фильтр
+	filter := repository.EventFilter{
+		Type:      filterType,
+		DateFrom:  dateFrom,
+		DateTo:    dateTo,
+		Latitude:  userLat,
+		Longitude: userLng,
+		Radius:    radius,
+	}
+
+	// Получаем события с фильтрацией
+	events, err := h.eventRepo.GetEventsWithFilter(filter)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
 			"Title":       "События",
@@ -116,24 +171,32 @@ func (h *EventHandler) GetAllEvents(c *gin.Context) {
 		return
 	}
 
+	// Получаем все типы событий для фильтра
+	eventTypes, _ := h.eventRepo.GetEventTypes()
+
 	currentUser := GetUserFromContext(c)
 
-	// ФИЛЬТРУЕМ: убираем приватные события, если пользователь не создатель
+	// ФИЛЬТРУЕМ: показываем события, к которым пользователь имеет доступ
 	var filteredEvents []*models.Event
 	for _, event := range events {
+		// Если событие публичное - показываем всем
 		if !event.IsPrivate {
-			// Публичное событие - показываем всем
 			filteredEvents = append(filteredEvents, event)
-		} else if currentUser != nil && event.CreatorID == currentUser.ID {
-			// Приватное событие, но пользователь - создатель
-			filteredEvents = append(filteredEvents, event)
+			continue
 		}
-		// Приватное событие другого пользователя - не показываем
+
+		// Если событие приватное, проверяем доступ
+		if currentUser != nil {
+			hasAccess, _ := h.eventRepo.CanUserAccessEvent(currentUser.ID, event.ID)
+			if hasAccess {
+				filteredEvents = append(filteredEvents, event)
+			}
+		}
+		// Если пользователь не авторизован или нет доступа - не показываем приватное событие
 	}
 
-	// Для каждого события получаем информацию о подписках и определяем, прошло ли оно
+	// Для каждого события получаем информацию о подписках и вычисляем дистанцию
 	for _, event := range filteredEvents {
-		// Добавляем информацию о подписках
 		if currentUser != nil {
 			isSubscribed, _ := h.eventSubRepo.IsSubscribed(currentUser.ID, event.ID)
 			event.IsSubscribed = isSubscribed
@@ -141,8 +204,6 @@ func (h *EventHandler) GetAllEvents(c *gin.Context) {
 
 		subscribersCount, _ := h.eventSubRepo.GetSubscribersCount(event.ID)
 		event.SubscribersCount = subscribersCount
-
-		// Определяем, является ли событие прошедшим
 		event.IsPast = time.Now().After(event.DateTime)
 	}
 
@@ -150,15 +211,25 @@ func (h *EventHandler) GetAllEvents(c *gin.Context) {
 	message := c.Query("message")
 
 	c.HTML(http.StatusOK, "base.html", gin.H{
-		"Title":          "События",
-		"NavActive":      "events",
-		"Events":         filteredEvents, // ← используем отфильтрованный список
-		"CurrentUser":    currentUser,
-		"Message":        message,
-		"ShowPastEvents": filter == "past",
+		"Title":             "События",
+		"NavActive":         "events",
+		"Events":            filteredEvents,
+		"CurrentUser":       currentUser,
+		"Message":           message,
+		"EventTypes":        eventTypes,
+		"SelectedType":      filterType,
+		"DateFrom":          dateFromStr,
+		"DateTo":            dateToStr,
+		"SelectedRadius":    radius,
+		"UserLat":           userLat,
+		"UserLng":           userLng,
+		"TimeFilter":        timeFilter,
+		"ShowPastEvents":    timeFilter == "past",
+		"CalculateDistance": repository.CalculateDistance,
 	})
 }
 
+// GetEvent - обработчик для получения события по ID (публичные события)
 func (h *EventHandler) GetEvent(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -185,7 +256,19 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 
 	currentUser := GetUserFromContext(c)
 
-	// УБИРАЕМ ПРОВЕРКИ ДОСТУПА - приватные события открываются для всех по ссылке
+	// Проверяем доступ к приватному событию
+	if event.IsPrivate {
+		hasAccess, _ := h.eventRepo.CanUserAccessEvent(currentUser.ID, event.ID)
+		if !hasAccess {
+			c.HTML(http.StatusForbidden, "base.html", gin.H{
+				"Title":       "Доступ запрещен",
+				"NavActive":   "event",
+				"Error":       "Это приватное событие. У вас нет доступа.",
+				"CurrentUser": currentUser,
+			})
+			return
+		}
+	}
 
 	// Получаем информацию о подписке
 	var isSubscribed bool
@@ -198,6 +281,9 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 	// Определяем, является ли событие прошедшим
 	event.IsPast = time.Now().After(event.DateTime)
 
+	// Получаем базовый URL для формирования ссылки
+	baseURL := getBaseURL(c)
+
 	message := c.Query("message")
 	c.HTML(http.StatusOK, "base.html", gin.H{
 		"Title":            event.Title,
@@ -207,18 +293,104 @@ func (h *EventHandler) GetEvent(c *gin.Context) {
 		"IsSubscribed":     isSubscribed,
 		"SubscribersCount": subscribersCount,
 		"Message":          message,
+		"BaseURL":          baseURL,
+	})
+}
+
+// GetPrivateEvent - обработчик для приватных событий по уникальному ключу
+func (h *EventHandler) GetPrivateEvent(c *gin.Context) {
+	privateKey := c.Param("key")
+	currentUser := GetUserFromContext(c)
+
+	if currentUser == nil {
+		c.Redirect(http.StatusSeeOther, "/login")
+		return
+	}
+
+	event, err := h.eventRepo.GetEventByPrivateKey(privateKey)
+	if err != nil {
+		c.HTML(http.StatusNotFound, "base.html", gin.H{
+			"Title":       "Событие не найдено",
+			"NavActive":   "events",
+			"Error":       "Неверная ссылка или событие было удалено",
+			"CurrentUser": currentUser,
+		})
+		return
+	}
+
+	// Получаем информацию о подписке
+	var isSubscribed bool
+	var subscribersCount int64
+	if currentUser != nil {
+		isSubscribed, _ = h.eventSubRepo.IsSubscribed(currentUser.ID, event.ID)
+		subscribersCount, _ = h.eventSubRepo.GetSubscribersCount(event.ID)
+	}
+
+	// Определяем, является ли событие прошедшим
+	event.IsPast = time.Now().After(event.DateTime)
+
+	// Получаем базовый URL для формирования ссылки
+	baseURL := getBaseURL(c)
+
+	c.HTML(http.StatusOK, "base.html", gin.H{
+		"Title":            event.Title,
+		"NavActive":        "event",
+		"Event":            event,
+		"CurrentUser":      currentUser,
+		"IsSubscribed":     isSubscribed,
+		"SubscribersCount": subscribersCount,
+		"BaseURL":          baseURL,
+	})
+}
+
+// AccessByInviteCode - доступ к событию по коду приглашения
+func (h *EventHandler) AccessByInviteCode(c *gin.Context) {
+	code := c.Param("code")
+	currentUser := GetUserFromContext(c)
+
+	if currentUser == nil {
+		c.Redirect(http.StatusSeeOther, "/login")
+		return
+	}
+
+	event, err := h.eventRepo.GetEventByInviteCode(code)
+	if err != nil {
+		c.HTML(http.StatusNotFound, "base.html", gin.H{
+			"Title":       "Событие не найдено",
+			"NavActive":   "events",
+			"Error":       "Неверный код приглашения или событие было удалено",
+			"CurrentUser": currentUser,
+		})
+		return
+	}
+
+	// Перенаправляем на приватную ссылку события
+	c.Redirect(http.StatusSeeOther, "/event/private/"+event.PrivateKey)
+}
+
+// AccessByInviteCodeForm - форма для ввода кода приглашения
+func (h *EventHandler) AccessByInviteCodeForm(c *gin.Context) {
+	code := c.Query("code")
+	if code != "" {
+		// Если код передан в URL параметре, перенаправляем сразу
+		c.Redirect(http.StatusSeeOther, "/invite/"+code)
+		return
+	}
+
+	currentUser := GetUserFromContext(c)
+	c.HTML(http.StatusOK, "base.html", gin.H{
+		"Title":       "Доступ по коду приглашения",
+		"NavActive":   "events",
+		"CurrentUser": currentUser,
 	})
 }
 
 func (h *EventHandler) DeleteEvent(c *gin.Context) {
-	// Получаем текущего пользователя из контекста
-	currentUser, exists := c.Get("CurrentUser")
-	if !exists {
+	currentUser := GetUserFromContext(c)
+	if currentUser == nil {
 		c.Redirect(302, "/login")
 		return
 	}
-
-	user := currentUser.(*models.User)
 
 	// Получаем ID события из URL
 	eventID := c.Param("id")
@@ -238,7 +410,7 @@ func (h *EventHandler) DeleteEvent(c *gin.Context) {
 	}
 
 	// Проверяем, является ли пользователь создателем события
-	if event.CreatorID != user.ID {
+	if event.CreatorID != currentUser.ID {
 		c.JSON(403, gin.H{"error": "Access denied"})
 		return
 	}
@@ -291,11 +463,15 @@ func (h *EventHandler) ShowEditEventForm(c *gin.Context) {
 		return
 	}
 
+	// Передаем BaseURL для формы редактирования
+	baseURL := getBaseURL(c)
+
 	c.HTML(200, "base.html", gin.H{
 		"Title":       "Редактировать событие",
 		"NavActive":   "edit_event",
 		"Event":       event,
 		"CurrentUser": currentUser,
+		"BaseURL":     baseURL,
 	})
 }
 
@@ -364,6 +540,9 @@ func (h *EventHandler) UpdateEvent(c *gin.Context) {
 		return
 	}
 
+	// Сохраняем предыдущее состояние приватности
+	wasPrivate := existingEvent.IsPrivate
+
 	// Обновляем поля события
 	existingEvent.Title = form.Title
 	existingEvent.Description = form.Description
@@ -372,6 +551,22 @@ func (h *EventHandler) UpdateEvent(c *gin.Context) {
 	existingEvent.Location = form.Location
 	existingEvent.IsPrivate = form.IsPrivate
 	existingEvent.MaxParticipants = form.MaxParticipants
+
+	// Если событие стало приватным и у него нет приватного ключа - генерируем
+	if existingEvent.IsPrivate && existingEvent.PrivateKey == "" {
+		existingEvent.GeneratePrivateKey()
+	}
+
+	// Если событие стало приватным и у него нет кода - генерируем
+	if existingEvent.IsPrivate && existingEvent.InviteCode == "" {
+		existingEvent.GenerateInviteCode()
+	}
+
+	// Если событие из приватного стало публичным - очищаем приватные данные
+	if !existingEvent.IsPrivate && wasPrivate {
+		existingEvent.InviteCode = ""
+		existingEvent.PrivateKey = ""
+	}
 
 	// Обрабатываем координаты
 	if form.Latitude != "" {
@@ -398,6 +593,19 @@ func (h *EventHandler) UpdateEvent(c *gin.Context) {
 		return
 	}
 
-	// Перенаправляем на страницу события
-	c.Redirect(302, "/event/"+eventID)
+	// Перенаправляем на соответствующую страницу события
+	if existingEvent.IsPrivate {
+		c.Redirect(302, "/event/private/"+existingEvent.PrivateKey)
+	} else {
+		c.Redirect(302, "/event/"+eventID)
+	}
+}
+
+// getBaseURL - вспомогательная функция для получения базового URL
+func getBaseURL(c *gin.Context) string {
+	scheme := "http"
+	if c.Request.TLS != nil || c.Request.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	return scheme + "://" + c.Request.Host
 }

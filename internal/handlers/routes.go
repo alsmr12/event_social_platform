@@ -21,13 +21,6 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	newsRepo := repository.NewNewsRepository(db)
 	achievementRepo := repository.NewAchievementRepository(db)
 
-	// Очистить старые награды
-	if err := achievementRepo.ClearAchievements(); err != nil {
-		log.Printf("Warning: Could not clear achievements: %v", err)
-	} else {
-		log.Println("Achievements cleared successfully")
-	}
-
 	// Инициализируем достижения
 	if err := achievementRepo.InitializeAchievements(); err != nil {
 		log.Printf("Warning: Could not initialize achievements: %v", err)
@@ -44,12 +37,12 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 
 	// Инициализируем обработчики
 	userHandler := NewUserHandler(userRepo)
-	eventHandler := NewEventHandler(eventRepo, userRepo, eventSubRepo)
+	eventHandler := NewEventHandler(eventRepo, userRepo, eventSubRepo, achievementRepo)
 	authHandler := NewAuthHandler(userRepo, sessionRepo)
 	wallHandler := NewWallHandler(wallRepo, userRepo)
-	subscriptionHandler := NewSubscriptionHandler(subscriptionRepo, userRepo)
-	friendshipHandler := NewFriendshipHandler(friendshipRepo, userRepo)
-	eventSubHandler := NewEventSubscriptionHandler(eventSubRepo, eventRepo)
+	subscriptionHandler := NewSubscriptionHandler(subscriptionRepo, userRepo, achievementRepo)
+	friendshipHandler := NewFriendshipHandler(friendshipRepo, userRepo, achievementRepo)
+	eventSubHandler := NewEventSubscriptionHandler(eventSubRepo, eventRepo, achievementRepo)
 	socialHandler := NewSocialHandler(socialRepo, userRepo)
 	newsHandler := NewNewsHandler(newsRepo)
 	achievementHandler := NewAchievementHandler(achievementRepo)
@@ -98,14 +91,38 @@ router.GET("/api/profiles", userHandler.GetAllProfilesJSON)
 		protected.GET("/social-links", socialHandler.ShowSocialLinksForm)
 		protected.POST("/social-links", socialHandler.UpdateSocialLinks)
 
-		// События
+		// События - общие маршруты
 		protected.GET("/events", eventHandler.GetAllEvents)
-		protected.GET("/event/:id", eventHandler.GetEvent)
 		protected.GET("/create-event", eventHandler.ShowCreateEventForm)
 		protected.POST("/create-event", eventHandler.CreateEvent)
-		protected.POST("/event/delete/:id", eventHandler.DeleteEvent)
-		protected.GET("/event/edit/:id", eventHandler.ShowEditEventForm)
-		protected.POST("/event/edit/:id", eventHandler.UpdateEvent)
+
+		// В разделе защищенных маршрутов добавь:
+		protected.GET("/invite", eventHandler.AccessByInviteCodeForm)
+
+		// И обнови существующий маршрут:
+		protected.GET("/invite/:code", eventHandler.AccessByInviteCode)
+
+		// Маршруты для событий
+		eventGroup := protected.Group("/event")
+		{
+			// Публичные события по ID
+			eventGroup.GET("/:id", eventHandler.GetEvent)
+
+			// Приватные события по уникальному ключу
+			eventGroup.GET("/private/:key", eventHandler.GetPrivateEvent)
+
+			// Подписки на события
+			eventGroup.POST("/:id/subscribe", eventSubHandler.Subscribe)
+			eventGroup.POST("/:id/unsubscribe", eventSubHandler.Unsubscribe)
+
+			// Управление событиями (только для создателя)
+			eventGroup.POST("/delete/:id", eventHandler.DeleteEvent)
+			eventGroup.GET("/edit/:id", eventHandler.ShowEditEventForm)
+			eventGroup.POST("/edit/:id", eventHandler.UpdateEvent)
+		}
+
+		// Подписки на события
+		protected.GET("/event-subscriptions", eventSubHandler.GetUserSubscriptions)
 
 		// Действия со стеной
 		protected.POST("/wall/post", wallHandler.CreatePost)
@@ -118,11 +135,6 @@ router.GET("/api/profiles", userHandler.GetAllProfilesJSON)
 		protected.GET("/subscribe/:id", subscriptionHandler.Subscribe)
 		protected.GET("/unsubscribe/:id", subscriptionHandler.Unsubscribe)
 
-		// Подписки на события
-		protected.POST("/event/:id/subscribe", eventSubHandler.Subscribe)
-		protected.POST("/event/:id/unsubscribe", eventSubHandler.Unsubscribe)
-		protected.GET("/event-subscriptions", eventSubHandler.GetUserSubscriptions)
-
 		// Друзья
 		protected.GET("/friends", friendshipHandler.FriendsPage)
 		protected.GET("/friends/add/:id", friendshipHandler.SendFriendRequest)
@@ -130,7 +142,7 @@ router.GET("/api/profiles", userHandler.GetAllProfilesJSON)
 		protected.GET("/friends/reject/:id", friendshipHandler.RejectFriendRequest)
 		protected.GET("/friends/remove/:id", friendshipHandler.RemoveFriend)
 
-		// Награды и рейтинг ← ДОБАВИТЬ ЭТИ МАРШРУТЫ
+		// Награды и рейтинг
 		protected.GET("/ratings", achievementHandler.ShowRatings)
 		protected.GET("/my-achievements", achievementHandler.ShowMyAchievements)
 
