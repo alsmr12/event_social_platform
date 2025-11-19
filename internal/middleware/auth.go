@@ -7,6 +7,7 @@ import (
 	"time"
 	"log"
 	"net/http"
+	"strings"
 )
 
 func AuthMiddleware(userRepo *repository.UserRepository, sessionRepo *repository.SessionRepository) gin.HandlerFunc {
@@ -17,9 +18,9 @@ func AuthMiddleware(userRepo *repository.UserRepository, sessionRepo *repository
 			return
 		}
 
-		// Проверяем куку с токеном
-		token, err := c.Cookie("session_token")
-		if err != nil {
+		token := getTokenFromRequest(c)
+
+		if token == "" {
 			c.Next() // Продолжаем без аутентификации
 			return
 		}
@@ -59,32 +60,12 @@ func AuthMiddleware(userRepo *repository.UserRepository, sessionRepo *repository
 // StrictAuthMiddleware - строгая проверка (редирект на логин)
 func StrictAuthMiddleware(userRepo *repository.UserRepository, sessionRepo *repository.SessionRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		log.Printf("🔒 StrictAuthMiddleware: checking strict auth for path: %s", c.Request.URL.Path)
-		log.Printf("🌐 StrictAuthMiddleware: request from: %s", c.Request.RemoteAddr)
-		log.Printf("🔗 StrictAuthMiddleware: user agent: %s", c.Request.UserAgent())
+		log.Printf("🔒 StrictAuthMiddleware: checking auth for path: %s", c.Request.URL.Path)
 		
-		// Логируем ВСЕ заголовки
-		log.Printf("📋 StrictAuthMiddleware: ALL HEADERS:")
-		for name, values := range c.Request.Header {
-			for _, value := range values {
-				log.Printf("   %s: %s", name, value)
-			}
-		}
-
-		// Логируем куки
-		cookies := c.Request.Cookies()
-		if len(cookies) > 0 {
-			log.Printf("🍪 StrictAuthMiddleware: received cookies:")
-			for _, cookie := range cookies {
-				log.Printf("   - %s: %s (Domain: %s, Path: %s)", cookie.Name, cookie.Value, cookie.Domain, cookie.Path)
-			}
-		} else {
-			log.Printf("❌ StrictAuthMiddleware: NO COOKIES received at all!")
-		}
-
-		token, err := c.Cookie("session_token")
-		if err != nil {
-			log.Printf("❌ StrictAuthMiddleware: no session_token cookie found: %v", err)
+		token := getTokenFromRequest(c)
+		
+		if token == "" {
+			log.Printf("❌ StrictAuthMiddleware: no token found in request")
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"success": false,
 				"message": "Не авторизован",
@@ -93,7 +74,7 @@ func StrictAuthMiddleware(userRepo *repository.UserRepository, sessionRepo *repo
 			return
 		}
 
-		log.Printf("🔑 StrictAuthMiddleware: found session_token: %s", token)
+		log.Printf("🔑 StrictAuthMiddleware: found token: %s", token)
 		
 		session, err := sessionRepo.GetSessionByToken(token)
 		if err != nil {
@@ -121,6 +102,33 @@ func StrictAuthMiddleware(userRepo *repository.UserRepository, sessionRepo *repo
 		c.Set("user", user)
 		c.Next()
 	}
+}
+
+// Вспомогательная функция для получения токена из запроса
+func getTokenFromRequest(c *gin.Context) string {
+	// 1. Пробуем получить из заголовка Authorization
+	authHeader := c.GetHeader("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		token := strings.TrimPrefix(authHeader, "Bearer ")
+		log.Printf("📨 Got token from Authorization header: %s", token)
+		return token
+	}
+
+	// 2. Пробуем получить из куки
+	cookieToken, err := c.Cookie("session_token")
+	if err == nil && cookieToken != "" {
+		log.Printf("🍪 Got token from cookie: %s", cookieToken)
+		return cookieToken
+	}
+
+	// 3. Пробуем получить из query параметра (на всякий случай)
+	queryToken := c.Query("token")
+	if queryToken != "" {
+		log.Printf("🔍 Got token from query: %s", queryToken)
+		return queryToken
+	}
+
+	return ""
 }
 
 // Вспомогательные функции

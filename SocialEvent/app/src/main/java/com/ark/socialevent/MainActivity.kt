@@ -16,7 +16,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val userRepo = UserRepository()
+
+        // ПЕРЕДАЕМ CONTEXT в репозиторий!
+        val userRepo = UserRepository(this)
 
         setContent {
             SocialEventTheme {
@@ -34,8 +36,11 @@ class MainActivity : ComponentActivity() {
                         onNavigateToLogin = { currentScreen = "login" }
                     )
                     "main" -> MainScreen(
-                        userRepository = userRepo, // Передаем репозиторий
-                        onLogout = { currentScreen = "login" }
+                        userRepository = userRepo,
+                        onLogout = {
+                            userRepo.logout() // Вызываем логаут
+                            currentScreen = "login"
+                        }
                     )
                 }
             }

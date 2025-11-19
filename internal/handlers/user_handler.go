@@ -365,7 +365,6 @@ func (h *UserHandler) GetAllProfilesJSON(c *gin.Context) {
 // ========== ANDROID/JSON API METHODS ==========
 
 // UpdateProfileJSON - обновление профиля пользователя
-// UpdateProfileJSON - обновление профиля пользователя
 func (h *UserHandler) UpdateProfileJSON(c *gin.Context) {
     currentUser := GetUserFromContext(c)
     if currentUser == nil {
@@ -434,16 +433,17 @@ func (h *UserHandler) GetUserStatsJSON(c *gin.Context) {
 	}
 
 	db := h.userRepo.GetDB()
-	
 
+	// Получаем количество друзей
 	friendshipRepo := repository.NewFriendshipRepository(db)
 	friendsCount, _ := friendshipRepo.GetFriendsCount(currentUser.ID)
 
+	// Получаем количество подписчиков и подписок
 	subscriptionRepo := repository.NewSubscriptionRepository(db)
 	followersCount, _ := subscriptionRepo.GetFollowersCount(currentUser.ID)
 	followingCount, _ := subscriptionRepo.GetFollowingCount(currentUser.ID)
 
-
+	// Получаем количество событий пользователя
 	eventRepo := repository.NewEventRepository(db)
 	userEventsCount, _ := eventRepo.GetUserEventsCountAndroid(currentUser.ID)
 

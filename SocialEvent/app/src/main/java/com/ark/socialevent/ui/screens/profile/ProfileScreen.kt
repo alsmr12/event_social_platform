@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ark.socialevent.network.UserProfile
 import com.ark.socialevent.network.UserRepository
+import com.ark.socialevent.network.UserStats
 
 @Composable
 fun ProfileScreen(
@@ -20,16 +21,27 @@ fun ProfileScreen(
     onEditProfile: () -> Unit
 ) {
     var userProfile by remember { mutableStateOf<UserProfile?>(null) }
+    var userStats by remember { mutableStateOf<UserStats?>(null) }
     var loading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    // Загружаем профиль при открытии экрана
+    // Загружаем профиль и статистику при открытии экрана
     LaunchedEffect(Unit) {
         userRepository.getProfile { profile ->
             userProfile = profile
-            loading = false
             if (profile == null) {
                 errorMessage = "Не удалось загрузить профиль"
+                loading = false
+            } else {
+                // Загружаем статистику после успешной загрузки профиля
+                userRepository.getUserStats { stats, statsError ->
+                    userStats = stats
+                    loading = false
+                    if (statsError != null) {
+                        // Логируем ошибку, но не блокируем весь экран
+                        println("Ошибка загрузки статистики: $statsError")
+                    }
+                }
             }
         }
     }
@@ -82,6 +94,7 @@ fun ProfileScreen(
             userProfile != null -> {
                 ProfileContent(
                     userProfile = userProfile!!,
+                    userStats = userStats,
                     modifier = Modifier.verticalScroll(rememberScrollState())
                 )
             }
@@ -92,6 +105,7 @@ fun ProfileScreen(
 @Composable
 fun ProfileContent(
     userProfile: UserProfile,
+    userStats: UserStats? = null,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -130,14 +144,26 @@ fun ProfileContent(
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
 
-                // Временная заглушка для статистики
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    StatItem(count = "0", label = "Друзей")
-                    StatItem(count = "0", label = "Событий")
-                    StatItem(count = "0", label = "Подписок")
+                    StatItem(
+                        count = userStats?.friendsCount?.toString() ?: "0",
+                        label = "Друзей"
+                    )
+                    StatItem(
+                        count = userStats?.eventsCount?.toString() ?: "0",
+                        label = "Событий"
+                    )
+                    StatItem(
+                        count = userStats?.followersCount?.toString() ?: "0",
+                        label = "Подписчиков"
+                    )
+                    StatItem(
+                        count = userStats?.followingCount?.toString() ?: "0",
+                        label = "Подписок"
+                    )
                 }
             }
         }

@@ -1,21 +1,20 @@
 package com.ark.socialevent.network
 
+import android.content.Context
 import android.util.Log
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
-class UserRepository {
-    private val api: ApiService = ApiClient.apiService
+class UserRepository(private val context: Context) {
+    private val api: ApiService by lazy {
+        // Инициализируем ApiClient и получаем apiService
+        ApiClient.initialize(context)
+        ApiClient.getApiService()
+    }
+
     init {
-        val retrofit = Retrofit.Builder()
-            .baseUrl("http://10.0.2.2:8080/")
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-
-
+        Log.d("UserRepository", "UserRepository initialized with context")
     }
 
     // Регистрация пользователя
@@ -61,19 +60,42 @@ class UserRepository {
         })
     }
 
-    // Логин пользователя
+    // Логин пользователя - ОБНОВЛЕННЫЙ!
     fun login(email: String, password: String, callback: (Boolean, String?) -> Unit) {
+        Log.d("UserRepository", "=== LOGIN START ===")
+        Log.d("UserRepository", "Email: $email")
+
         val request = LoginRequest(email, password)
         api.login(request).enqueue(object : Callback<LoginResponse> {
             override fun onResponse(call: Call<LoginResponse>, response: Response<LoginResponse>) {
+                Log.d("UserRepository", "=== LOGIN RESPONSE ===")
+                Log.d("UserRepository", "Response code: ${response.code()}")
+
                 if (response.isSuccessful) {
                     val body = response.body()
                     if (body != null && body.success) {
-                        Log.d("UserRepository", "Login successful")
+                        Log.d("UserRepository", "✅ Login successful")
+
+                        // ВАЖНО: Сохраняем токен и сразу проверяем
+                        body.token?.let { token ->
+                            Log.d("UserRepository", "💾 Saving token: $token")
+                            ApiClient.saveSessionToken(token)
+
+                            // СРАЗУ ПРОВЕРИМ что сохранилось
+                            val savedToken = ApiClient.getSessionToken()
+                            if (savedToken == token) {
+                                Log.d("UserRepository", "✅ Token saved correctly: $savedToken")
+                            } else {
+                                Log.e("UserRepository", "❌ Token save FAILED! Saved: $savedToken, Expected: $token")
+                            }
+                        } ?: run {
+                            Log.e("UserRepository", "❌ No token in login response!")
+                        }
+
                         callback(true, body.message ?: "Вход выполнен")
                     } else {
                         val errorMsg = body?.message ?: "Неверный email или пароль"
-                        Log.e("UserRepository", "Login failed: $errorMsg")
+                        Log.e("UserRepository", "❌ Login failed: $errorMsg")
                         callback(false, errorMsg)
                     }
                 } else {
@@ -83,41 +105,53 @@ class UserRepository {
                         500 -> "Ошибка сервера"
                         else -> "Ошибка: ${response.code()}"
                     }
-                    Log.e("UserRepository", "Login HTTP error: ${response.code()}")
+                    Log.e("UserRepository", "❌ Login HTTP error: ${response.code()}")
                     callback(false, errorMsg)
                 }
             }
 
             override fun onFailure(call: Call<LoginResponse>, t: Throwable) {
-                Log.e("UserRepository", "Login network failed: ${t.message}")
+                Log.e("UserRepository", "❌ Login network failed: ${t.message}")
                 callback(false, "Ошибка сети: ${t.message}")
             }
         })
     }
 
-    // Получение профиля текущего пользователя - ИСПРАВЛЕНО
+    // Получение профиля текущего пользователя
     fun getProfile(callback: (UserProfile?) -> Unit) {
-        Log.d("UserRepository", "Getting profile...")
+        Log.d("UserRepository", "=== GET PROFILE START ===")
+
+        // Проверим токен перед запросом
+        val token = ApiClient.getSessionToken()
+        Log.d("UserRepository", "🔑 Current session token: $token")
+
+        if (token == null) {
+            Log.e("UserRepository", "❌ No token available for profile request!")
+            callback(null)
+            return
+        }
+
+        Log.d("UserRepository", "🚀 Making profile request with token...")
         api.getProfile().enqueue(object : Callback<ProfileResponse> {
             override fun onResponse(
                 call: Call<ProfileResponse>,
                 response: Response<ProfileResponse>
             ) {
-                Log.d("UserRepository", "Profile response code: ${response.code()}")
-                Log.d("UserRepository", "Profile response headers: ${response.headers()}")
+                Log.d("UserRepository", "=== GET PROFILE RESPONSE ===")
+                Log.d("UserRepository", "Response code: ${response.code()}")
 
                 if (response.isSuccessful) {
                     val body = response.body()
                     if (body != null) {
-                        Log.d("UserRepository", "Get profile successful")
+                        Log.d("UserRepository", "✅ Get profile SUCCESS")
+                        Log.d("UserRepository", "User: ${body.user.firstName} ${body.user.lastName}")
                         callback(body.user)
                     } else {
-                        Log.e("UserRepository", "Get profile: empty body")
+                        Log.e("UserRepository", "❌ Get profile: empty body")
                         callback(null)
                     }
                 } else {
-                    Log.e("UserRepository", "Get profile HTTP error: ${response.code()}")
-                    // Пробуем прочитать тело ошибки
+                    Log.e("UserRepository", "❌ Get profile HTTP error: ${response.code()}")
                     try {
                         val errorBody = response.errorBody()?.string()
                         Log.e("UserRepository", "Error body: $errorBody")
@@ -129,7 +163,7 @@ class UserRepository {
             }
 
             override fun onFailure(call: Call<ProfileResponse>, t: Throwable) {
-                Log.e("UserRepository", "Get profile network failed: ${t.message}")
+                Log.e("UserRepository", "❌ Get profile NETWORK failed: ${t.message}")
                 callback(null)
             }
         })
@@ -161,6 +195,7 @@ class UserRepository {
             }
         })
     }
+
     // ========== FRIENDS METHODS ==========
 
     // Получить список друзей
@@ -175,7 +210,6 @@ class UserRepository {
                         Log.d("UserRepository", "Loaded ${body.friends?.size ?: 0} friends")
                         callback(body.friends ?: emptyList(), null)
                     } else {
-                        // Пробуем прочитать raw response для отладки
                         try {
                             val errorBody = response.errorBody()?.string()
                             Log.e("UserRepository", "Error body: $errorBody")
@@ -187,7 +221,6 @@ class UserRepository {
                         callback(null, errorMsg)
                     }
                 } else {
-                    // Пробуем прочитать raw response для отладки
                     try {
                         val errorBody = response.errorBody()?.string()
                         Log.e("UserRepository", "HTTP ${response.code()} error body: $errorBody")
@@ -211,7 +244,6 @@ class UserRepository {
             }
         })
     }
-
 
     // Получить входящие заявки в друзья
     fun getPendingRequests(callback: (List<FriendRequest>?, String?) -> Unit) {
@@ -386,6 +418,7 @@ class UserRepository {
         })
     }
 
+    // Обновление профиля
     fun updateProfile(
         firstName: String,
         lastName: String,
@@ -431,7 +464,7 @@ class UserRepository {
         })
     }
 
-    // Добавьте метод для получения статистики
+    // Получение статистики
     fun getUserStats(callback: (UserStats?, String?) -> Unit) {
         Log.d("UserRepository", "Getting user stats...")
         api.getUserStats().enqueue(object : Callback<UserStatsResponse> {
@@ -460,5 +493,11 @@ class UserRepository {
                 callback(null, "Ошибка сети: ${t.message}")
             }
         })
+    }
+
+    // Логаут
+    fun logout() {
+        ApiClient.clearSessionToken()
+        Log.d("UserRepository", "User logged out")
     }
 }

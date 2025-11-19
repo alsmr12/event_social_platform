@@ -3,7 +3,9 @@ package handlers
 import (
 	"event_social_platform/internal/models"
 	"event_social_platform/internal/repository"
+	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -168,44 +170,91 @@ func (h *AuthHandler) LoginJSON(c *gin.Context) {
 	})
 }
 
+// ProfileJSON - получение профиля пользователя
 func (h *AuthHandler) ProfileJSON(c *gin.Context) {
-	user := GetUserFromContext(c)
-	if user == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "message": "Не авторизован"})
-		return
-	}
+    log.Printf("🔍 ProfileJSON called - checking authentication")
+    
+    // Вариант 1: Попробуем получить пользователя из контекста (если middleware работает)
+    user := GetUserFromContext(c)
+    
+    if user == nil {
+        log.Printf("❌ ProfileJSON: No user in context, trying alternative methods")
+        
+        // Вариант 2: Попробуем получить токен напрямую из запроса
+        token := getTokenFromRequest(c)
+        if token == "" {
+            log.Printf("❌ ProfileJSON: No token found in request")
+            c.JSON(http.StatusUnauthorized, gin.H{
+                "success": false, 
+                "message": "Не авторизован: токен не найден",
+            })
+            return
+        }
+        
+        log.Printf("🔑 ProfileJSON: Found token directly: %s", token)
+        
+        // Найдем сессию по токену
+        session, err := h.sessionRepo.GetSessionByToken(token)
+        if err != nil {
+            log.Printf("❌ ProfileJSON: Session not found: %v", err)
+            c.JSON(http.StatusUnauthorized, gin.H{
+                "success": false, 
+                "message": "Сессия не найдена",
+            })
+            return
+        }
+        
+        // Получим пользователя по ID из сессии
+        user, err = h.userRepo.GetUserByID(session.UserID)
+        if err != nil {
+            log.Printf("❌ ProfileJSON: User not found: %v", err)
+            c.JSON(http.StatusUnauthorized, gin.H{
+                "success": false, 
+                "message": "Пользователь не найден",
+            })
+            return
+        }
+        
+        log.Printf("✅ ProfileJSON: User found via token: %s", user.Email)
+    } else {
+        log.Printf("✅ ProfileJSON: User from context: %s", user.Email)
+    }
 
-	db := h.userRepo.GetDB()
-	wallRepo := repository.NewWallRepository(db)
-	posts, _ := wallRepo.GetPostsByUserID(user.ID)
+    // Дальше обычная логика
+    db := h.userRepo.GetDB()
+    wallRepo := repository.NewWallRepository(db)
+    posts, _ := wallRepo.GetPostsByUserID(user.ID)
 
-	socialRepo := repository.NewSocialLinkRepository(db)
-	socialLinks, _ := socialRepo.GetByUserID(user.ID)
+    socialRepo := repository.NewSocialLinkRepository(db)
+    socialLinks, _ := socialRepo.GetByUserID(user.ID)
 
-	subscriptionRepo := repository.NewSubscriptionRepository(db)
-	followersCount, _ := subscriptionRepo.GetFollowersCount(user.ID)
-	followingCount, _ := subscriptionRepo.GetFollowingCount(user.ID)
+    subscriptionRepo := repository.NewSubscriptionRepository(db)
+    followersCount, _ := subscriptionRepo.GetFollowersCount(user.ID)
+    followingCount, _ := subscriptionRepo.GetFollowingCount(user.ID)
 
-	friendshipRepo := repository.NewFriendshipRepository(db)
-	friendsCount, _ := friendshipRepo.GetFriendsCount(user.ID)
+    friendshipRepo := repository.NewFriendshipRepository(db)
+    friendsCount, _ := friendshipRepo.GetFriendsCount(user.ID)
 
-	c.JSON(http.StatusOK, gin.H{
-		"user": gin.H{
-			"id":         user.ID,
-			"email":      user.Email,
-			"first_name": user.FirstName,
-			"last_name":  user.LastName,
-			"gender":     user.Gender,
-			"age":        user.Age,
-			"phone":      user.Phone,
-		},
-		"posts":          posts,
-		"social_links":   socialLinks,
-		"followers":      followersCount,
-		"following":      followingCount,
-		"friends_count":  friendsCount,
-	})
+    log.Printf("✅ ProfileJSON: Returning profile for user %s", user.Email)
+    
+    c.JSON(http.StatusOK, gin.H{
+        "user": gin.H{
+            "id":         user.ID,
+            "email":      user.Email,
+            "first_name": user.FirstName,
+            "last_name":  user.LastName,
+            "gender":     user.Gender,
+            "age":        user.Age,
+            "phone":      user.Phone,
+        },
+        "posts":          posts,
+        "social_links":   socialLinks,
+        "followers":      followersCount,
+        "following":      followingCount,
+        "friends_count":  friendsCount,
+    })
 }
+
 // RegisterJSON — метод для Android/JSON регистрации
 func (h *AuthHandler) RegisterJSON(c *gin.Context) {
     var req models.RegisterRequest
@@ -268,4 +317,31 @@ func (h *AuthHandler) RegisterJSON(c *gin.Context) {
             "phone":      user.Phone,
         },
     })
+}
+
+// getTokenFromRequest - вспомогательная функция для получения токена из запроса
+func getTokenFromRequest(c *gin.Context) string {
+    // 1. Пробуем получить из заголовка Authorization
+    authHeader := c.GetHeader("Authorization")
+    if strings.HasPrefix(authHeader, "Bearer ") {
+        token := strings.TrimPrefix(authHeader, "Bearer ")
+        log.Printf("📨 Got token from Authorization header: %s", token)
+        return token
+    }
+
+    // 2. Пробуем получить из куки
+    cookieToken, err := c.Cookie("session_token")
+    if err == nil && cookieToken != "" {
+        log.Printf("🍪 Got token from cookie: %s", cookieToken)
+        return cookieToken
+    }
+
+    // 3. Пробуем получить из query параметра (на всякий случай)
+    queryToken := c.Query("token")
+    if queryToken != "" {
+        log.Printf("🔍 Got token from query: %s", queryToken)
+        return queryToken
+    }
+
+    return ""
 }

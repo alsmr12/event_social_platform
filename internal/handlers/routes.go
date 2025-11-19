@@ -68,6 +68,7 @@ router.POST("/login", authHandler.Login)
 router.POST("/api/login", authHandler.LoginJSON)
 router.POST("/api/register", authHandler.RegisterJSON)
 router.GET("/api/profile", authHandler.ProfileJSON)
+router.POST("/api/profile", userHandler.UpdateProfileJSON)
 router.GET("/api/profiles", userHandler.GetAllProfilesJSON)
 
 	// Создание профиля (регистрация)
@@ -157,7 +158,7 @@ router.GET("/api/profiles", userHandler.GetAllProfilesJSON)
 	achievementRepo.InitializeAchievements()
 	// ==================== ANDROID API ROUTES ====================
 api := router.Group("/api")
-api.Use(strictAuth)
+//api.Use(strictAuth)
 {
     // Друзья API
     api.GET("/friends", friendshipHandler.GetFriendsJSON)

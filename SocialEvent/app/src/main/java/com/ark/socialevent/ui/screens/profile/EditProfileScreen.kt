@@ -58,9 +58,21 @@ fun EditProfileScreen(
                                     errorMessage = null
                                     successMessage = null
 
-                                    // Временная заглушка - имитация успешного сохранения
-                                    isLoading = false
-                                    successMessage = "Профиль успешно обновлен!"
+                                    // РЕАЛЬНЫЙ ВЫЗОВ API вместо заглушки
+                                    userRepository.updateProfile(
+                                        firstName = firstName,
+                                        lastName = lastName,
+                                        gender = gender,
+                                        age = age.toInt(),
+                                        phone = phone
+                                    ) { success, message, updatedUser ->
+                                        isLoading = false
+                                        if (success) {
+                                            successMessage = message ?: "Профиль успешно обновлен!"
+                                        } else {
+                                            errorMessage = message ?: "Ошибка обновления профиля"
+                                        }
+                                    }
                                 }
                             },
                             enabled = !isLoading
@@ -248,7 +260,13 @@ private fun validateForm(
     if (lastName.isBlank()) {
         return false
     }
-    if (age.isBlank() || age.toIntOrNull() == null) {
+    if (gender.isBlank()) {
+        return false
+    }
+    if (age.isBlank() || age.toIntOrNull() == null || age.toInt() < 1 || age.toInt() > 120) {
+        return false
+    }
+    if (phone.isBlank()) {
         return false
     }
     return true

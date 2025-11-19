@@ -152,6 +152,11 @@ interface ApiService {
 
     @GET("/api/profile")
     fun getProfile(): Call<ProfileResponse>
+    @PUT("/api/profile")
+    fun updateProfile(@Body request: UpdateProfileRequest): Call<UpdateProfileResponse>
+
+    @GET("/api/profile/stats")
+    fun getUserStats(): Call<UserStatsResponse>
 
     @GET("/api/profiles")
     fun getAllProfiles(): Call<ProfilesResponse>
@@ -182,9 +187,4 @@ interface ApiService {
     @POST("/api/friends/remove/{id}")
     fun removeFriend(@Path("id") userId: Int): Call<FriendOperationResponse>
 
-    @PUT("/api/profile")
-    fun updateProfile(@Body request: UpdateProfileRequest): Call<UpdateProfileResponse>
-
-    @GET("/api/profile/stats")
-    fun getUserStats(): Call<UserStatsResponse>
 }
