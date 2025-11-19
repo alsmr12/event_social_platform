@@ -5,6 +5,8 @@ import (
 	"event_social_platform/internal/repository"
 	"github.com/gin-gonic/gin"
 	"time"
+	"log"
+	"net/http"
 )
 
 func AuthMiddleware(userRepo *repository.UserRepository, sessionRepo *repository.SessionRepository) gin.HandlerFunc {
@@ -57,47 +59,66 @@ func AuthMiddleware(userRepo *repository.UserRepository, sessionRepo *repository
 // StrictAuthMiddleware - строгая проверка (редирект на логин)
 func StrictAuthMiddleware(userRepo *repository.UserRepository, sessionRepo *repository.SessionRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Пропускаем страницу логина и регистрации без проверки
-		if c.Request.URL.Path == "/login" || c.Request.URL.Path == "/create-profile" {
-			c.Next()
-			return
+		log.Printf("🔒 StrictAuthMiddleware: checking strict auth for path: %s", c.Request.URL.Path)
+		log.Printf("🌐 StrictAuthMiddleware: request from: %s", c.Request.RemoteAddr)
+		log.Printf("🔗 StrictAuthMiddleware: user agent: %s", c.Request.UserAgent())
+		
+		// Логируем ВСЕ заголовки
+		log.Printf("📋 StrictAuthMiddleware: ALL HEADERS:")
+		for name, values := range c.Request.Header {
+			for _, value := range values {
+				log.Printf("   %s: %s", name, value)
+			}
 		}
-		// Проверяем куку с токеном
+
+		// Логируем куки
+		cookies := c.Request.Cookies()
+		if len(cookies) > 0 {
+			log.Printf("🍪 StrictAuthMiddleware: received cookies:")
+			for _, cookie := range cookies {
+				log.Printf("   - %s: %s (Domain: %s, Path: %s)", cookie.Name, cookie.Value, cookie.Domain, cookie.Path)
+			}
+		} else {
+			log.Printf("❌ StrictAuthMiddleware: NO COOKIES received at all!")
+		}
+
 		token, err := c.Cookie("session_token")
 		if err != nil {
-			c.Redirect(302, "/login")
+			log.Printf("❌ StrictAuthMiddleware: no session_token cookie found: %v", err)
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"message": "Не авторизован",
+			})
 			c.Abort()
 			return
 		}
-		// Ищем сессию в базе
+
+		log.Printf("🔑 StrictAuthMiddleware: found session_token: %s", token)
+		
 		session, err := sessionRepo.GetSessionByToken(token)
 		if err != nil {
-			c.SetCookie("session_token", "", -1, "/", "", false, true)
-			c.Redirect(302, "/login")
+			log.Printf("❌ StrictAuthMiddleware: session not found or expired: %v", err)
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"message": "Сессия истекла",
+			})
 			c.Abort()
 			return
 		}
-		// Проверяем не просрочена ли сессия
-		if time.Now().After(session.ExpiresAt) {
-			sessionRepo.DeleteSession(token)
-			c.SetCookie("session_token", "", -1, "/", "", false, true)
-			c.Redirect(302, "/login")
-			c.Abort()
-			return
-		}
-		// Получаем пользователя
+
 		user, err := userRepo.GetUserByID(session.UserID)
 		if err != nil {
-			c.SetCookie("session_token", "", -1, "/", "", false, true)
-			c.Redirect(302, "/login")
+			log.Printf("❌ StrictAuthMiddleware: user not found for session: %v", err)
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"message": "Пользователь не найден",
+			})
 			c.Abort()
 			return
 		}
-		// Устанавливаем данные пользователя в контекст
-		c.Set("is_authenticated", true)
+
+		log.Printf("✅ StrictAuthMiddleware: user authenticated: %s (ID: %d)", user.Email, user.ID)
 		c.Set("user", user)
-		c.Set("user_id", user.ID)
-		c.Set("CurrentUser", user)
 		c.Next()
 	}
 }
