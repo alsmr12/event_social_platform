@@ -79,12 +79,12 @@ data class Friend(
 // Модель заявки в друзья
 data class FriendRequest(
     val id: Int,
-    val user: UserProfile,
-    val friend: UserProfile,
+    val user: UserProfile,      // Отправитель заявки
+    val friend: UserProfile,    // Получатель заявки
     val status: String,
-    @SerializedName("created_at") val createdAt: String
+    @SerializedName("created_at") val createdAt: String,
+    val isIncoming: Boolean = false  // Добавьте это поле
 )
-
 // Ответ для списка друзей
 data class FriendsResponse(
     val success: Boolean,
@@ -186,5 +186,7 @@ interface ApiService {
 
     @POST("/api/friends/remove/{id}")
     fun removeFriend(@Path("id") userId: Int): Call<FriendOperationResponse>
+    @POST("/api/friends/cancel/{id}")
+    fun cancelFriendRequest(@Path("id") userId: Int): Call<FriendOperationResponse>
 
 }

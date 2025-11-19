@@ -1,5 +1,6 @@
 package com.ark.socialevent.ui.screens.friends
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,6 +16,28 @@ import com.ark.socialevent.network.Friend
 import com.ark.socialevent.network.FriendRequest
 import com.ark.socialevent.network.UserRepository
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import com.ark.socialevent.state.FriendshipStateManager
+
+
+object FriendshipStateManager {
+    var refreshFriendsTrigger by mutableStateOf(0)
+    var refreshPeopleTrigger by mutableStateOf(0)
+
+    fun refreshFriends() {
+        refreshFriendsTrigger++
+    }
+
+    fun refreshPeople() {
+        refreshPeopleTrigger++
+    }
+
+    fun refreshAll() {
+        refreshFriendsTrigger++
+        refreshPeopleTrigger++
+    }
+}
+
 
 @Composable
 fun FriendsScreen(userRepository: UserRepository) {
@@ -29,8 +52,11 @@ fun FriendsScreen(userRepository: UserRepository) {
 
     val coroutineScope = rememberCoroutineScope()
 
-    // Загружаем данные при первом открытии
-    LaunchedEffect(currentTab) {
+    // Следим за глобальным триггером обновления
+    val refreshTrigger by remember { mutableStateOf(FriendshipStateManager.refreshFriendsTrigger) }
+
+    // Функция для принудительного обновления данных текущей вкладки
+    val refreshCurrentTab = {
         loading = true
         errorMessage = null
 
@@ -44,14 +70,16 @@ fun FriendsScreen(userRepository: UserRepository) {
             }
             1 -> {
                 userRepository.getPendingRequests { result, error ->
-                    pendingRequests = result ?: emptyList()
+                    val incomingRequests = result?.map { it.copy(isIncoming = true) } ?: emptyList()
+                    pendingRequests = incomingRequests
                     errorMessage = error
                     loading = false
                 }
             }
             2 -> {
                 userRepository.getSentRequests { result, error ->
-                    sentRequests = result ?: emptyList()
+                    val outgoingRequests = result?.map { it.copy(isIncoming = false) } ?: emptyList()
+                    sentRequests = outgoingRequests
                     errorMessage = error
                     loading = false
                 }
@@ -59,16 +87,40 @@ fun FriendsScreen(userRepository: UserRepository) {
         }
     }
 
+    // Загружаем данные при первом открытии, при смене вкладки И при глобальном обновлении
+    LaunchedEffect(currentTab, refreshTrigger) {
+        refreshCurrentTab()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text(
-            "Друзья",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+        // Добавляем кнопку обновления в заголовок
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Друзья",
+                style = MaterialTheme.typography.headlineMedium
+            )
+
+            IconButton(
+                onClick = { refreshCurrentTab() },
+                enabled = !loading
+            ) {
+                if (loading) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                } else {
+                    Icon(Icons.Default.Refresh, contentDescription = "Обновить")
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Табы
         TabRow(selectedTabIndex = currentTab) {
@@ -114,26 +166,18 @@ fun FriendsScreen(userRepository: UserRepository) {
                     0 -> FriendsList(
                         friends = friends,
                         userRepository = userRepository,
-                        onFriendRemoved = {
-                            coroutineScope.launch {
-                                userRepository.getFriends { result, error ->
-                                    friends = result ?: emptyList()
-                                }
-                            }
-                        }
+                        onFriendRemoved = refreshCurrentTab // Используем новую функцию
                     )
                     1 -> PendingRequestsList(
                         requests = pendingRequests,
                         userRepository = userRepository,
-                        onRequestProcessed = {
-                            coroutineScope.launch {
-                                userRepository.getPendingRequests { result, error ->
-                                    pendingRequests = result ?: emptyList()
-                                }
-                            }
-                        }
+                        onRequestProcessed = refreshCurrentTab // Используем новую функцию
                     )
-                    2 -> SentRequestsList(requests = sentRequests)
+                    2 -> SentRequestsList(
+                        requests = sentRequests,
+                        userRepository = userRepository,
+                        onRequestCancelled = refreshCurrentTab // Добавляем для отмены заявок
+                    )
                 }
             }
         }
@@ -173,6 +217,7 @@ fun FriendItem(
     onFriendRemoved: () -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
+    var isRemoving by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -199,8 +244,15 @@ fun FriendItem(
                 )
             }
 
-            IconButton(onClick = { showDialog = true }) {
-                Icon(Icons.Filled.MoreVert, contentDescription = "Действия")
+            if (isRemoving) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp))
+            } else {
+                IconButton(
+                    onClick = { showDialog = true },
+                    enabled = !isRemoving
+                ) {
+                    Icon(Icons.Filled.MoreVert, contentDescription = "Действия")
+                }
             }
         }
     }
@@ -213,19 +265,29 @@ fun FriendItem(
             confirmButton = {
                 TextButton(
                     onClick = {
+                        isRemoving = true
                         userRepository.removeFriend(friend.id) { success, message ->
+                            isRemoving = false
+                            showDialog = false
                             if (success) {
-                                onFriendRemoved()
+                                onFriendRemoved() // Обновляем данные
                             }
                         }
-                        showDialog = false
-                    }
+                    },
+                    enabled = !isRemoving
                 ) {
-                    Text("Удалить")
+                    if (isRemoving) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                    } else {
+                        Text("Удалить")
+                    }
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDialog = false }) {
+                TextButton(
+                    onClick = { showDialog = false },
+                    enabled = !isRemoving
+                ) {
                     Text("Отмена")
                 }
             }
@@ -265,6 +327,8 @@ fun PendingRequestItem(
     userRepository: UserRepository,
     onRequestProcessed: () -> Unit
 ) {
+    var isProcessing by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -278,41 +342,112 @@ fun PendingRequestItem(
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium
             )
+
             Text(
-                "Хочет добавить вас в друзья",
+                if (request.isIncoming) {
+                    "Хочет добавить вас в друзья"
+                } else {
+                    "Вы отправили заявку в друзья"
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Row {
-                Button(
-                    onClick = {
-                        userRepository.acceptFriendRequest(request.user.id) { success, message ->
-                            if (success) {
-                                onRequestProcessed()
+            if (request.isIncoming) {
+                Row {
+                    Button(
+                        onClick = {
+                            if (!isProcessing) {
+                                isProcessing = true
+                                userRepository.acceptFriendRequest(request.user.id) { success, message ->
+                                    isProcessing = false
+                                    if (success) {
+                                        onRequestProcessed()
+                                    }
+                                }
                             }
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = !isProcessing
+                    ) {
+                        if (isProcessing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        } else {
+                            Text("Принять")
                         }
-                    },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Принять")
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    OutlinedButton(
+                        onClick = {
+                            if (!isProcessing) {
+                                isProcessing = true
+                                userRepository.rejectFriendRequest(request.user.id) { success, message ->
+                                    isProcessing = false
+                                    if (success) {
+                                        onRequestProcessed()
+                                    }
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = !isProcessing
+                    ) {
+                        if (isProcessing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        } else {
+                            Text("Отклонить")
+                        }
+                    }
                 }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                OutlinedButton(
-                    onClick = {
-                        userRepository.rejectFriendRequest(request.user.id) { success, message ->
-                            if (success) {
-                                onRequestProcessed()
-                            }
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
+            } else {
+                // Для исходящих заявок добавляем возможность отмены
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Отклонить")
+                    Icon(
+                        Icons.Default.Schedule,
+                        contentDescription = "Ожидание",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Ожидает ответа",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // Кнопка отмены заявки
+                    TextButton(
+                        onClick = {
+                            if (!isProcessing) {
+                                isProcessing = true
+                                userRepository.rejectFriendRequest(request.user.id) { success, message ->
+                                    isProcessing = false
+                                    if (success) {
+                                        onRequestProcessed()
+                                    }
+                                }
+                            }
+                        },
+                        enabled = !isProcessing
+                    ) {
+                        if (isProcessing) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                        } else {
+                            Text("Отменить")
+                        }
+                    }
                 }
             }
         }
@@ -320,7 +455,13 @@ fun PendingRequestItem(
 }
 
 @Composable
-fun SentRequestsList(requests: List<FriendRequest>) {
+fun SentRequestsList(
+    requests: List<FriendRequest>,
+    userRepository: UserRepository,
+    onRequestCancelled: () -> Unit
+) {
+    val coroutineScope = rememberCoroutineScope()
+
     if (requests.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -331,6 +472,8 @@ fun SentRequestsList(requests: List<FriendRequest>) {
     } else {
         LazyColumn {
             items(requests) { request ->
+                var isCancelling by remember { mutableStateOf(false) }
+
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -355,10 +498,35 @@ fun SentRequestsList(requests: List<FriendRequest>) {
                             )
                         }
 
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp
-                        )
+                        if (isCancelling) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                        } else {
+                            TextButton(
+                                onClick = {
+                                    isCancelling = true
+                                    userRepository.rejectFriendRequest(request.friend.id) { success, message ->
+                                        // ВЫЗЫВАЕМ В КОРУТИНЕ
+                                        coroutineScope.launch {
+                                            isCancelling = false
+                                            if (success) {
+                                                Log.d("FriendsScreen", "✅ Request cancelled successfully")
+                                                delay(500) // Ждем полсекунды
+                                                onRequestCancelled()
+                                            } else {
+                                                Log.e("FriendsScreen", "❌ Failed to cancel request: $message")
+                                            }
+                                        }
+                                    }
+                                },
+                                enabled = !isCancelling
+                            ) {
+                                if (isCancelling) {
+                                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                                } else {
+                                    Text("Отменить")
+                                }
+                            }
+                        }
                     }
                 }
             }

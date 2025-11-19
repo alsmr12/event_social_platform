@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.ark.socialevent.network.UserProfile
 import com.ark.socialevent.network.UserRepository
+import com.ark.socialevent.state.FriendshipStateManager
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -21,7 +22,9 @@ fun PeopleScreen(userRepository: UserRepository) {
     var users by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var refreshTrigger by remember { mutableStateOf(0) }
+
+    // Следим за глобальным триггером обновления
+    val refreshTrigger by remember { mutableStateOf(FriendshipStateManager.refreshPeopleTrigger) }
 
     // Snackbar для уведомлений
     val snackbarHostState = remember { SnackbarHostState() }
@@ -76,7 +79,7 @@ fun PeopleScreen(userRepository: UserRepository) {
                         Button(onClick = {
                             isLoading = true
                             errorMessage = null
-                            refreshTrigger++
+                            FriendshipStateManager.refreshPeople() // Используем глобальный менеджер
                         }) {
                             Text("Повторить")
                         }
@@ -95,7 +98,6 @@ fun PeopleScreen(userRepository: UserRepository) {
                         UserCard(
                             user = user,
                             userRepository = userRepository,
-                            onFriendshipChanged = { refreshTrigger++ },
                             onShowMessage = { message ->
                                 coroutineScope.launch {
                                     snackbarHostState.showSnackbar(message)
@@ -114,21 +116,31 @@ fun PeopleScreen(userRepository: UserRepository) {
 fun UserCard(
     user: UserProfile,
     userRepository: UserRepository,
-    onFriendshipChanged: () -> Unit,
     onShowMessage: (String) -> Unit
 ) {
     var friendshipStatus by remember { mutableStateOf<String?>(null) }
     var isLoadingStatus by remember { mutableStateOf(true) }
     var showActionButtons by remember { mutableStateOf(false) }
+    var isIncomingRequest by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     // Загружаем статус дружбы при создании карточки
-    LaunchedEffect(user.id) {
+    LaunchedEffect(user.id, FriendshipStateManager.refreshPeopleTrigger) { // Добавляем зависимость от триггера
         userRepository.getFriendshipStatus(user.id) { status, error ->
             isLoadingStatus = false
             if (error == null) {
                 friendshipStatus = status
-                showActionButtons = status != null && status != "none"
+
+                // ОПРЕДЕЛЯЕМ ТИП ЗАЯВКИ: входящая или исходящая
+                if (status == "pending") {
+                    // Для определения типа заявки проверяем список входящих запросов
+                    userRepository.getPendingRequests { requests, _ ->
+                        isIncomingRequest = requests?.any { it.user.id == user.id } == true
+                        showActionButtons = status != null && status != "none"
+                    }
+                } else {
+                    showActionButtons = status != null && status != "none"
+                }
             } else {
                 friendshipStatus = "none"
             }
@@ -186,8 +198,8 @@ fun UserCard(
                 FriendshipButtons(
                     user = user,
                     friendshipStatus = friendshipStatus,
+                    isIncomingRequest = isIncomingRequest,
                     userRepository = userRepository,
-                    onFriendshipChanged = onFriendshipChanged,
                     onShowMessage = onShowMessage,
                     showActionButtons = showActionButtons,
                     onShowActionButtonsChange = { showActionButtons = it }
@@ -201,14 +213,35 @@ fun UserCard(
 fun FriendshipButtons(
     user: UserProfile,
     friendshipStatus: String?,
+    isIncomingRequest: Boolean,
     userRepository: UserRepository,
-    onFriendshipChanged: () -> Unit,
     onShowMessage: (String) -> Unit,
     showActionButtons: Boolean,
     onShowActionButtonsChange: (Boolean) -> Unit
 ) {
     var isLoading by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+
+    // Функция для обработки операций с друзьями
+    fun handleFriendshipOperation(
+        operation: (callback: (Boolean, String?) -> Unit) -> Unit,
+        successMessage: String
+    ) {
+        coroutineScope.launch {
+            isLoading = true
+            operation { success, message ->
+                isLoading = false
+                if (success) {
+                    onShowMessage(successMessage)
+                    // ВЫЗЫВАЕМ ГЛОБАЛЬНОЕ ОБНОВЛЕНИЕ ВСЕХ ЭКРАНОВ
+                    FriendshipStateManager.refreshAll()
+                    onShowActionButtonsChange(false)
+                } else {
+                    onShowMessage(message ?: "Ошибка операции")
+                }
+            }
+        }
+    }
 
     // Основная кнопка/статус
     Row(
@@ -220,7 +253,7 @@ fun FriendshipButtons(
         Text(
             text = when (friendshipStatus) {
                 "none" -> "Не в друзьях"
-                "pending" -> "Запрос отправлен"
+                "pending" -> if (isIncomingRequest) "Прислал(а) заявку" else "Запрос отправлен"
                 "accepted" -> "Друзья"
                 else -> "Не в друзьях"
             },
@@ -233,67 +266,66 @@ fun FriendshipButtons(
         )
 
         // Кнопка действий
-        if (friendshipStatus != "accepted") {
-            Button(
-                onClick = {
-                    when (friendshipStatus) {
-                        "none" -> {
-                            coroutineScope.launch {
-                                isLoading = true
-                                userRepository.sendFriendRequest(user.id) { success, message ->
-                                    isLoading = false
-                                    if (success) {
-                                        onShowMessage("Запрос в друзья отправлен")
-                                        onFriendshipChanged()
-                                    } else {
-                                        onShowMessage(message ?: "Ошибка отправки запроса")
-                                    }
-                                }
-                            }
-                        }
-                        "pending" -> {
-                            onShowActionButtonsChange(!showActionButtons)
-                        }
-                        else -> {
-                            coroutineScope.launch {
-                                isLoading = true
-                                userRepository.sendFriendRequest(user.id) { success, message ->
-                                    isLoading = false
-                                    if (success) {
-                                        onShowMessage("Запрос в друзья отправлен")
-                                        onFriendshipChanged()
-                                    } else {
-                                        onShowMessage(message ?: "Ошибка отправки запроса")
-                                    }
-                                }
-                            }
-                        }
+        when (friendshipStatus) {
+            "none" -> {
+                Button(
+                    onClick = {
+                        handleFriendshipOperation(
+                            operation = { callback -> userRepository.sendFriendRequest(user.id, callback) },
+                            successMessage = "Запрос в друзья отправлен"
+                        )
+                    },
+                    enabled = !isLoading
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Добавить в друзья")
                     }
-                },
-                enabled = !isLoading
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Text(
-                        when (friendshipStatus) {
-                            "none" -> "Добавить в друзья"
-                            "pending" -> "Действия"
-                            else -> "Добавить в друзья"
-                        }
-                    )
                 }
             }
-        } else {
-            // Для друзей показываем кнопку управления
-            OutlinedButton(
-                onClick = { onShowActionButtonsChange(!showActionButtons) },
-                enabled = !isLoading
-            ) {
-                Text("Управление")
+            "pending" -> {
+                if (isIncomingRequest) {
+                    // ВХОДЯЩАЯ заявка - показываем кнопку "Действия"
+                    Button(
+                        onClick = { onShowActionButtonsChange(!showActionButtons) },
+                        enabled = !isLoading
+                    ) {
+                        Text("Действия")
+                    }
+                } else {
+                    // ИСХОДЯЩАЯ заявка - показываем кнопку "Отменить"
+                    OutlinedButton(
+                        onClick = {
+                            handleFriendshipOperation(
+                                operation = { callback -> userRepository.rejectFriendRequest(user.id, callback) },
+                                successMessage = "Заявка отменена"
+                            )
+                        },
+                        enabled = !isLoading
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("Отменить")
+                        }
+                    }
+                }
+            }
+            "accepted" -> {
+                // Для друзей показываем кнопку управления
+                OutlinedButton(
+                    onClick = { onShowActionButtonsChange(!showActionButtons) },
+                    enabled = !isLoading
+                ) {
+                    Text("Управление")
+                }
             }
         }
     }
@@ -304,55 +336,39 @@ fun FriendshipButtons(
         Column {
             when (friendshipStatus) {
                 "pending" -> {
-                    // Для ожидающих запросов - принять/отклонить
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Button(
-                            onClick = {
-                                coroutineScope.launch {
-                                    isLoading = true
-                                    userRepository.acceptFriendRequest(user.id) { success, message ->
-                                        isLoading = false
-                                        if (success) {
-                                            onShowMessage("Запрос в друзья принят")
-                                            onFriendshipChanged()
-                                            onShowActionButtonsChange(false)
-                                        } else {
-                                            onShowMessage(message ?: "Ошибка принятия запроса")
-                                        }
-                                    }
-                                }
-                            },
-                            modifier = Modifier.weight(1f),
-                            enabled = !isLoading
+                    // ТОЛЬКО ДЛЯ ВХОДЯЩИХ ЗАЯВОК - принять/отклонить
+                    if (isIncomingRequest) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Принять")
-                        }
+                            Button(
+                                onClick = {
+                                    handleFriendshipOperation(
+                                        operation = { callback -> userRepository.acceptFriendRequest(user.id, callback) },
+                                        successMessage = "Запрос в друзья принят"
+                                    )
+                                },
+                                modifier = Modifier.weight(1f),
+                                enabled = !isLoading
+                            ) {
+                                Text("Принять")
+                            }
 
-                        Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
 
-                        OutlinedButton(
-                            onClick = {
-                                coroutineScope.launch {
-                                    isLoading = true
-                                    userRepository.rejectFriendRequest(user.id) { success, message ->
-                                        isLoading = false
-                                        if (success) {
-                                            onShowMessage("Запрос в друзья отклонен")
-                                            onFriendshipChanged()
-                                            onShowActionButtonsChange(false)
-                                        } else {
-                                            onShowMessage(message ?: "Ошибка отклонения запроса")
-                                        }
-                                    }
-                                }
-                            },
-                            modifier = Modifier.weight(1f),
-                            enabled = !isLoading
-                        ) {
-                            Text("Отклонить")
+                            OutlinedButton(
+                                onClick = {
+                                    handleFriendshipOperation(
+                                        operation = { callback -> userRepository.rejectFriendRequest(user.id, callback) },
+                                        successMessage = "Запрос в друзья отклонен"
+                                    )
+                                },
+                                modifier = Modifier.weight(1f),
+                                enabled = !isLoading
+                            ) {
+                                Text("Отклонить")
+                            }
                         }
                     }
                 }
@@ -360,19 +376,10 @@ fun FriendshipButtons(
                     // Для друзей - удалить из друзей
                     OutlinedButton(
                         onClick = {
-                            coroutineScope.launch {
-                                isLoading = true
-                                userRepository.removeFriend(user.id) { success, message ->
-                                    isLoading = false
-                                    if (success) {
-                                        onShowMessage("Пользователь удален из друзей")
-                                        onFriendshipChanged()
-                                        onShowActionButtonsChange(false)
-                                    } else {
-                                        onShowMessage(message ?: "Ошибка удаления из друзей")
-                                    }
-                                }
-                            }
+                            handleFriendshipOperation(
+                                operation = { callback -> userRepository.removeFriend(user.id, callback) },
+                                successMessage = "Пользователь удален из друзей"
+                            )
                         },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !isLoading,

@@ -1,8 +1,10 @@
 package repository
 
 import (
-	"event_social_platform/internal/models"
-	"gorm.io/gorm"
+    "event_social_platform/internal/models"
+    "fmt"
+    "gorm.io/gorm"
+    "log"
 )
 
 type FriendshipRepository struct {
@@ -27,12 +29,16 @@ func (r *FriendshipRepository) AcceptFriendship(userID, friendID uint) error {
 
 // Отклонить запрос на дружбу
 func (r *FriendshipRepository) RejectFriendship(userID, friendID uint) error {
-	///return r.db.Model(&models.Friendship{}).
-	///Where("user_id = ? AND friend_id = ? AND status = ?", friendID, userID, models.FriendshipPending).
-	///Update("status", models.FriendshipRejected).Error
-	return r.db.Where("user_id = ? AND friend_id = ? AND status = ?",
-		friendID, userID, models.FriendshipPending).
-		Delete(&models.Friendship{}).Error
+    // Удаляем запись о дружбе полностью
+    result := r.db.Where("(user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)",
+        userID, friendID, friendID, userID).
+        Delete(&models.Friendship{})
+    
+    if result.Error != nil {
+        return result.Error
+    }
+    
+    return nil
 }
 
 // Удалить друга (удаляет обе записи)
@@ -152,4 +158,39 @@ func (r *FriendshipRepository) GetFriendCount(userID uint, count *int64) error {
 	return r.db.Model(&models.Friendship{}).
 		Where("(user_id = ? OR friend_id = ?) AND status = 'accepted'", userID, userID).
 		Count(count).Error
+}
+
+
+
+func (r *FriendshipRepository) CancelFriendship(userID, friendID uint) error {
+    log.Printf("Cancelling friendship request from %d to %d", userID, friendID)
+    
+    // Удаляем только если текущий пользователь - отправитель
+    result := r.db.Where("user_id = ? AND friend_id = ? AND status = ?",
+        userID, friendID, string(models.FriendshipPending)). // ИСПРАВЬТЕ НА string()
+        Delete(&models.Friendship{})
+    
+    if result.Error != nil {
+        log.Printf("Error cancelling friendship: %v", result.Error)
+        return result.Error
+    }
+    
+    if result.RowsAffected == 0 {
+        return fmt.Errorf("заявка не найдена или уже обработана")
+    }
+    
+    log.Printf("Friendship request cancelled successfully")
+    return nil
+}
+
+// GetFriendshipBetweenUsers - получить запись о дружбе между двумя пользователями
+func (r *FriendshipRepository) GetFriendshipBetweenUsers(userID1, userID2 uint) (*models.Friendship, error) {
+    var friendship models.Friendship
+    err := r.db.Where("(user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)", 
+        userID1, userID2, userID2, userID1).
+        First(&friendship).Error
+    if err != nil {
+        return nil, err
+    }
+    return &friendship, nil
 }

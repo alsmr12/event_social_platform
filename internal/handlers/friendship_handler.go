@@ -482,40 +482,7 @@ func (h *FriendshipHandler) AcceptFriendRequestJSON(c *gin.Context) {
 	})
 }
 
-// RejectFriendRequestJSON - отклонить заявку в друзья
-func (h *FriendshipHandler) RejectFriendRequestJSON(c *gin.Context) {
-	currentUser := GetUserFromContext(c)
-	if currentUser == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"message": "Не авторизован",
-		})
-		return
-	}
 
-	friendIDStr := c.Param("id")
-	friendID, err := strconv.Atoi(friendIDStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "Неверный ID пользователя",
-		})
-		return
-	}
-
-	if err := h.friendshipRepo.RejectFriendship(currentUser.ID, uint(friendID)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "Ошибка отклонения запроса в друзья",
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Запрос в друзья отклонен",
-	})
-}
 
 // RemoveFriendJSON - удалить из друзей
 func (h *FriendshipHandler) RemoveFriendJSON(c *gin.Context) {
@@ -586,4 +553,99 @@ func (h *FriendshipHandler) GetFriendshipStatusJSON(c *gin.Context) {
 		"success": true,
 		"status":  status,
 	})
+}
+
+func (h *FriendshipHandler) RejectFriendRequestJSON(c *gin.Context) {
+    currentUser := GetUserFromContext(c)
+    if currentUser == nil {
+        c.JSON(http.StatusUnauthorized, gin.H{
+            "success": false,
+            "message": "Не авторизован",
+        })
+        return
+    }
+
+    friendIDStr := c.Param("id")
+    friendID, err := strconv.Atoi(friendIDStr)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "success": false,
+            "message": "Неверный ID пользователя",
+        })
+        return
+    }
+
+    // Определяем тип операции: отмена или отклонение
+    friendship, err := h.friendshipRepo.GetFriendshipBetweenUsers(currentUser.ID, uint(friendID))
+    if err != nil {
+        c.JSON(http.StatusNotFound, gin.H{
+            "success": false,
+            "message": "Заявка не найдена",
+        })
+        return
+    }
+
+    var message string
+    if friendship.UserID == currentUser.ID {
+        // ОТМЕНА - пользователь отменяет свою заявку
+        if err := h.friendshipRepo.CancelFriendship(currentUser.ID, uint(friendID)); err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{
+                "success": false,
+                "message": "Ошибка отмены заявки",
+            })
+            return
+        }
+        message = "Заявка отменена"
+    } else {
+        // ОТКЛОНЕНИЕ - пользователь отклоняет входящую заявку
+        if err := h.friendshipRepo.RejectFriendship(currentUser.ID, uint(friendID)); err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{
+                "success": false,
+                "message": "Ошибка отклонения запроса в друзья",
+            })
+            return
+        }
+        message = "Запрос в друзья отклонен"
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "message": message,
+    })
+}
+
+// CancelFriendRequestJSON - отменить отправленную заявку в друзья
+func (h *FriendshipHandler) CancelFriendRequestJSON(c *gin.Context) {
+    currentUser := GetUserFromContext(c)
+    if currentUser == nil {
+        c.JSON(http.StatusUnauthorized, gin.H{
+            "success": false,
+            "message": "Не авторизован",
+        })
+        return
+    }
+
+    friendIDStr := c.Param("id")
+    friendID, err := strconv.Atoi(friendIDStr)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "success": false,
+            "message": "Неверный ID пользователя",
+        })
+        return
+    }
+
+    // Используем метод CancelFriendship из репозитория
+    if err := h.friendshipRepo.CancelFriendship(currentUser.ID, uint(friendID)); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "success": false,
+            "message": "Ошибка отмены заявки",
+        })
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "message": "Заявка отменена",
+    })
 }

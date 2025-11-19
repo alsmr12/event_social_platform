@@ -519,6 +519,34 @@ class UserRepository(private val context: Context) {
         })
     }
 
+    fun cancelFriendRequest(userId: Int, callback: (Boolean, String?) -> Unit) {
+        api.cancelFriendRequest(userId).enqueue(object : Callback<FriendOperationResponse> {
+            override fun onResponse(call: Call<FriendOperationResponse>, response: Response<FriendOperationResponse>) {
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        Log.d("UserRepository", "Friend request cancelled for user $userId")
+                        callback(true, body.message ?: "Заявка отменена")
+                    } else {
+                        val errorMsg = body?.message ?: "Неизвестная ошибка"
+                        callback(false, errorMsg)
+                    }
+                } else {
+                    val errorMsg = when (response.code()) {
+                        400 -> "Невозможно отменить заявку"
+                        404 -> "Заявка не найдена"
+                        else -> "Ошибка: ${response.code()}"
+                    }
+                    callback(false, errorMsg)
+                }
+            }
+
+            override fun onFailure(call: Call<FriendOperationResponse>, t: Throwable) {
+                callback(false, "Ошибка сети: ${t.message}")
+            }
+        })
+    }
+
     // Логаут
     fun logout() {
         ApiClient.clearSessionToken()
