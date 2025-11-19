@@ -158,7 +158,7 @@ router.GET("/api/profiles", userHandler.GetAllProfilesJSON)
 	achievementRepo.InitializeAchievements()
 	// ==================== ANDROID API ROUTES ====================
 api := router.Group("/api")
-//api.Use(strictAuth)
+api.Use(strictAuth)
 {
     // Друзья API
     api.GET("/friends", friendshipHandler.GetFriendsJSON)
@@ -171,5 +171,7 @@ api := router.Group("/api")
     api.POST("/friends/remove/:id", friendshipHandler.RemoveFriendJSON)
 	api.PUT("/profile", userHandler.UpdateProfileJSON) 
     api.GET("/profile/stats", userHandler.GetUserStatsJSON) 
+
+	
 }
 }

@@ -5,7 +5,7 @@ import (
 	"event_social_platform/internal/repository"
 	"net/http"
 	"strconv"
-
+	"log"
 	"github.com/gin-gonic/gin"
 )
 
@@ -366,8 +366,12 @@ func (h *UserHandler) GetAllProfilesJSON(c *gin.Context) {
 
 // UpdateProfileJSON - обновление профиля пользователя
 func (h *UserHandler) UpdateProfileJSON(c *gin.Context) {
-    currentUser := GetUserFromContext(c)
-    if currentUser == nil {
+    log.Printf("🔍 UpdateProfileJSON called")
+    
+    // Получаем текущего пользователя
+    user := GetUserFromContext(c)
+    if user == nil {
+        log.Printf("❌ UpdateProfileJSON: User not found in context")
         c.JSON(http.StatusUnauthorized, gin.H{
             "success": false,
             "message": "Не авторизован",
@@ -375,15 +379,18 @@ func (h *UserHandler) UpdateProfileJSON(c *gin.Context) {
         return
     }
 
+    log.Printf("✅ UpdateProfileJSON: Updating user %s (ID: %d)", user.Email, user.ID)
+
     var req struct {
         FirstName string `json:"first_name" binding:"required"`
         LastName  string `json:"last_name" binding:"required"`
         Gender    string `json:"gender" binding:"required"`
-        Age       int    `json:"age" binding:"required"`
+        Age       int    `json:"age" binding:"required,min=1,max=120"`
         Phone     string `json:"phone" binding:"required"`
     }
 
     if err := c.ShouldBindJSON(&req); err != nil {
+        log.Printf("❌ UpdateProfileJSON: Invalid request data: %v", err)
         c.JSON(http.StatusBadRequest, gin.H{
             "success": false,
             "message": "Неверные данные: " + err.Error(),
@@ -392,13 +399,14 @@ func (h *UserHandler) UpdateProfileJSON(c *gin.Context) {
     }
 
     // Обновляем данные пользователя
-    currentUser.FirstName = req.FirstName
-    currentUser.LastName = req.LastName
-    currentUser.Gender = req.Gender
-    currentUser.Age = req.Age
-    currentUser.Phone = req.Phone
+    user.FirstName = req.FirstName
+    user.LastName = req.LastName
+    user.Gender = req.Gender
+    user.Age = req.Age
+    user.Phone = req.Phone
 
-    if err := h.userRepo.UpdateUser(currentUser); err != nil {
+    if err := h.userRepo.UpdateUser(user); err != nil {
+        log.Printf("❌ UpdateProfileJSON: Error updating user: %v", err)
         c.JSON(http.StatusInternalServerError, gin.H{
             "success": false,
             "message": "Ошибка обновления профиля: " + err.Error(),
@@ -406,17 +414,19 @@ func (h *UserHandler) UpdateProfileJSON(c *gin.Context) {
         return
     }
 
+    log.Printf("✅ UpdateProfileJSON: Profile updated successfully for user %s", user.Email)
+
     c.JSON(http.StatusOK, gin.H{
         "success": true,
         "message": "Профиль успешно обновлен",
         "user": gin.H{
-            "id":         currentUser.ID,
-            "email":      currentUser.Email,
-            "first_name": currentUser.FirstName,
-            "last_name":  currentUser.LastName,
-            "gender":     currentUser.Gender,
-            "age":        currentUser.Age,
-            "phone":      currentUser.Phone,
+            "id":         user.ID,
+            "email":      user.Email,
+            "first_name": user.FirstName,
+            "last_name":  user.LastName,
+            "gender":     user.Gender,
+            "age":        user.Age,
+            "phone":      user.Phone,
         },
     })
 }

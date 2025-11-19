@@ -427,38 +427,62 @@ class UserRepository(private val context: Context) {
         phone: String,
         callback: (Boolean, String?, UserProfile?) -> Unit
     ) {
-        Log.d("UserRepository", "Updating profile: $firstName $lastName")
+        Log.d("UserRepository", "=== UPDATE PROFILE START ===")
+        Log.d("UserRepository", "Data: $firstName $lastName, $gender, $age, $phone")
+
+        // Проверим токен перед запросом
+        val token = ApiClient.getSessionToken()
+        Log.d("UserRepository", "🔑 Current session token: $token")
+
+        if (token == null) {
+            Log.e("UserRepository", "❌ No token available for update request!")
+            callback(false, "Не авторизован", null)
+            return
+        }
 
         val request = UpdateProfileRequest(firstName, lastName, gender, age, phone)
+        Log.d("UserRepository", "🚀 Making update profile request...")
+
         api.updateProfile(request).enqueue(object : Callback<UpdateProfileResponse> {
             override fun onResponse(
                 call: Call<UpdateProfileResponse>,
                 response: Response<UpdateProfileResponse>
             ) {
+                Log.d("UserRepository", "=== UPDATE PROFILE RESPONSE ===")
+                Log.d("UserRepository", "Response code: ${response.code()}")
+
                 if (response.isSuccessful) {
                     val body = response.body()
                     if (body != null && body.success) {
-                        Log.d("UserRepository", "Profile updated successfully")
+                        Log.d("UserRepository", "✅ Profile updated successfully")
+                        Log.d("UserRepository", "Updated user: ${body.user?.firstName} ${body.user?.lastName}")
                         callback(true, body.message, body.user)
                     } else {
                         val errorMsg = body?.message ?: "Неизвестная ошибка"
-                        Log.e("UserRepository", "Update profile failed: $errorMsg")
+                        Log.e("UserRepository", "❌ Update profile failed: $errorMsg")
                         callback(false, errorMsg, null)
                     }
                 } else {
+                    Log.e("UserRepository", "❌ Update profile HTTP error: ${response.code()}")
+                    try {
+                        val errorBody = response.errorBody()?.string()
+                        Log.e("UserRepository", "Error body: $errorBody")
+                    } catch (e: Exception) {
+                        Log.e("UserRepository", "Error reading error body: ${e.message}")
+                    }
+
                     val errorMsg = when (response.code()) {
                         400 -> "Некорректные данные"
                         401 -> "Не авторизован"
                         500 -> "Ошибка сервера"
                         else -> "Ошибка: ${response.code()}"
                     }
-                    Log.e("UserRepository", "Update profile HTTP error: ${response.code()}")
                     callback(false, errorMsg, null)
                 }
             }
 
             override fun onFailure(call: Call<UpdateProfileResponse>, t: Throwable) {
-                Log.e("UserRepository", "Update profile network failed: ${t.message}")
+                Log.e("UserRepository", "❌ Update profile NETWORK failed: ${t.message}")
                 callback(false, "Ошибка сети: ${t.message}", null)
             }
         })
