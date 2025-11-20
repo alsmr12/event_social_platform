@@ -547,6 +547,119 @@ class UserRepository(private val context: Context) {
         })
     }
 
+    fun getUserWallPosts(userId: Int, callback: (List<WallPost>?, String?) -> Unit) {
+        api.getUserWallPosts(userId).enqueue(object : Callback<WallPostsResponse> {
+            override fun onResponse(call: Call<WallPostsResponse>, response: Response<WallPostsResponse>) {
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        callback(body.posts ?: emptyList(), null)
+                    } else {
+                        callback(null, body?.message ?: "Неизвестная ошибка")
+                    }
+                } else {
+                    callback(null, "Ошибка сервера: ${response.code()}")
+                }
+            }
+
+            override fun onFailure(call: Call<WallPostsResponse>, t: Throwable) {
+                callback(null, "Ошибка сети: ${t.message}")
+            }
+        })
+    }
+
+    // Создать запись на стене
+    fun createWallPost(content: String, userId: Int, callback: (Boolean, String?) -> Unit) {
+        Log.d("UserRepository", "=== CREATE WALL POST ===")
+        Log.d("UserRepository", "Content: $content, UserID: $userId")
+
+        api.createWallPost(content, userId).enqueue(object : Callback<WallPostResponse> {
+            override fun onResponse(call: Call<WallPostResponse>, response: Response<WallPostResponse>) {
+                Log.d("UserRepository", "Create wall post response: ${response.code()}")
+
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        Log.d("UserRepository", "✅ Wall post created successfully")
+                        callback(true, body.message ?: "Запись создана")
+                    } else {
+                        val errorMsg = body?.message ?: "Неизвестная ошибка"
+                        Log.e("UserRepository", "❌ Create wall post failed: $errorMsg")
+                        callback(false, errorMsg)
+                    }
+                } else {
+                    Log.e("UserRepository", "❌ Create wall post HTTP error: ${response.code()}")
+                    try {
+                        val errorBody = response.errorBody()?.string()
+                        Log.e("UserRepository", "Error body: $errorBody")
+                    } catch (e: Exception) {
+                        Log.e("UserRepository", "Error reading error body: ${e.message}")
+                    }
+
+                    val errorMsg = when (response.code()) {
+                        400 -> "Некорректные данные. Проверьте длину текста (макс. 1000 символов)"
+                        401 -> "Не авторизован"
+                        500 -> "Ошибка сервера"
+                        else -> "Ошибка: ${response.code()}"
+                    }
+                    callback(false, errorMsg)
+                }
+            }
+
+            override fun onFailure(call: Call<WallPostResponse>, t: Throwable) {
+                Log.e("UserRepository", "❌ Create wall post NETWORK failed: ${t.message}")
+                callback(false, "Ошибка сети: ${t.message}")
+            }
+        })
+    }
+
+    // Обновить запись
+    fun updateWallPost(postId: Int, content: String, callback: (Boolean, String?) -> Unit) {
+        val request = UpdateWallPostRequest(content)
+        api.updateWallPost(postId, request).enqueue(object : Callback<WallPostResponse> {
+            override fun onResponse(call: Call<WallPostResponse>, response: Response<WallPostResponse>) {
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        callback(true, body.message ?: "Запись обновлена")
+                    } else {
+                        callback(false, body?.message ?: "Неизвестная ошибка")
+                    }
+                } else {
+                    callback(false, "Ошибка сервера: ${response.code()}")
+                }
+            }
+
+            override fun onFailure(call: Call<WallPostResponse>, t: Throwable) {
+                callback(false, "Ошибка сети: ${t.message}")
+            }
+        })
+    }
+
+    // Удалить запись
+    fun deleteWallPost(postId: Int, callback: (Boolean, String?) -> Unit) {
+        api.deleteWallPost(postId).enqueue(object : Callback<OperationResponse> {
+            override fun onResponse(call: Call<OperationResponse>, response: Response<OperationResponse>) {
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        callback(true, body.message ?: "Запись удалена")
+                    } else {
+                        callback(false, body?.message ?: "Неизвестная ошибка")
+                    }
+                } else {
+                    callback(false, "Ошибка сервера: ${response.code()}")
+                }
+            }
+
+            override fun onFailure(call: Call<OperationResponse>, t: Throwable) {
+                callback(false, "Ошибка сети: ${t.message}")
+            }
+        })
+    }
+
+
+
     // Логаут
     fun logout() {
         ApiClient.clearSessionToken()

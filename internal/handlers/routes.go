@@ -172,7 +172,10 @@ api.Use(strictAuth)
 api.POST("/friends/cancel/:id", friendshipHandler.CancelFriendRequestJSON)
 	api.PUT("/profile", userHandler.UpdateProfileJSON) 
     api.GET("/profile/stats", userHandler.GetUserStatsJSON) 
-
+api.GET("/wall/posts/:user_id", wallHandler.GetUserWallPostsJSON)
+api.POST("/wall/posts", wallHandler.CreatePostJSON)
+api.PUT("/wall/posts/:id", wallHandler.UpdatePostJSON)
+api.DELETE("/wall/posts/:id", wallHandler.DeletePostJSON)
 
 }
 }

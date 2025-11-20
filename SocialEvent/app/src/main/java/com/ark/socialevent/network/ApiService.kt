@@ -143,6 +143,36 @@ data class UserStatsResponse(
     val message: String? = null
 )
 
+data class WallPost(
+    val id: Int,
+    val content: String,
+    @SerializedName("author_id") val authorId: Int,
+    @SerializedName("user_id") val userId: Int,
+    val author: UserProfile,
+    @SerializedName("created_at") val createdAt: String,
+    @SerializedName("updated_at") val updatedAt: String
+)
+
+
+data class UpdateWallPostRequest(
+    val content: String
+)
+
+data class WallPostsResponse(
+    val success: Boolean,
+    val posts: List<WallPost>? = null,
+    val message: String? = null
+)
+
+data class WallPostResponse(
+    val success: Boolean,
+    val post: WallPost? = null,
+    val message: String? = null
+)
+data class OperationResponse(
+    val success: Boolean,
+    val message: String? = null
+)
 interface ApiService {
     @POST("/api/register")
     fun register(@Body request: RegisterRequest): Call<RegisterResponse>
@@ -188,5 +218,23 @@ interface ApiService {
     fun removeFriend(@Path("id") userId: Int): Call<FriendOperationResponse>
     @POST("/api/friends/cancel/{id}")
     fun cancelFriendRequest(@Path("id") userId: Int): Call<FriendOperationResponse>
+
+
+    @GET("/api/wall/posts/{user_id}")
+    fun getUserWallPosts(@Path("user_id") userId: Int): Call<WallPostsResponse>
+
+    @FormUrlEncoded
+    @POST("/api/wall/posts")
+    fun createWallPost(
+        @Field("content") content: String,
+        @Field("user_id") userId: Int
+    ): Call<WallPostResponse>
+
+
+    @PUT("/api/wall/posts/{id}")
+    fun updateWallPost(@Path("id") postId: Int, @Body request: UpdateWallPostRequest): Call<WallPostResponse>
+
+    @DELETE("/api/wall/posts/{id}")
+    fun deleteWallPost(@Path("id") postId: Int): Call<OperationResponse>
 
 }
