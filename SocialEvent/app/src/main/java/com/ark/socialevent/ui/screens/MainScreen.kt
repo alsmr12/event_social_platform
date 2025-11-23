@@ -187,7 +187,12 @@ fun MainScreen(
                     }
                     DrawerScreens.Friends -> FriendsScreen(userRepository = userRepository)
                     DrawerScreens.Subscriptions -> SubscriptionsScreen(userRepository = userRepository)
-                    DrawerScreens.News -> NewsFeedScreen(userRepository = userRepository)
+                    DrawerScreens.News -> NewsFeedScreen(
+                        userRepository = userRepository,
+                        onNavigateToPeople = {
+                            currentScreen = DrawerScreens.People
+                        }
+                    )
                     DrawerScreens.Logout -> HomeScreen() // fallback
                 }
             }

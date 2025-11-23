@@ -29,8 +29,8 @@ data class SubscriptionStatsResponse(
     val message: String? = null
 )
 
-// Модели для новостной ленты
 
+// Модель для события в ленте новостей
 data class NewsEvent(
     val id: Int,
     val title: String,
@@ -43,16 +43,6 @@ data class NewsEvent(
     @SerializedName("created_at") val createdAt: String
 )
 
-// Модель для поста в ленте новостей
-data class NewsPost(
-    val id: Int,
-    val content: String,
-    @SerializedName("author_id") val authorId: Int,
-    @SerializedName("user_id") val userId: Int,
-    @SerializedName("created_at") val createdAt: String,
-    @SerializedName("updated_at") val updatedAt: String
-)
-
 // Модель для элемента ленты новостей
 data class NewsFeedItem(
     val id: Int,
@@ -61,7 +51,7 @@ data class NewsFeedItem(
     val author: UserProfile,
     @SerializedName("created_at") val createdAt: String,
     val event: NewsEvent? = null, // только для type = "event"
-    val post: NewsPost? = null // только для type = "post"
+    val post: Any? = null // только для type = "post"
 )
 
 data class NewsFeedResponse(
@@ -69,6 +59,16 @@ data class NewsFeedResponse(
     val posts: List<NewsFeedItem>? = null,
     val events: List<NewsFeedItem>? = null,
     val message: String? = null
+)
+
+// Модель для поста в ленте новостей
+data class NewsPost(
+    val id: Int,
+    val content: String,
+    @SerializedName("author_id") val authorId: Int,
+    @SerializedName("user_id") val userId: Int,
+    @SerializedName("created_at") val createdAt: String,
+    @SerializedName("updated_at") val updatedAt: String
 )
 
 // Запрос на регистрацию

@@ -18,7 +18,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
-fun NewsFeedScreen(userRepository: UserRepository) {
+fun NewsFeedScreen(userRepository: UserRepository,
+                   onNavigateToPeople: () -> Unit ) {
     var newsFeed by remember { mutableStateOf<List<NewsFeedItem>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -102,8 +103,8 @@ fun NewsFeedScreen(userRepository: UserRepository) {
                     verticalArrangement = Arrangement.Center
                 ) {
                     Icon(
-                        Icons.Default.Newspaper,
-                        contentDescription = "Нет новостей",
+                        Icons.Default.People, // Меняем иконку на People
+                        contentDescription = "Нет подписок",
                         modifier = Modifier.size(64.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -118,6 +119,14 @@ fun NewsFeedScreen(userRepository: UserRepository) {
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = onNavigateToPeople // Используем callback
+                    ) {
+                        Icon(Icons.Default.PersonAdd, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Найти людей")
+                    }
                 }
             }
             else -> {

@@ -118,8 +118,36 @@ func (h *NewsHandler) GetNewsFeedJSON(c *gin.Context) {
         return
     }
 
-    // Получаем посты для ленты
-    posts, err := h.newsRepo.GetNewsFeed(currentUser.ID, 50, 0) // 50 постов, без offset
+    // 1. Получаем список ID пользователей, на которых подписан текущий пользователь
+    subscriptionRepo := repository.NewSubscriptionRepository(h.newsRepo.GetDB())
+    following, err := subscriptionRepo.GetFollowing(currentUser.ID)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "success": false,
+            "message": "Ошибка получения подписок",
+        })
+        return
+    }
+
+    // Если нет подписок - возвращаем пустую ленту
+    if len(following) == 0 {
+        c.JSON(http.StatusOK, gin.H{
+            "success": true,
+            "posts":   []gin.H{},
+            "events":  []gin.H{},
+            "message": "Подпишитесь на пользователей, чтобы видеть их записи",
+        })
+        return
+    }
+
+    // 2. Собираем ID пользователей для фильтрации
+    var followingIDs []uint
+    for _, user := range following {
+        followingIDs = append(followingIDs, user.ID)
+    }
+
+    // 3. Получаем посты ТОЛЬКО от пользователей, на которых подписан
+    posts, err := h.newsRepo.GetPostsFromUsers(followingIDs, 50, 0)
     if err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{
             "success": false,
@@ -128,8 +156,8 @@ func (h *NewsHandler) GetNewsFeedJSON(c *gin.Context) {
         return
     }
 
-    // Получаем события для ленты
-    events, err := h.newsRepo.GetEventsFeed(currentUser.ID, 50, 0) // 50 событий, без offset
+    // 4. Получаем события ТОЛЬКО от пользователей, на которых подписан
+    events, err := h.newsRepo.GetEventsFromUsers(followingIDs, 50, 0)
     if err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{
             "success": false,
@@ -138,7 +166,7 @@ func (h *NewsHandler) GetNewsFeedJSON(c *gin.Context) {
         return
     }
 
-    // Преобразуем посты в нужный формат
+    // 5. Преобразуем посты в нужный формат
     var postItems []gin.H
     for _, post := range posts {
         postItems = append(postItems, gin.H{
@@ -166,7 +194,7 @@ func (h *NewsHandler) GetNewsFeedJSON(c *gin.Context) {
         })
     }
 
-    // Преобразуем события в нужный формат
+    // 6. Преобразуем события в нужный формат
     var eventItems []gin.H
     for _, event := range events {
         eventItems = append(eventItems, gin.H{
@@ -201,5 +229,6 @@ func (h *NewsHandler) GetNewsFeedJSON(c *gin.Context) {
         "success": true,
         "posts":   postItems,
         "events":  eventItems,
+        "message": "Лента новостей загружена",
     })
 }
