@@ -16,6 +16,9 @@ type User struct {
 	Age       int    `json:"age"`
 	Phone     string `json:"phone"`
 	//SocialLinks string         `gorm:"type:text" json:"social_links"`
+	City      string         `gorm:"size:100" json:"city"`
+	Latitude  float64        `gorm:"index" json:"latitude"`
+	Longitude float64        `gorm:"index" json:"longitude"`
 	CreatedAt time.Time      `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
@@ -38,21 +41,27 @@ func (u *User) CheckPassword(password string) bool {
 }
 
 type CreateUserRequest struct {
-	Email     string `form:"email" binding:"required,email"`
-	Password  string `form:"password" binding:"required"`
-	FirstName string `form:"first_name" binding:"required"`
-	LastName  string `form:"last_name" binding:"required"`
-	Gender    string `form:"gender"`
-	Age       int    `form:"age"`
-	Phone     string `form:"phone"`
+	Email     string  `form:"email" binding:"required,email"`
+	Password  string  `form:"password" binding:"required"`
+	FirstName string  `form:"first_name" binding:"required"`
+	LastName  string  `form:"last_name" binding:"required"`
+	Gender    string  `form:"gender"`
+	Age       int     `form:"age"`
+	Phone     string  `form:"phone"`
+	City      string  `form:"city"`
+	Latitude  float64 `form:"latitude"`
+	Longitude float64 `form:"longitude"`
 	//SocialLinks string `form:"social_links"`
 }
 
 type UpdateUserRequest struct {
-	FirstName string `form:"first_name" binding:"required"`
-	LastName  string `form:"last_name" binding:"required"`
-	Gender    string `form:"gender"`
-	Age       int    `form:"age"`
-	Phone     string `form:"phone"`
+	FirstName string  `form:"first_name" binding:"required"`
+	LastName  string  `form:"last_name" binding:"required"`
+	Gender    string  `form:"gender"`
+	Age       int     `form:"age"`
+	Phone     string  `form:"phone"`
+	City      string  `form:"city"`
+	Latitude  float64 `form:"latitude"`
+	Longitude float64 `form:"longitude"`
 	//SocialLinks string `form:"social_links"`
 }

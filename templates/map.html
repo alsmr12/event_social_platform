@@ -1,0 +1,111 @@
+{{define "map_content"}}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2>Карта событий</h2>
+
+        <!-- Переключатели режимов карты -->
+        <div id="map-controls" style="display: flex; gap: 8px;">
+            <button class="btn btn-outline" data-mode="events">📌 События</button>
+            <button class="btn btn-outline" data-mode="heatmap">🔥 Тепловая карта</button>
+        </div>
+        
+        <!-- Отображение и управление местоположением -->
+        <div id="location-controls" style="margin-top: 10px; padding: 10px; background: var(--bg-secondary); border-radius: var(--radius);">
+            <div id="current-location" style="margin-bottom: 10px; padding: 10px; background: var(--bg-primary); border-radius: var(--radius); display: none;">
+                <h4 style="margin: 0 0 5px 0; color: var(--text-primary);">Ваше текущее местоположение</h4>
+                <p style="margin: 5px 0; font-size: 0.9em; color: var(--text-secondary);">
+                    <strong>Город:</strong> <span id="current-city"></span><br>
+                    <strong>Координаты:</strong> <span id="current-coords"></span>
+                </p>
+            </div>
+            
+            <div id="set-location-section">
+                <p style="margin: 0 0 10px 0; color: var(--text-secondary); font-size: 0.9em;">
+                    🔍 Выберите новое местоположение, кликнув по карте
+                </p>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button id="set-location-btn" class="btn btn-primary btn-small">
+                        ✅ Установить местоположение
+                    </button>
+                    <button id="change-location-btn" class="btn btn-outline btn-small">
+                        🔄 Изменить местоположение
+                    </button>
+                    <button id="clear-location-btn" class="btn btn-secondary btn-small">
+                        🗑️ Очистить
+                    </button>
+                </div>
+                <div id="location-info" style="margin-top: 10px; font-size: 0.85em; color: var(--text-muted); display: none;">
+                    <p style="margin: 5px 0;">Координаты: <span id="location-coords"></span></p>
+                    <p style="margin: 5px 0;">Город: <span id="location-city"></span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Блок для сообщений об ошибках -->
+    <div id="map-error" class="alert alert-error" style="display: none; margin-bottom: 20px;"></div>
+
+    <!-- Контейнер карты -->
+    <div id="map" style="height: 600px; border-radius: var(--radius); border: 1px solid var(--border-color);"></div>
+
+    <div style="margin-top: 20px; padding: 15px; background: var(--bg-secondary); border-radius: var(--radius); font-size: 0.9em; color: var(--text-muted);">
+        <p style="margin: 8px 0;">📌 На карте отображаются события с привязкой к геолокации</p>
+        <p style="margin: 8px 0;">🔥 Тепловая карта показывает настроение пользователей на основе анализа контента</p>
+    </div>
+</div>
+
+<!-- Подключение библиотек Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Подключение библиотеки тепловой карты -->
+<script src="https://unpkg.com/leaflet.heat@1.0.6/dist/leaflet-heat.min.js"></script>
+
+<!-- Подключение нашего скрипта карты -->
+<script src="/static/js/map.js"></script>
+
+<!-- Подключение стилей карты -->
+<link rel="stylesheet" href="/static/css/map.css">
+
+<style>
+    /* Стили для карты */
+    #map {
+        height: 600px;
+    }
+
+    /* Стили для переключателей */
+    #map-controls .btn {
+        padding: 8px 16px;
+        font-size: 0.9em;
+        transition: all 0.2s ease;
+    }
+
+    #map-controls .btn-active {
+        background-color: var(--primary-color) !important;
+        color: white !important;
+        border-color: var(--primary-color) !important;
+    }
+
+    /* Стили для всплывающих окон */
+    .leaflet-popup-content {
+        margin: 0;
+    }
+
+    .leaflet-popup-content h3 {
+        margin: 0 0 10px 0;
+        font-size: 1.2em;
+        color: var(--text-primary);
+    }
+
+    .leaflet-popup-content p {
+        margin: 5px 0;
+        font-size: 0.9em;
+        color: var(--text-secondary);
+    }
+
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 0.85em;
+    }
+</style>
+{{end}}
