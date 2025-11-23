@@ -176,6 +176,16 @@ api.GET("/wall/posts/:user_id", wallHandler.GetUserWallPostsJSON)
 api.POST("/wall/posts", wallHandler.CreatePostJSON)
 api.PUT("/wall/posts/:id", wallHandler.UpdatePostJSON)
 api.DELETE("/wall/posts/:id", wallHandler.DeletePostJSON)
+	
 
+
+api.GET("/friends/subscriptions", subscriptionHandler.GetSubscriptionsJSON)
+api.GET("/friends/check-subscription/:id", subscriptionHandler.CheckSubscriptionJSON)
+api.POST("/friends/subscribe/:id", subscriptionHandler.SubscribeJSON)
+api.POST("/friends/unsubscribe/:id", subscriptionHandler.UnsubscribeJSON)
+api.GET("/profile/:id/subscription-stats", subscriptionHandler.GetSubscriptionStatsJSON)
+
+// Лента новостей
+api.GET("/news", newsHandler.GetNewsFeedJSON)
 }
 }

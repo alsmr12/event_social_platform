@@ -1,4 +1,4 @@
-// PeopleScreen.kt - исправленная версия
+// PeopleScreen.kt - ПОЛНАЯ ВЕРСИЯ С ПОДПИСКАМИ
 package com.ark.socialevent.ui.screens.people
 
 import androidx.compose.foundation.layout.*
@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ark.socialevent.network.UserProfile
 import com.ark.socialevent.network.UserRepository
@@ -23,14 +24,12 @@ fun PeopleScreen(userRepository: UserRepository) {
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    // Следим за глобальным триггером обновления
     val refreshTrigger by remember { mutableStateOf(FriendshipStateManager.refreshPeopleTrigger) }
-
-    // Snackbar для уведомлений
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(refreshTrigger) {
+    fun loadUsers() {
+        isLoading = true
         userRepository.getAllProfiles { usersList, error ->
             isLoading = false
             if (error != null) {
@@ -41,8 +40,21 @@ fun PeopleScreen(userRepository: UserRepository) {
         }
     }
 
+    LaunchedEffect(refreshTrigger) {
+        loadUsers()
+    }
+
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        floatingActionButton = {
+            if (!isLoading) {
+                FloatingActionButton(
+                    onClick = { loadUsers() }
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Обновить")
+                }
+            }
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -62,7 +74,11 @@ fun PeopleScreen(userRepository: UserRepository) {
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Загрузка пользователей...")
+                    }
                 }
             } else if (errorMessage != null) {
                 Box(
@@ -70,17 +86,19 @@ fun PeopleScreen(userRepository: UserRepository) {
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            errorMessage ?: "Ошибка загрузки",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = {
-                            isLoading = true
-                            errorMessage = null
-                            FriendshipStateManager.refreshPeople() // Используем глобальный менеджер
-                        }) {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                        ) {
+                            Text(
+                                errorMessage ?: "Ошибка загрузки",
+                                modifier = Modifier.padding(16.dp),
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = { loadUsers() }) {
+                            Icon(Icons.Default.Refresh, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text("Повторить")
                         }
                     }
@@ -90,7 +108,20 @@ fun PeopleScreen(userRepository: UserRepository) {
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Пользователи не найдены")
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Default.People,
+                            contentDescription = "Нет пользователей",
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            "Пользователи не найдены",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             } else {
                 LazyColumn {
@@ -119,30 +150,29 @@ fun UserCard(
     onShowMessage: (String) -> Unit
 ) {
     var friendshipStatus by remember { mutableStateOf<String?>(null) }
+    var isSubscribed by remember { mutableStateOf(false) }
     var isLoadingStatus by remember { mutableStateOf(true) }
-    var showActionButtons by remember { mutableStateOf(false) }
+    var showFriendshipActions by remember { mutableStateOf(false) }
     var isIncomingRequest by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Загружаем статус дружбы при создании карточки
-    LaunchedEffect(user.id, FriendshipStateManager.refreshPeopleTrigger) { // Добавляем зависимость от триггера
+    // Загружаем статус дружбы и подписки
+    LaunchedEffect(user.id, FriendshipStateManager.refreshPeopleTrigger) {
+        // Загружаем статус дружбы
         userRepository.getFriendshipStatus(user.id) { status, error ->
-            isLoadingStatus = false
-            if (error == null) {
-                friendshipStatus = status
+            friendshipStatus = if (error == null) status else "none"
 
-                // ОПРЕДЕЛЯЕМ ТИП ЗАЯВКИ: входящая или исходящая
-                if (status == "pending") {
-                    // Для определения типа заявки проверяем список входящих запросов
-                    userRepository.getPendingRequests { requests, _ ->
-                        isIncomingRequest = requests?.any { it.user.id == user.id } == true
-                        showActionButtons = status != null && status != "none"
-                    }
-                } else {
-                    showActionButtons = status != null && status != "none"
+            // Определяем тип заявки
+            if (status == "pending") {
+                userRepository.getPendingRequests { requests, _ ->
+                    isIncomingRequest = requests?.any { it.user.id == user.id } == true
                 }
-            } else {
-                friendshipStatus = "none"
+            }
+
+            // Загружаем статус подписки
+            userRepository.checkSubscription(user.id) { subscribed, _ ->
+                isSubscribed = subscribed
+                isLoadingStatus = false
             }
         }
     }
@@ -152,57 +182,33 @@ fun UserCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Верхняя часть с информацией о пользователе
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "Аватар",
-                    modifier = Modifier.size(48.dp)
-                )
+            // Информация о пользователе
+            UserInfo(user = user)
 
-                Spacer(modifier = Modifier.width(16.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "${user.firstName} ${user.lastName}",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = user.email,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "Возраст: ${user.age} • ${user.gender}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = user.phone,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            // Нижняя часть с кнопками дружбы
             Spacer(modifier = Modifier.height(12.dp))
 
             if (isLoadingStatus) {
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth()
-                )
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             } else {
-                FriendshipButtons(
+                // Кнопки дружбы
+                FriendshipSection(
                     user = user,
                     friendshipStatus = friendshipStatus,
                     isIncomingRequest = isIncomingRequest,
+                    showActions = showFriendshipActions,
                     userRepository = userRepository,
                     onShowMessage = onShowMessage,
-                    showActionButtons = showActionButtons,
-                    onShowActionButtonsChange = { showActionButtons = it }
+                    onToggleActions = { showFriendshipActions = !showFriendshipActions }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Кнопки подписки
+                SubscriptionSection(
+                    user = user,
+                    isSubscribed = isSubscribed,
+                    userRepository = userRepository,
+                    onShowMessage = onShowMessage
                 )
             }
         }
@@ -210,19 +216,67 @@ fun UserCard(
 }
 
 @Composable
-fun FriendshipButtons(
+fun UserInfo(user: UserProfile) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = Icons.Default.Person,
+            contentDescription = "Аватар",
+            modifier = Modifier.size(48.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "${user.firstName} ${user.lastName}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = user.email,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row {
+                Text(
+                    text = "${user.age} лет",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = " • ",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = user.gender,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                text = user.phone,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+fun FriendshipSection(
     user: UserProfile,
     friendshipStatus: String?,
     isIncomingRequest: Boolean,
+    showActions: Boolean,
     userRepository: UserRepository,
     onShowMessage: (String) -> Unit,
-    showActionButtons: Boolean,
-    onShowActionButtonsChange: (Boolean) -> Unit
+    onToggleActions: () -> Unit
 ) {
     var isLoading by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Функция для обработки операций с друзьями
     fun handleFriendshipOperation(
         operation: (callback: (Boolean, String?) -> Unit) -> Unit,
         successMessage: String
@@ -233,9 +287,7 @@ fun FriendshipButtons(
                 isLoading = false
                 if (success) {
                     onShowMessage(successMessage)
-                    // ВЫЗЫВАЕМ ГЛОБАЛЬНОЕ ОБНОВЛЕНИЕ ВСЕХ ЭКРАНОВ
                     FriendshipStateManager.refreshAll()
-                    onShowActionButtonsChange(false)
                 } else {
                     onShowMessage(message ?: "Ошибка операции")
                 }
@@ -243,66 +295,37 @@ fun FriendshipButtons(
         }
     }
 
-    // Основная кнопка/статус
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Текст статуса
-        Text(
-            text = when (friendshipStatus) {
-                "none" -> "Не в друзьях"
-                "pending" -> if (isIncomingRequest) "Прислал(а) заявку" else "Запрос отправлен"
-                "accepted" -> "Друзья"
-                else -> "Не в друзьях"
-            },
-            style = MaterialTheme.typography.bodyMedium,
-            color = when (friendshipStatus) {
-                "accepted" -> MaterialTheme.colorScheme.primary
-                "pending" -> MaterialTheme.colorScheme.onSurfaceVariant
-                else -> MaterialTheme.colorScheme.onSurfaceVariant
-            }
-        )
-
-        // Кнопка действий
-        when (friendshipStatus) {
-            "none" -> {
-                Button(
-                    onClick = {
-                        handleFriendshipOperation(
-                            operation = { callback -> userRepository.sendFriendRequest(user.id, callback) },
-                            successMessage = "Запрос в друзья отправлен"
-                        )
-                    },
-                    enabled = !isLoading
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text("Добавить в друзья")
-                    }
+    Column {
+        // Статус и основная кнопка
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Статус дружбы
+            Text(
+                text = when (friendshipStatus) {
+                    "none" -> "Не в друзьях"
+                    "pending" -> if (isIncomingRequest) "Прислал(а) заявку" else "Запрос отправлен"
+                    "accepted" -> "Друзья"
+                    else -> "Не в друзьях"
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = when (friendshipStatus) {
+                    "accepted" -> MaterialTheme.colorScheme.primary
+                    "pending" -> MaterialTheme.colorScheme.secondary
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
                 }
-            }
-            "pending" -> {
-                if (isIncomingRequest) {
-                    // ВХОДЯЩАЯ заявка - показываем кнопку "Действия"
+            )
+
+            // Основная кнопка действия
+            when (friendshipStatus) {
+                "none" -> {
                     Button(
-                        onClick = { onShowActionButtonsChange(!showActionButtons) },
-                        enabled = !isLoading
-                    ) {
-                        Text("Действия")
-                    }
-                } else {
-                    // ИСХОДЯЩАЯ заявка - показываем кнопку "Отменить"
-                    OutlinedButton(
                         onClick = {
                             handleFriendshipOperation(
-                                operation = { callback -> userRepository.rejectFriendRequest(user.id, callback) },
-                                successMessage = "Заявка отменена"
+                                operation = { callback -> userRepository.sendFriendRequest(user.id, callback) },
+                                successMessage = "Запрос в друзья отправлен"
                             )
                         },
                         enabled = !isLoading
@@ -313,34 +336,59 @@ fun FriendshipButtons(
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Text("Отменить")
+                            Text("Добавить в друзья")
                         }
                     }
                 }
-            }
-            "accepted" -> {
-                // Для друзей показываем кнопку управления
-                OutlinedButton(
-                    onClick = { onShowActionButtonsChange(!showActionButtons) },
-                    enabled = !isLoading
-                ) {
-                    Text("Управление")
+                "pending" -> {
+                    if (isIncomingRequest) {
+                        Button(
+                            onClick = onToggleActions,
+                            enabled = !isLoading
+                        ) {
+                            Text("Ответить")
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = {
+                                handleFriendshipOperation(
+                                    operation = { callback -> userRepository.cancelFriendRequest(user.id, callback) },
+                                    successMessage = "Заявка отменена"
+                                )
+                            },
+                            enabled = !isLoading
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text("Отменить заявку")
+                            }
+                        }
+                    }
+                }
+                "accepted" -> {
+                    OutlinedButton(
+                        onClick = onToggleActions,
+                        enabled = !isLoading
+                    ) {
+                        Text("Друзья")
+                    }
                 }
             }
         }
-    }
 
-    // Дополнительные кнопки действий (показываются по нажатию)
-    if (showActionButtons) {
-        Spacer(modifier = Modifier.height(8.dp))
-        Column {
+        // Дополнительные действия
+        if (showActions) {
+            Spacer(modifier = Modifier.height(8.dp))
             when (friendshipStatus) {
                 "pending" -> {
-                    // ТОЛЬКО ДЛЯ ВХОДЯЩИХ ЗАЯВОК - принять/отклонить
                     if (isIncomingRequest) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Button(
                                 onClick = {
@@ -354,14 +402,11 @@ fun FriendshipButtons(
                             ) {
                                 Text("Принять")
                             }
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
                             OutlinedButton(
                                 onClick = {
                                     handleFriendshipOperation(
                                         operation = { callback -> userRepository.rejectFriendRequest(user.id, callback) },
-                                        successMessage = "Запрос в друзья отклонен"
+                                        successMessage = "Запрос отклонен"
                                     )
                                 },
                                 modifier = Modifier.weight(1f),
@@ -373,12 +418,11 @@ fun FriendshipButtons(
                     }
                 }
                 "accepted" -> {
-                    // Для друзей - удалить из друзей
                     OutlinedButton(
                         onClick = {
                             handleFriendshipOperation(
                                 operation = { callback -> userRepository.removeFriend(user.id, callback) },
-                                successMessage = "Пользователь удален из друзей"
+                                successMessage = "Удален из друзей"
                             )
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -389,6 +433,102 @@ fun FriendshipButtons(
                     ) {
                         Text("Удалить из друзей")
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SubscriptionSection(
+    user: UserProfile,
+    isSubscribed: Boolean,
+    userRepository: UserRepository,
+    onShowMessage: (String) -> Unit
+) {
+    var isLoading by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun handleSubscription(
+        operation: (callback: (Boolean, String?) -> Unit) -> Unit,
+        successMessage: String,
+        targetUserId: Int
+    ) {
+        coroutineScope.launch {
+            isLoading = true
+            operation { success, message ->
+                isLoading = false
+                if (success) {
+                    // ПРИНУДИТЕЛЬНО ОБНОВЛЯЕМ СТАТУС ПОДПИСКИ
+                    userRepository.checkSubscription(targetUserId) { subscribed, _ ->
+                        // Обновляем локальное состояние
+                        // Note: В реальном приложении это состояние будет обновлено через recomposition
+                    }
+                    onShowMessage(successMessage)
+                    FriendshipStateManager.refreshAll()
+                } else {
+                    onShowMessage(message ?: "Ошибка подписки")
+                }
+            }
+        }
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Статус подписки
+        Text(
+            text = if (isSubscribed) "Вы подписаны" else "Не подписаны",
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (isSubscribed) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        // Кнопка подписки/отписки
+        if (isSubscribed) {
+            OutlinedButton(
+                onClick = {
+                    handleSubscription(
+                        operation = { callback -> userRepository.unsubscribeFromUser(user.id, callback) },
+                        successMessage = "Вы отписались",
+                        targetUserId = user.id
+                    )
+                },
+                enabled = !isLoading
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Отписаться")
+                }
+            }
+        } else {
+            Button(
+                onClick = {
+                    handleSubscription(
+                        operation = { callback -> userRepository.subscribeToUser(user.id, callback) },
+                        successMessage = "Вы подписались",
+                        targetUserId = user.id
+                    )
+                },
+                enabled = !isLoading
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Подписаться")
                 }
             }
         }

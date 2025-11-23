@@ -82,7 +82,7 @@ object ApiClient {
         return token
     }
 
-    // Очищаем токен при логауте
+
     fun clearSessionToken() {
         val sharedPref = getSharedPreferences()
         sharedPref.edit().remove("session_token").apply()

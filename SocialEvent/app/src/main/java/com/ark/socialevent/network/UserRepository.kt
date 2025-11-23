@@ -659,7 +659,219 @@ class UserRepository(private val context: Context) {
     }
 
 
+    // В UserRepository.kt добавить:
 
+    // Получить мои подписки
+    fun getSubscriptions(callback: (List<Subscription>?, String?) -> Unit) {
+        api.getSubscriptions().enqueue(object : Callback<SubscriptionsResponse> {
+            override fun onResponse(call: Call<SubscriptionsResponse>, response: Response<SubscriptionsResponse>) {
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        Log.d("UserRepository", "Loaded ${body.subscriptions?.size ?: 0} subscriptions")
+                        callback(body.subscriptions ?: emptyList(), null)
+                    } else {
+                        callback(null, body?.message ?: "Неизвестная ошибка")
+                    }
+                } else {
+                    callback(null, "Ошибка сервера: ${response.code()}")
+                }
+            }
+
+            override fun onFailure(call: Call<SubscriptionsResponse>, t: Throwable) {
+                callback(null, "Ошибка сети: ${t.message}")
+            }
+        })
+    }
+
+    // Получить статистику подписок пользователя
+    fun getSubscriptionStats(userId: Int, callback: (SubscriptionStats?, String?) -> Unit) {
+        api.getSubscriptionStats(userId).enqueue(object : Callback<SubscriptionStatsResponse> {
+            override fun onResponse(call: Call<SubscriptionStatsResponse>, response: Response<SubscriptionStatsResponse>) {
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        callback(body.stats, null)
+                    } else {
+                        callback(null, body?.message ?: "Неизвестная ошибка")
+                    }
+                } else {
+                    callback(null, "Ошибка сервера: ${response.code()}")
+                }
+            }
+
+            override fun onFailure(call: Call<SubscriptionStatsResponse>, t: Throwable) {
+                callback(null, "Ошибка сети: ${t.message}")
+            }
+        })
+    }
+
+
+    // Получить ленту новостей
+    fun getNewsFeed(callback: (List<NewsFeedItem>?, String?) -> Unit) {
+        Log.d("UserRepository", "=== GET NEWS FEED ===")
+
+        api.getNewsFeed().enqueue(object : Callback<NewsFeedResponse> {
+            override fun onResponse(call: Call<NewsFeedResponse>, response: Response<NewsFeedResponse>) {
+                Log.d("UserRepository", "News feed response: ${response.code()}")
+
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        val allItems = mutableListOf<NewsFeedItem>()
+                        body.posts?.let { allItems.addAll(it) }
+                        body.events?.let { allItems.addAll(it) }
+                        // Сортируем по дате (новые сначала)
+                        allItems.sortByDescending { it.createdAt }
+                        Log.d("UserRepository", "✅ Loaded ${allItems.size} news feed items")
+                        callback(allItems, null)
+                    } else {
+                        val errorMsg = body?.message ?: "Неизвестная ошибка"
+                        Log.e("UserRepository", "❌ News feed failed: $errorMsg")
+                        callback(null, errorMsg)
+                    }
+                } else {
+                    Log.e("UserRepository", "❌ News feed HTTP error: ${response.code()}")
+                    try {
+                        val errorBody = response.errorBody()?.string()
+                        Log.e("UserRepository", "Error body: $errorBody")
+                    } catch (e: Exception) {
+                        Log.e("UserRepository", "Error reading error body: ${e.message}")
+                    }
+                    callback(null, "Ошибка сервера: ${response.code()}")
+                }
+            }
+
+            override fun onFailure(call: Call<NewsFeedResponse>, t: Throwable) {
+                Log.e("UserRepository", "❌ News feed NETWORK failed: ${t.message}")
+                callback(null, "Ошибка сети: ${t.message}")
+            }
+        })
+    }
+
+
+
+
+    // Подписаться на пользователя
+    fun checkSubscription(userId: Int, callback: (Boolean, String?) -> Unit) {
+        Log.d("UserRepository", "=== CHECK SUBSCRIPTION ===")
+        Log.d("UserRepository", "Checking subscription for user ID: $userId")
+
+        api.checkSubscription(userId).enqueue(object : Callback<OperationResponse> {
+            override fun onResponse(call: Call<OperationResponse>, response: Response<OperationResponse>) {
+                Log.d("UserRepository", "Check subscription response: ${response.code()}")
+
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        Log.d("UserRepository", "✅ User is subscribed")
+                        callback(true, null)
+                    } else {
+                        // Если success = false, значит не подписан
+                        Log.d("UserRepository", "❌ User is not subscribed")
+                        callback(false, null)
+                    }
+                } else {
+                    // Если 404 или другая ошибка - считаем что не подписан
+                    Log.d("UserRepository", "Subscription check failed, assuming not subscribed")
+                    callback(false, null)
+                }
+            }
+
+            override fun onFailure(call: Call<OperationResponse>, t: Throwable) {
+                Log.e("UserRepository", "❌ Check subscription NETWORK failed: ${t.message}")
+                callback(false, "Ошибка сети: ${t.message}")
+            }
+        })
+    }
+
+    // Подписаться на пользователя - ИСПРАВЛЕННАЯ ВЕРСИЯ
+    fun subscribeToUser(userId: Int, callback: (Boolean, String?) -> Unit) {
+        Log.d("UserRepository", "=== SUBSCRIBE TO USER ===")
+        Log.d("UserRepository", "Subscribing to user ID: $userId")
+
+        api.subscribe(userId).enqueue(object : Callback<OperationResponse> {
+            override fun onResponse(call: Call<OperationResponse>, response: Response<OperationResponse>) {
+                Log.d("UserRepository", "Subscribe response: ${response.code()}")
+
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        Log.d("UserRepository", "✅ Subscribed to user $userId")
+                        callback(true, body.message ?: "Подписка оформлена")
+                    } else {
+                        val errorMsg = body?.message ?: "Неизвестная ошибка"
+                        Log.e("UserRepository", "❌ Subscribe failed: $errorMsg")
+                        callback(false, errorMsg)
+                    }
+                } else {
+                    Log.e("UserRepository", "❌ Subscribe HTTP error: ${response.code()}")
+                    try {
+                        val errorBody = response.errorBody()?.string()
+                        Log.e("UserRepository", "Error body: $errorBody")
+                    } catch (e: Exception) {
+                        Log.e("UserRepository", "Error reading error body: ${e.message}")
+                    }
+
+                    val errorMsg = when (response.code()) {
+                        400 -> "Невозможно подписаться"
+                        404 -> "Пользователь не найден"
+                        else -> "Ошибка: ${response.code()}"
+                    }
+                    callback(false, errorMsg)
+                }
+            }
+
+            override fun onFailure(call: Call<OperationResponse>, t: Throwable) {
+                Log.e("UserRepository", "❌ Subscribe NETWORK failed: ${t.message}")
+                callback(false, "Ошибка сети: ${t.message}")
+            }
+        })
+    }
+
+    // Отписаться от пользователя - ИСПРАВЛЕННАЯ ВЕРСИЯ
+    fun unsubscribeFromUser(userId: Int, callback: (Boolean, String?) -> Unit) {
+        Log.d("UserRepository", "=== UNSUBSCRIBE FROM USER ===")
+        Log.d("UserRepository", "Unsubscribing from user ID: $userId")
+
+        api.unsubscribe(userId).enqueue(object : Callback<OperationResponse> {
+            override fun onResponse(call: Call<OperationResponse>, response: Response<OperationResponse>) {
+                Log.d("UserRepository", "Unsubscribe response: ${response.code()}")
+
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        Log.d("UserRepository", "✅ Unsubscribed from user $userId")
+                        callback(true, body.message ?: "Подписка отменена")
+                    } else {
+                        val errorMsg = body?.message ?: "Неизвестная ошибка"
+                        Log.e("UserRepository", "❌ Unsubscribe failed: $errorMsg")
+                        callback(false, errorMsg)
+                    }
+                } else {
+                    Log.e("UserRepository", "❌ Unsubscribe HTTP error: ${response.code()}")
+                    try {
+                        val errorBody = response.errorBody()?.string()
+                        Log.e("UserRepository", "Error body: $errorBody")
+                    } catch (e: Exception) {
+                        Log.e("UserRepository", "Error reading error body: ${e.message}")
+                    }
+
+                    val errorMsg = when (response.code()) {
+                        400 -> "Невозможно отписаться"
+                        404 -> "Пользователь не найден"
+                        else -> "Ошибка: ${response.code()}"
+                    }
+                    callback(false, errorMsg)
+                }
+            }
+
+            override fun onFailure(call: Call<OperationResponse>, t: Throwable) {
+                Log.e("UserRepository", "❌ Unsubscribe NETWORK failed: ${t.message}")
+                callback(false, "Ошибка сети: ${t.message}")
+            }
+        })
+    }
     // Логаут
     fun logout() {
         ApiClient.clearSessionToken()

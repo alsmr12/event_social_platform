@@ -4,7 +4,7 @@ import (
 	"event_social_platform/internal/repository"
 	"net/http"
 	"strconv"
-
+	"time"
 	"github.com/gin-gonic/gin"
 )
 
@@ -103,4 +103,103 @@ func getPageParam(c *gin.Context) int {
 		return 1
 	}
 	return page
+}
+
+// В news_handler.go добавьте:
+
+// GetNewsFeedJSON - получить ленту новостей (JSON)
+func (h *NewsHandler) GetNewsFeedJSON(c *gin.Context) {
+    currentUser := GetUserFromContext(c)
+    if currentUser == nil {
+        c.JSON(http.StatusUnauthorized, gin.H{
+            "success": false,
+            "message": "Не авторизован",
+        })
+        return
+    }
+
+    // Получаем посты для ленты
+    posts, err := h.newsRepo.GetNewsFeed(currentUser.ID, 50, 0) // 50 постов, без offset
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "success": false,
+            "message": "Ошибка загрузки ленты новостей",
+        })
+        return
+    }
+
+    // Получаем события для ленты
+    events, err := h.newsRepo.GetEventsFeed(currentUser.ID, 50, 0) // 50 событий, без offset
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "success": false,
+            "message": "Ошибка загрузки событий",
+        })
+        return
+    }
+
+    // Преобразуем посты в нужный формат
+    var postItems []gin.H
+    for _, post := range posts {
+        postItems = append(postItems, gin.H{
+            "id":         post.ID,
+            "type":       "post",
+            "content":    post.Content,
+            "author": gin.H{
+                "id":         post.Author.ID,
+                "email":      post.Author.Email,
+                "first_name": post.Author.FirstName,
+                "last_name":  post.Author.LastName,
+                "gender":     post.Author.Gender,
+                "age":        post.Author.Age,
+                "phone":      post.Author.Phone,
+            },
+            "created_at": post.CreatedAt.Format(time.RFC3339),
+            "post": gin.H{
+                "id":        post.ID,
+                "content":   post.Content,
+                "author_id": post.AuthorID,
+                "user_id":   post.UserID,
+                "created_at": post.CreatedAt.Format(time.RFC3339),
+                "updated_at": post.UpdatedAt.Format(time.RFC3339),
+            },
+        })
+    }
+
+    // Преобразуем события в нужный формат
+    var eventItems []gin.H
+    for _, event := range events {
+        eventItems = append(eventItems, gin.H{
+            "id":         event.ID,
+            "type":       "event",
+            "content":    event.Title + " - " + event.Description,
+            "author": gin.H{
+                "id":         event.Creator.ID,
+                "email":      event.Creator.Email,
+                "first_name": event.Creator.FirstName,
+                "last_name":  event.Creator.LastName,
+                "gender":     event.Creator.Gender,
+                "age":        event.Creator.Age,
+                "phone":      event.Creator.Phone,
+            },
+            "created_at": event.CreatedAt.Format(time.RFC3339),
+            "event": gin.H{
+                "id":          event.ID,
+                "title":       event.Title,
+                "description": event.Description,
+                "type":        event.Type,
+                "date_time":   event.DateTime.Format(time.RFC3339),
+                "location":    event.Location,
+                "creator_id":  event.CreatorID,
+                "is_private":  event.IsPrivate,
+                "created_at":  event.CreatedAt.Format(time.RFC3339),
+            },
+        })
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "posts":   postItems,
+        "events":  eventItems,
+    })
 }

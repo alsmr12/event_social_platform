@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -44,6 +45,7 @@ import com.ark.socialevent.ui.screens.events.EventsScreen
 import com.ark.socialevent.ui.screens.people.PeopleScreen
 import com.ark.socialevent.ui.screens.profile.ProfileScreen
 import com.ark.socialevent.ui.screens.friends.FriendsScreen
+import com.ark.socialevent.ui.screens.news.NewsFeedScreen
 import com.ark.socialevent.ui.screens.subscriptions.SubscriptionsScreen
 import kotlinx.coroutines.launch
 import com.ark.socialevent.network.UserRepository
@@ -56,6 +58,7 @@ sealed class DrawerScreens(
     val icon: ImageVector
 ) {
     object Home : DrawerScreens("home", "Главная", Icons.Filled.Home)
+    object News : DrawerScreens("news", "Новости", Icons.Filled.Newspaper)
     object Events : DrawerScreens("events", "События", Icons.Filled.CalendarToday)
     object People : DrawerScreens("people", "Люди", Icons.Filled.People)
     object Profile : DrawerScreens("profile", "Профиль", Icons.Filled.Person)
@@ -94,6 +97,7 @@ fun MainScreen(
                     DrawerScreens.Home,
                     DrawerScreens.Events,
                     DrawerScreens.People,
+                    DrawerScreens.News,
                     DrawerScreens.Profile,
                     DrawerScreens.Friends,
                     DrawerScreens.Subscriptions
@@ -182,7 +186,8 @@ fun MainScreen(
                         }
                     }
                     DrawerScreens.Friends -> FriendsScreen(userRepository = userRepository)
-                    DrawerScreens.Subscriptions -> SubscriptionsScreen()
+                    DrawerScreens.Subscriptions -> SubscriptionsScreen(userRepository = userRepository)
+                    DrawerScreens.News -> NewsFeedScreen(userRepository = userRepository)
                     DrawerScreens.Logout -> HomeScreen() // fallback
                 }
             }

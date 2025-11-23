@@ -4,6 +4,73 @@ import com.google.gson.annotations.SerializedName
 import retrofit2.Call
 import retrofit2.http.*
 
+
+data class Subscription(
+    val id: Int,
+    val follower: UserProfile,
+    val following: UserProfile,
+    @SerializedName("created_at") val createdAt: String
+)
+
+data class SubscriptionsResponse(
+    val success: Boolean,
+    val subscriptions: List<Subscription>? = null,
+    val message: String? = null
+)
+
+data class SubscriptionStats(
+    @SerializedName("followers_count") val followersCount: Int,
+    @SerializedName("following_count") val followingCount: Int
+)
+
+data class SubscriptionStatsResponse(
+    val success: Boolean,
+    val stats: SubscriptionStats? = null,
+    val message: String? = null
+)
+
+// Модели для новостной ленты
+
+data class NewsEvent(
+    val id: Int,
+    val title: String,
+    val description: String,
+    val type: String,
+    @SerializedName("date_time") val dateTime: String,
+    val location: String,
+    @SerializedName("creator_id") val creatorId: Int,
+    @SerializedName("is_private") val isPrivate: Boolean,
+    @SerializedName("created_at") val createdAt: String
+)
+
+// Модель для поста в ленте новостей
+data class NewsPost(
+    val id: Int,
+    val content: String,
+    @SerializedName("author_id") val authorId: Int,
+    @SerializedName("user_id") val userId: Int,
+    @SerializedName("created_at") val createdAt: String,
+    @SerializedName("updated_at") val updatedAt: String
+)
+
+// Модель для элемента ленты новостей
+data class NewsFeedItem(
+    val id: Int,
+    val type: String, // "post" или "event"
+    val content: String,
+    val author: UserProfile,
+    @SerializedName("created_at") val createdAt: String,
+    val event: NewsEvent? = null, // только для type = "event"
+    val post: NewsPost? = null // только для type = "post"
+)
+
+data class NewsFeedResponse(
+    val success: Boolean,
+    val posts: List<NewsFeedItem>? = null,
+    val events: List<NewsFeedItem>? = null,
+    val message: String? = null
+)
+
 // Запрос на регистрацию
 data class RegisterRequest(
     @SerializedName("first_name") val firstName: String,
@@ -237,4 +304,24 @@ interface ApiService {
     @DELETE("/api/wall/posts/{id}")
     fun deleteWallPost(@Path("id") postId: Int): Call<OperationResponse>
 
+    // Эндпоинты в ApiService interface:
+
+    @GET("/api/profile/{id}/subscription-stats")
+    fun getSubscriptionStats(@Path("id") userId: Int): Call<SubscriptionStatsResponse>
+
+
+    @GET("/api/friends/subscriptions")
+    fun getSubscriptions(): Call<SubscriptionsResponse>
+
+    @GET("/api/friends/check-subscription/{id}")
+    fun checkSubscription(@Path("id") userId: Int): Call<OperationResponse>
+
+    @POST("/api/friends/subscribe/{id}")
+    fun subscribe(@Path("id") userId: Int): Call<OperationResponse>
+
+    @POST("/api/friends/unsubscribe/{id}")
+    fun unsubscribe(@Path("id") userId: Int): Call<OperationResponse>
+
+    @GET("/api/news")
+    fun getNewsFeed(): Call<NewsFeedResponse>
 }
