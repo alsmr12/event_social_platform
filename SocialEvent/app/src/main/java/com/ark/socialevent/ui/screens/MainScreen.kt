@@ -1,10 +1,15 @@
 package com.ark.socialevent.ui.screens
-import androidx.compose.runtime.LaunchedEffect
+
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
@@ -16,7 +21,12 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
@@ -28,30 +38,35 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import com.ark.socialevent.ui.screens.home.HomeScreen
+import androidx.compose.ui.window.Dialog
+import com.ark.socialevent.network.EventRepository
+import com.ark.socialevent.network.UserProfile
+import com.ark.socialevent.network.UserRepository
 import com.ark.socialevent.ui.screens.events.EventsScreen
-import com.ark.socialevent.ui.screens.people.PeopleScreen
-import com.ark.socialevent.ui.screens.profile.ProfileScreen
 import com.ark.socialevent.ui.screens.friends.FriendsScreen
+import com.ark.socialevent.ui.screens.home.HomeScreen
 import com.ark.socialevent.ui.screens.news.NewsFeedScreen
+import com.ark.socialevent.ui.screens.people.PeopleScreen
+import com.ark.socialevent.ui.screens.profile.EditProfileScreen
+import com.ark.socialevent.ui.screens.profile.ProfileScreen
 import com.ark.socialevent.ui.screens.subscriptions.SubscriptionsScreen
 import kotlinx.coroutines.launch
-import com.ark.socialevent.network.UserRepository
-import com.ark.socialevent.ui.screens.profile.EditProfileScreen
-import com.ark.socialevent.network.UserProfile
-
 sealed class DrawerScreens(
     val route: String,
     val title: String,
@@ -71,10 +86,11 @@ sealed class DrawerScreens(
 @Composable
 fun MainScreen(
     onLogout: () -> Unit,
-    userRepository: UserRepository
-
+    userRepository: UserRepository,
+    eventRepository: EventRepository,
 ) {
     var currentScreen by remember { mutableStateOf<DrawerScreens>(DrawerScreens.Home) }
+    var showLogoutDialog by remember { mutableStateOf(false) } // ← ДОБАВИМ СОСТОЯНИЕ ДЛЯ ДИАЛОГА
     val drawerState = remember { DrawerState(DrawerValue.Closed) }
     val coroutineScope = rememberCoroutineScope()
 
@@ -126,7 +142,7 @@ fun MainScreen(
                         coroutineScope.launch {
                             drawerState.close()
                         }
-                        onLogout()
+                        showLogoutDialog = true // ← ПОКАЗЫВАЕМ ДИАЛОГ ВМЕСТО НЕМЕДЛЕННОГО ВЫХОДА
                     },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
@@ -157,13 +173,12 @@ fun MainScreen(
             ) {
                 when (currentScreen) {
                     DrawerScreens.Home -> HomeScreen()
-                    DrawerScreens.Events -> EventsScreen()
+                    DrawerScreens.Events -> EventsScreen(eventRepository = eventRepository)
                     DrawerScreens.People -> PeopleScreen(userRepository = userRepository)
                     DrawerScreens.Profile -> {
                         var showEditProfile by remember { mutableStateOf(false) }
 
                         if (showEditProfile) {
-                            // Получаем текущий профиль для редактирования
                             var currentProfile by remember { mutableStateOf<UserProfile?>(null) }
 
                             LaunchedEffect(Unit) {
@@ -193,7 +208,79 @@ fun MainScreen(
                             currentScreen = DrawerScreens.People
                         }
                     )
-                    DrawerScreens.Logout -> HomeScreen() // fallback
+                    DrawerScreens.Logout -> HomeScreen()
+                }
+            }
+        }
+    }
+
+    // ДИАЛОГ ПОДТВЕРЖДЕНИЯ ВЫХОДА
+    // Альтернативный вариант диалога
+    if (showLogoutDialog) {
+        Dialog(
+            onDismissRequest = { showLogoutDialog = false }
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                shape = MaterialTheme.shapes.medium,
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Icon(
+                        Icons.Default.ExitToApp,
+                        contentDescription = "Выход",
+                        modifier = Modifier
+                            .size(48.dp)
+                            .align(Alignment.CenterHorizontally),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        "Выход из аккаунта",
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        "Вы уверены, что хотите выйти?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { showLogoutDialog = false },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Отмена")
+                        }
+
+                        Button(
+                            onClick = {
+                                showLogoutDialog = false
+                                onLogout()
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError
+                            )
+                        ) {
+                            Text("Выйти")
+                        }
+                    }
                 }
             }
         }

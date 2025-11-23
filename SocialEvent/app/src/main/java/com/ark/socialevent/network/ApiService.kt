@@ -324,4 +324,19 @@ interface ApiService {
 
     @GET("/api/news")
     fun getNewsFeed(): Call<NewsFeedResponse>
+
+    @GET("/api/events")
+    fun getEvents(): Call<EventsResponse>
+
+    @GET("/api/event/{id}")
+    fun getEvent(@Path("id") eventId: Int): Call<EventResponse>
+
+    @POST("/api/create-event")
+    fun createEvent(@Body request: CreateEventRequest): Call<EventResponse>
+
+    @POST("/api/event/{id}/subscribe")
+    fun subscribeToEvent(@Path("id") eventId: Int): Call<EventSubscriptionResponse>
+
+    @POST("/api/event/{id}/unsubscribe")
+    fun unsubscribeFromEvent(@Path("id") eventId: Int): Call<EventSubscriptionResponse>
 }
