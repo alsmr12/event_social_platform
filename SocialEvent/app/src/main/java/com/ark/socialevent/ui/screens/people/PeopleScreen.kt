@@ -1,6 +1,7 @@
-// PeopleScreen.kt - ПОЛНАЯ ВЕРСИЯ С ПОДПИСКАМИ
+
 package com.ark.socialevent.ui.screens.people
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,6 +24,7 @@ fun PeopleScreen(userRepository: UserRepository) {
     var users by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var selectedUserId by remember { mutableStateOf<Int?>(null) } // Для навигации на профиль
 
     val refreshTrigger by remember { mutableStateOf(FriendshipStateManager.refreshPeopleTrigger) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -42,6 +44,16 @@ fun PeopleScreen(userRepository: UserRepository) {
 
     LaunchedEffect(refreshTrigger) {
         loadUsers()
+    }
+
+    // Если выбран пользователь - показываем его профиль
+    selectedUserId?.let { userId ->
+        UserProfileScreen(
+            userId = userId,
+            userRepository = userRepository,
+            onBack = { selectedUserId = null }
+        )
+        return
     }
 
     Scaffold(
@@ -133,7 +145,8 @@ fun PeopleScreen(userRepository: UserRepository) {
                                 coroutineScope.launch {
                                     snackbarHostState.showSnackbar(message)
                                 }
-                            }
+                            },
+                            onViewProfile = { userId -> selectedUserId = userId } // Передаем callback
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                     }
@@ -147,7 +160,8 @@ fun PeopleScreen(userRepository: UserRepository) {
 fun UserCard(
     user: UserProfile,
     userRepository: UserRepository,
-    onShowMessage: (String) -> Unit
+    onShowMessage: (String) -> Unit,
+    onViewProfile: (Int) -> Unit // Добавляем callback для навигации
 ) {
     var friendshipStatus by remember { mutableStateOf<String?>(null) }
     var isSubscribed by remember { mutableStateOf(false) }
@@ -178,7 +192,9 @@ fun UserCard(
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onViewProfile(user.id) }, // Делаем карточку кликабельной
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -261,6 +277,13 @@ fun UserInfo(user: UserProfile) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+
+        // Иконка для навигации на профиль
+        Icon(
+            Icons.Default.ArrowForward,
+            contentDescription = "Перейти к профилю",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
