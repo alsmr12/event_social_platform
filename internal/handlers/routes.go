@@ -150,6 +150,10 @@ router.GET("/api/profiles", userHandler.GetAllProfilesJSON)
 		protected.GET("/edit-profile", userHandler.ShowEditProfileForm)
 		protected.POST("/edit-profile", userHandler.UpdateProfile)
 
+		    protected.GET("/api/events", eventHandler.GetAllEventsJSON)
+    protected.POST("/api/create-event", eventHandler.CreateEventJSON)
+    protected.POST("/api/event/:id/subscribe", eventHandler.SubscribeJSON)
+    protected.POST("/api/event/:id/unsubscribe", eventHandler.UnsubscribeJSON)
 		// Выход
 		protected.GET("/logout", authHandler.Logout)
 	}

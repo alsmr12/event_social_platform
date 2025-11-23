@@ -609,3 +609,249 @@ func getBaseURL(c *gin.Context) string {
 	}
 	return scheme + "://" + c.Request.Host
 }
+
+
+func (h *EventHandler) GetAllEventsJSON(c *gin.Context) {
+    currentUser := GetUserFromContext(c)
+    if currentUser == nil {
+        c.JSON(http.StatusUnauthorized, gin.H{
+            "success": false,
+            "message": "Не авторизован",
+        })
+        return
+    }
+
+    // Получаем события
+    events, err := h.eventRepo.GetAllEvents()
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "success": false,
+            "message": "Ошибка получения событий",
+        })
+        return
+    }
+
+    // Для каждого события получаем информацию о подписках
+    for _, event := range events {
+        isSubscribed, _ := h.eventSubRepo.IsSubscribed(currentUser.ID, event.ID)
+        event.IsSubscribed = isSubscribed
+
+        subscribersCount, _ := h.eventSubRepo.GetSubscribersCount(event.ID)
+        event.SubscribersCount = subscribersCount
+        event.IsPast = time.Now().After(event.DateTime)
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "events":  events,
+        "message": "События загружены",
+    })
+}
+
+func (h *EventHandler) CreateEventJSON(c *gin.Context) {
+    currentUser := GetUserFromContext(c)
+    if currentUser == nil {
+        c.JSON(http.StatusUnauthorized, gin.H{
+            "success": false,
+            "message": "Не авторизован",
+        })
+        return
+    }
+
+    var req struct {
+        Title           string `json:"title" binding:"required"`
+        Description     string `json:"description" binding:"required"`
+        Type            string `json:"type" binding:"required"`
+        DateTime        string `json:"date_time" binding:"required"`
+        Location        string `json:"location" binding:"required"`
+        Latitude        string `json:"latitude,omitempty"`
+        Longitude       string `json:"longitude,omitempty"`
+        IsPrivate       bool   `json:"is_private"`
+        MaxParticipants *int   `json:"max_participants,omitempty"`
+    }
+
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "success": false,
+            "message": "Неверные данные формы: " + err.Error(),
+        })
+        return
+    }
+
+    // Парсим дату и время
+    eventTime, err := time.Parse("2006-01-02T15:04", req.DateTime)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "success": false,
+            "message": "Неверный формат даты и времени",
+        })
+        return
+    }
+
+    event := &models.Event{
+        Title:       req.Title,
+        Description: req.Description,
+        Type:        req.Type,
+        DateTime:    eventTime,
+        Location:    req.Location,
+        CreatorID:   currentUser.ID,
+        IsPrivate:   req.IsPrivate,
+    }
+
+    // Обрабатываем MaxParticipants
+    if req.MaxParticipants != nil {
+        event.MaxParticipants = *req.MaxParticipants
+    }
+
+    // Обрабатываем координаты
+    if req.Latitude != "" {
+        if lat, err := strconv.ParseFloat(req.Latitude, 64); err == nil {
+            event.Latitude = lat
+        }
+    }
+    if req.Longitude != "" {
+        if lng, err := strconv.ParseFloat(req.Longitude, 64); err == nil {
+            event.Longitude = lng
+        }
+    }
+
+    // Генерируем код приглашения и приватный ключ для приватных событий
+    if event.IsPrivate {
+        event.GenerateInviteCode()
+        event.GeneratePrivateKey()
+    }
+
+    if err := h.eventRepo.CreateEvent(event); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "success": false,
+            "message": "Ошибка при создании события: " + err.Error(),
+        })
+        return
+    }
+
+    // Обновляем достижения
+    if h.achievementRepo != nil {
+        go h.achievementRepo.UpdateAchievementsOnEventCreated(currentUser.ID)
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "message": "Событие создано",
+        "event":   event,
+    })
+}
+
+// SubscribeJSON - подписаться на событие (JSON)
+func (h *EventHandler) SubscribeJSON(c *gin.Context) {
+    currentUser := GetUserFromContext(c)
+    if currentUser == nil {
+        c.JSON(http.StatusUnauthorized, gin.H{
+            "success": false,
+            "message": "Не авторизован",
+        })
+        return
+    }
+
+    eventID := c.Param("id")
+    id, err := strconv.ParseUint(eventID, 10, 32)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "success": false,
+            "message": "Неверный ID события",
+        })
+        return
+    }
+
+    // Получаем информацию о событии
+    event, err := h.eventRepo.GetEventByID(uint(id))
+    if err != nil {
+        c.JSON(http.StatusNotFound, gin.H{
+            "success": false,
+            "message": "Событие не найдено",
+        })
+        return
+    }
+
+    // Проверяем, не является ли событие прошедшим
+    if time.Now().After(event.DateTime) {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "success": false,
+            "message": "Нельзя подписаться на прошедшее событие",
+        })
+        return
+    }
+
+    // Проверяем, не подписан ли уже
+    isSubscribed, err := h.eventSubRepo.IsSubscribed(currentUser.ID, uint(id))
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "success": false,
+            "message": "Ошибка проверки подписки",
+        })
+        return
+    }
+
+    if isSubscribed {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "success": false,
+            "message": "Вы уже подписаны на это событие",
+        })
+        return
+    }
+
+    err = h.eventSubRepo.Subscribe(currentUser.ID, uint(id))
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "success": false,
+            "message": "Ошибка подписки на событие",
+        })
+        return
+    }
+
+    // Обновляем достижения
+    if h.achievementRepo != nil {
+        go h.achievementRepo.UpdateAchievementsOnEventSubscribed(currentUser.ID)
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "message": "Подписка на событие оформлена",
+    })
+}
+
+// UnsubscribeJSON - отписаться от события (JSON)
+func (h *EventHandler) UnsubscribeJSON(c *gin.Context) {
+    currentUser := GetUserFromContext(c)
+    if currentUser == nil {
+        c.JSON(http.StatusUnauthorized, gin.H{
+            "success": false,
+            "message": "Не авторизован",
+        })
+        return
+    }
+
+    eventID := c.Param("id")
+    id, err := strconv.ParseUint(eventID, 10, 32)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "success": false,
+            "message": "Неверный ID события",
+        })
+        return
+    }
+
+
+    err = h.eventSubRepo.Unsubscribe(currentUser.ID, uint(id))
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "success": false,
+            "message": "Ошибка отписки от события",
+        })
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "message": "Подписка отменена",
+    })
+}
