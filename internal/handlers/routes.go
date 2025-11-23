@@ -120,6 +120,11 @@ router.GET("/api/profiles", userHandler.GetAllProfilesJSON)
 			eventGroup.POST("/delete/:id", eventHandler.DeleteEvent)
 			eventGroup.GET("/edit/:id", eventHandler.ShowEditEventForm)
 			eventGroup.POST("/edit/:id", eventHandler.UpdateEvent)
+
+
+
+// И в API группе добавь:
+
 		}
 
 		// Подписки на события
@@ -154,6 +159,13 @@ router.GET("/api/profiles", userHandler.GetAllProfilesJSON)
     protected.POST("/api/create-event", eventHandler.CreateEventJSON)
     protected.POST("/api/event/:id/subscribe", eventHandler.SubscribeJSON)
     protected.POST("/api/event/:id/unsubscribe", eventHandler.UnsubscribeJSON)
+
+	protected.GET("/api/events/feed", eventHandler.GetEventsFeedJSON) // Лента событий от подписок
+protected.GET("/api/events/user/:user_id", eventHandler.GetUserEventsJSON) // События пользователя
+protected.POST("/api/events/join-by-code", eventHandler.JoinEventByCodeJSON) // Присоединиться по коду
+
+
+
 		// Выход
 		protected.GET("/logout", authHandler.Logout)
 	}
@@ -173,23 +185,27 @@ api.Use(strictAuth)
     api.POST("/friends/accept/:id", friendshipHandler.AcceptFriendRequestJSON)
     api.POST("/friends/reject/:id", friendshipHandler.RejectFriendRequestJSON)
     api.POST("/friends/remove/:id", friendshipHandler.RemoveFriendJSON)
-api.POST("/friends/cancel/:id", friendshipHandler.CancelFriendRequestJSON)
+	api.POST("/friends/cancel/:id", friendshipHandler.CancelFriendRequestJSON)
 	api.PUT("/profile", userHandler.UpdateProfileJSON) 
     api.GET("/profile/stats", userHandler.GetUserStatsJSON) 
-api.GET("/wall/posts/:user_id", wallHandler.GetUserWallPostsJSON)
-api.POST("/wall/posts", wallHandler.CreatePostJSON)
-api.PUT("/wall/posts/:id", wallHandler.UpdatePostJSON)
-api.DELETE("/wall/posts/:id", wallHandler.DeletePostJSON)
+	api.GET("/wall/posts/:user_id", wallHandler.GetUserWallPostsJSON)
+	api.POST("/wall/posts", wallHandler.CreatePostJSON)
+	api.PUT("/wall/posts/:id", wallHandler.UpdatePostJSON)
+	api.DELETE("/wall/posts/:id", wallHandler.DeletePostJSON)
 	
-
-
-api.GET("/friends/subscriptions", subscriptionHandler.GetSubscriptionsJSON)
-api.GET("/friends/check-subscription/:id", subscriptionHandler.CheckSubscriptionJSON)
-api.POST("/friends/subscribe/:id", subscriptionHandler.SubscribeJSON)
-api.POST("/friends/unsubscribe/:id", subscriptionHandler.UnsubscribeJSON)
-api.GET("/profile/:id/subscription-stats", subscriptionHandler.GetSubscriptionStatsJSON)
+ 	api.PUT("/events/:id", eventHandler.UpdateEventJSON)
+    api.DELETE("/events/:id", eventHandler.DeleteEventJSON)
+    api.POST("/events/:id/update", eventHandler.UpdateEventJSON)
+    api.POST("/events/:id/delete", eventHandler.DeleteEventJSON)
+	
+	api.GET("/friends/subscriptions", subscriptionHandler.GetSubscriptionsJSON)
+	api.GET("/friends/check-subscription/:id", subscriptionHandler.CheckSubscriptionJSON)
+	api.POST("/friends/subscribe/:id", subscriptionHandler.SubscribeJSON)
+	api.POST("/friends/unsubscribe/:id", subscriptionHandler.UnsubscribeJSON)
+	api.GET("/profile/:id/subscription-stats", subscriptionHandler.GetSubscriptionStatsJSON)
 
 // Лента новостей
-api.GET("/news", newsHandler.GetNewsFeedJSON)
+	api.GET("/news", newsHandler.GetNewsFeedJSON)
+
 }
 }

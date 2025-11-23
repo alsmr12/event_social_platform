@@ -1,3 +1,4 @@
+// com/ark/socialevent/ui/screens/events/MyEventsScreen.kt
 package com.ark.socialevent.ui.screens.events
 
 import androidx.compose.foundation.layout.*
@@ -13,24 +14,29 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ark.socialevent.network.Event
 import com.ark.socialevent.network.EventRepository
+import com.ark.socialevent.network.UserRepository
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EventsScreen(eventRepository: EventRepository) {
+fun MyEventsScreen(
+    userRepository: UserRepository,
+    eventRepository: EventRepository
+) {
     var events by remember { mutableStateOf<List<Event>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var currentUserId by remember { mutableStateOf<Int?>(null) }
     var showCreateEventDialog by remember { mutableStateOf(false) }
-    var showJoinByCodeDialog by remember { mutableStateOf(false) }
+    var showEditEventDialog by remember { mutableStateOf(false) } // ← ДОБАВЬ ЭТО
+    var selectedEventForEdit by remember { mutableStateOf<Event?>(null) } // ← ДОБАВЬ ЭТО
+
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    fun loadEvents() {
+    fun loadMyEvents(userId: Int) {
         isLoading = true
-        eventRepository.getEvents { eventsList, error ->
+        eventRepository.getUserEvents(userId) { eventsList, error ->
             isLoading = false
             if (error != null) {
                 errorMessage = error
@@ -41,28 +47,24 @@ fun EventsScreen(eventRepository: EventRepository) {
         }
     }
 
+    // Получаем ID текущего пользователя
     LaunchedEffect(Unit) {
-        loadEvents()
+        userRepository.getProfile { profile ->
+            currentUserId = profile?.id
+            if (currentUserId != null) {
+                loadMyEvents(currentUserId!!)
+            }
+        }
     }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (!isLoading) {
-                Row {
-
-                    FloatingActionButton(
-                        onClick = { showJoinByCodeDialog = true },
-                        modifier = Modifier.padding(end = 8.dp)
-                    ) {
-                        Icon(Icons.Default.VpnKey, contentDescription = "Присоединиться по коду")
-                    }
-                    // Кнопка создания события
-                    FloatingActionButton(
-                        onClick = { showCreateEventDialog = true }
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "Создать событие")
-                    }
+                FloatingActionButton(
+                    onClick = { showCreateEventDialog = true }
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Создать событие")
                 }
             }
         }
@@ -74,7 +76,7 @@ fun EventsScreen(eventRepository: EventRepository) {
                 .padding(16.dp)
         ) {
             Text(
-                "События",
+                "Мои события",
                 style = MaterialTheme.typography.headlineMedium
             )
 
@@ -107,7 +109,9 @@ fun EventsScreen(eventRepository: EventRepository) {
                             )
                         }
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { loadEvents() }) {
+                        Button(onClick = {
+                            currentUserId?.let { loadMyEvents(it) }
+                        }) {
                             Icon(Icons.Default.Refresh, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Повторить")
@@ -128,11 +132,10 @@ fun EventsScreen(eventRepository: EventRepository) {
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            "Событий пока нет",
+                            "У вас пока нет событий",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             "Создайте первое событие!",
                             style = MaterialTheme.typography.bodyMedium,
@@ -143,14 +146,18 @@ fun EventsScreen(eventRepository: EventRepository) {
             } else {
                 LazyColumn {
                     items(events) { event ->
-                        EventCard(
+                        MyEventCard(
                             event = event,
                             eventRepository = eventRepository,
                             onShowMessage = { message ->
                                 coroutineScope.launch {
                                     snackbarHostState.showSnackbar(message)
-                                    loadEvents() // Перезагружаем события после действия
+                                    currentUserId?.let { loadMyEvents(it) }
                                 }
+                            },
+                            onEditEvent = {
+                                selectedEventForEdit = event // ← ЗАПОМИНАЕМ СОБЫТИЕ
+                                showEditEventDialog = true   // ← ПОКАЗЫВАЕМ ДИАЛОГ
                             }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -167,7 +174,7 @@ fun EventsScreen(eventRepository: EventRepository) {
             onDismiss = { showCreateEventDialog = false },
             onEventCreated = {
                 showCreateEventDialog = false
-                loadEvents()
+                currentUserId?.let { loadMyEvents(it) }
                 coroutineScope.launch {
                     snackbarHostState.showSnackbar("Событие создано!")
                 }
@@ -180,15 +187,21 @@ fun EventsScreen(eventRepository: EventRepository) {
         )
     }
 
-    if (showJoinByCodeDialog) {
-        JoinEventByCodeDialog(
+    // Диалог редактирования события ← ДОБАВЬ ЭТОТ БЛОК
+    if (showEditEventDialog && selectedEventForEdit != null) {
+        EditEventDialog(
+            event = selectedEventForEdit!!,
             eventRepository = eventRepository,
-            onDismiss = { showJoinByCodeDialog = false },
-            onJoinSuccess = {
-                showJoinByCodeDialog = false
-                loadEvents()
+            onDismiss = {
+                showEditEventDialog = false
+                selectedEventForEdit = null
+            },
+            onEventUpdated = {
+                showEditEventDialog = false
+                selectedEventForEdit = null
+                currentUserId?.let { loadMyEvents(it) }
                 coroutineScope.launch {
-                    snackbarHostState.showSnackbar("Вы присоединились к событию!")
+                    snackbarHostState.showSnackbar("Событие обновлено!")
                 }
             },
             onShowMessage = { message ->
@@ -198,15 +211,16 @@ fun EventsScreen(eventRepository: EventRepository) {
             }
         )
     }
-
 }
 
 @Composable
-fun EventCard(
+fun MyEventCard(
     event: Event,
     eventRepository: EventRepository,
-    onShowMessage: (String) -> Unit
+    onShowMessage: (String) -> Unit,
+    onEditEvent: (Event) -> Unit
 ) {
+    var showActions by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
 
     Card(
@@ -214,7 +228,7 @@ fun EventCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Заголовок и тип
+            // Заголовок и кнопки действий
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -226,13 +240,24 @@ fun EventCard(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
-                if (event.isPrivate) {
-                    Icon(
-                        Icons.Default.Lock,
-                        contentDescription = "Приватное событие",
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+
+                // Иконки статуса
+                Row {
+                    if (event.isPrivate) {
+                        Icon(
+                            Icons.Default.Lock,
+                            contentDescription = "Приватное",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                    }
+
+                    IconButton(
+                        onClick = { showActions = !showActions }
+                    ) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Действия")
+                    }
                 }
             }
 
@@ -250,166 +275,75 @@ fun EventCard(
             // Информация о событии
             EventInfo(event = event)
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Кнопка подписки
-            EventSubscriptionButton(
-                event = event,
-                isLoading = isLoading,
-                onSubscribe = {
-                    isLoading = true
-                    eventRepository.subscribeToEvent(event.id) { success, message ->
-                        isLoading = false
-                        if (success) {
-                            onShowMessage(message ?: "Подписка оформлена")
-                        } else {
-                            onShowMessage(message ?: "Ошибка подписки")
-                        }
+            // Статистика
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "${event.subscribersCount} участников",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                if (event.isPrivate && event.inviteCode != null) {
+                    Text(
+                        text = "Код: ${event.inviteCode}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            // Действия
+            if (showActions) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { onEditEvent(event) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Редактировать")
                     }
-                },
-                onUnsubscribe = {
-                    isLoading = true
-                    eventRepository.unsubscribeFromEvent(event.id) { success, message ->
-                        isLoading = false
-                        if (success) {
-                            onShowMessage(message ?: "Подписка отменена")
+
+                    OutlinedButton(
+                        onClick = {
+                            isLoading = true
+                            eventRepository.deleteEvent(event.id) { success, message ->
+                                isLoading = false
+                                if (success) {
+                                    onShowMessage("Событие удалено")
+                                } else {
+                                    onShowMessage(message ?: "Ошибка удаления")
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = !isLoading,
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
                         } else {
-                            onShowMessage(message ?: "Ошибка отписки")
+                            Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Удалить")
                         }
                     }
                 }
-            )
-        }
-    }
-}
-
-@Composable
-fun EventInfo(event: Event) {
-    Column {
-        // Дата и время
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                Icons.Default.Schedule,
-                contentDescription = "Время",
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = formatEventDate(event.dateTime),
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        // Место
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                Icons.Default.LocationOn,
-                contentDescription = "Место",
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = event.location,
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        // Организатор и подписчики
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Организатор: ${event.creator.firstName}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = "${event.subscribersCount} участников",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-fun EventSubscriptionButton(
-    event: Event,
-    isLoading: Boolean,
-    onSubscribe: () -> Unit,
-    onUnsubscribe: () -> Unit
-) {
-    if (event.isPast) {
-        OutlinedButton(
-            onClick = {},
-            modifier = Modifier.fillMaxWidth(),
-            enabled = false
-        ) {
-            Text("Событие завершено")
-        }
-    } else if (event.isSubscribed) {
-        OutlinedButton(
-            onClick = onUnsubscribe,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !isLoading
-        ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp
-                )
-            } else {
-                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Отписаться")
             }
         }
-    } else {
-        Button(
-            onClick = onSubscribe,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !isLoading
-        ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp
-                )
-            } else {
-                Icon(Icons.Default.Event, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Участвовать")
-            }
-        }
-    }
-}
-
-// Функция для форматирования даты события
-fun formatEventDate(dateString: String): String {
-    return try {
-        val formats = arrayOf(
-            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()),
-            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-        )
-
-        var parsedDate: Date? = null
-        for (format in formats) {
-            try {
-                parsedDate = format.parse(dateString)
-                if (parsedDate != null) break
-            } catch (e: Exception) {}
-        }
-
-        val outputFormat = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
-        parsedDate?.let { outputFormat.format(it) } ?: dateString
-    } catch (e: Exception) {
-        dateString
     }
 }

@@ -40,6 +40,11 @@ android {
 }
 
 dependencies {
+    implementation("com.google.accompanist:accompanist-permissions:0.32.0")
+// Pager (для DatePicker)
+    implementation("com.google.accompanist:accompanist-pager:0.32.0")
+// Pager indicators (опционально)
+    implementation("com.google.accompanist:accompanist-pager-indicators:0.32.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("io.coil-kt:coil-compose:2.4.0")
     implementation("com.squareup.retrofit2:retrofit:2.11.0")

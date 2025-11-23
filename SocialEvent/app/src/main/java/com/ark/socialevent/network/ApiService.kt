@@ -339,4 +339,21 @@ interface ApiService {
 
     @POST("/api/event/{id}/unsubscribe")
     fun unsubscribeFromEvent(@Path("id") eventId: Int): Call<EventSubscriptionResponse>
+
+    // В интерфейс ApiService добавь:
+    @GET("/api/events/feed")
+    fun getEventsFeed(): Call<EventsResponse>
+
+    @GET("/api/events/user/{user_id}")
+    fun getUserEvents(@Path("user_id") userId: Int): Call<EventsResponse>
+
+    @POST("/api/events/join-by-code")
+    fun joinEventByCode(@Body request: JoinEventRequest): Call<JoinEventResponse>
+
+
+    @POST("/api/events/{id}/update")
+    fun updateEvent(@Path("id") eventId: Int, @Body request: CreateEventRequest): Call<EventResponse>
+
+    @POST("/api/events/{id}/delete")
+    fun deleteEvent(@Path("id") eventId: Int): Call<OperationResponse>
 }

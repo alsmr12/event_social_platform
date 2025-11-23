@@ -1,4 +1,4 @@
-// com/ark/socialevent/ui/screens/events/CreateEventDialog.kt
+// com/ark/socialevent/ui/screens/events/EditEventDialog.kt
 package com.ark.socialevent.ui.screens.events
 
 import androidx.compose.foundation.layout.*
@@ -10,12 +10,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.ark.socialevent.data.EventTypes
+import com.ark.socialevent.network.Event
 import com.ark.socialevent.network.EventRepository
 import com.ark.socialevent.ui.components.DateTimePickerDialog
 import java.text.SimpleDateFormat
@@ -23,27 +24,35 @@ import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateEventDialog(
+fun EditEventDialog(
+    event: Event,
     eventRepository: EventRepository,
     onDismiss: () -> Unit,
-    onEventCreated: () -> Unit,
+    onEventUpdated: () -> Unit,
     onShowMessage: (String) -> Unit
 ) {
-    var title by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var selectedType by remember { mutableStateOf("") }
-    var dateTime by remember { mutableStateOf("") }
-    var location by remember { mutableStateOf("") }
-    var latitude by remember { mutableStateOf("") }
-    var longitude by remember { mutableStateOf("") }
-    var isPrivate by remember { mutableStateOf(false) }
-    var maxParticipants by remember { mutableStateOf("") }
+    var title by remember { mutableStateOf(event.title) }
+    var description by remember { mutableStateOf(event.description) }
+    var selectedType by remember { mutableStateOf(event.type) }
+    var dateTime by remember { mutableStateOf(
+        try {
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.getDefault()).format(
+                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).parse(event.dateTime) ?: Date()
+            )
+        } catch (e: Exception) {
+            event.dateTime
+        }
+    ) }
+    var location by remember { mutableStateOf(event.location) }
+    var latitude by remember { mutableStateOf(event.latitude?.toString() ?: "") }
+    var longitude by remember { mutableStateOf(event.longitude?.toString() ?: "") }
+    var isPrivate by remember { mutableStateOf(event.isPrivate) }
+    var maxParticipants by remember { mutableStateOf(event.maxParticipants?.toString() ?: "") }
     var isLoading by remember { mutableStateOf(false) }
-
-    // Состояния для выбора даты и времени
     var showDateTimePicker by remember { mutableStateOf(false) }
 
-    val context = LocalContext.current
+    // Тип события (выпадающий список)
+    var expanded by remember { mutableStateOf(false) }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -55,7 +64,7 @@ fun CreateEventDialog(
                 modifier = Modifier.padding(16.dp)
             ) {
                 Text(
-                    "Создать событие",
+                    "Редактировать событие",
                     style = MaterialTheme.typography.headlineSmall
                 )
 
@@ -66,8 +75,7 @@ fun CreateEventDialog(
                     value = title,
                     onValueChange = { title = it },
                     label = { Text("Название события*") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -86,7 +94,6 @@ fun CreateEventDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Тип события (выпадающий список)
-                var expanded by remember { mutableStateOf(false) }
                 Box(modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
                         value = selectedType,
@@ -159,15 +166,14 @@ fun CreateEventDialog(
                     value = location,
                     onValueChange = { location = it },
                     label = { Text("Место проведения*") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // Координаты
                 Text(
-                    "Координаты (необязательно):",
+                    "Координаты:",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -213,7 +219,6 @@ fun CreateEventDialog(
                     },
                     label = { Text("Макс. участников") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
 
@@ -225,20 +230,38 @@ fun CreateEventDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        Text("Приватное событие")
-                        if (isPrivate) {
-                            Text(
-                                "Доступ только по приглашению",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
+                    Text("Приватное событие")
                     Switch(
                         checked = isPrivate,
                         onCheckedChange = { isPrivate = it }
                     )
+                }
+
+                // Показываем код приглашения для приватных событий
+                if (event.isPrivate && event.inviteCode != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                "Код приглашения:",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                event.inviteCode!!,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                "Поделитесь этим кодом для приглашения",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -257,30 +280,15 @@ fun CreateEventDialog(
 
                     Button(
                         onClick = {
-                            // Валидация
-                            if (title.isBlank()) {
-                                onShowMessage("Введите название события")
-                                return@Button
-                            }
-                            if (description.isBlank()) {
-                                onShowMessage("Введите описание события")
-                                return@Button
-                            }
-                            if (selectedType.isBlank()) {
-                                onShowMessage("Выберите тип события")
-                                return@Button
-                            }
-                            if (dateTime.isBlank()) {
-                                onShowMessage("Выберите дату и время")
-                                return@Button
-                            }
-                            if (location.isBlank()) {
-                                onShowMessage("Введите место проведения")
+                            if (title.isBlank() || description.isBlank() ||
+                                selectedType.isBlank() || dateTime.isBlank() || location.isBlank()) {
+                                onShowMessage("Заполните все обязательные поля")
                                 return@Button
                             }
 
                             isLoading = true
-                            eventRepository.createEvent(
+                            eventRepository.updateEvent(
+                                eventId = event.id,
                                 title = title,
                                 description = description,
                                 type = selectedType,
@@ -290,23 +298,20 @@ fun CreateEventDialog(
                                 longitude = if (longitude.isNotBlank()) longitude else null,
                                 isPrivate = isPrivate,
                                 maxParticipants = maxParticipants.toIntOrNull(),
-                                callback = { success, message, event ->
+                                callback = { success, message, updatedEvent ->
                                     isLoading = false
                                     if (success) {
-                                        onEventCreated()
+                                        onEventUpdated()
                                     } else {
-                                        onShowMessage(message ?: "Ошибка создания события")
+                                        onShowMessage(message ?: "Ошибка обновления события")
                                     }
                                 }
                             )
                         },
                         modifier = Modifier.weight(1f),
-                        enabled = !isLoading &&
-                                title.isNotBlank() &&
-                                description.isNotBlank() &&
-                                selectedType.isNotBlank() &&
-                                dateTime.isNotBlank() &&
-                                location.isNotBlank()
+                        enabled = !isLoading && title.isNotBlank() &&
+                                description.isNotBlank() && selectedType.isNotBlank() &&
+                                dateTime.isNotBlank() && location.isNotBlank()
                     ) {
                         if (isLoading) {
                             CircularProgressIndicator(
@@ -314,7 +319,7 @@ fun CreateEventDialog(
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Text("Создать")
+                            Text("Сохранить")
                         }
                     }
                 }
@@ -325,6 +330,7 @@ fun CreateEventDialog(
     // Диалог выбора даты и времени
     if (showDateTimePicker) {
         DateTimePickerDialog(
+            initialDateTime = dateTime,
             onDismiss = { showDateTimePicker = false },
             onDateTimeSelected = { dateTimeString ->
                 dateTime = dateTimeString

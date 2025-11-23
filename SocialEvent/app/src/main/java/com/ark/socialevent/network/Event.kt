@@ -25,6 +25,15 @@ data class Event(
     @SerializedName("is_past") val isPast: Boolean = false
 )
 
+data class JoinEventRequest(
+    val code: String
+)
+
+data class JoinEventResponse(
+    val success: Boolean,
+    val message: String? = null,
+    val event: Event? = null
+)
 data class CreateEventRequest(
     val title: String,
     val description: String,

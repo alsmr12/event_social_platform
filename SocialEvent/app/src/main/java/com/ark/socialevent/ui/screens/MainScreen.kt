@@ -12,8 +12,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.EventNote
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
@@ -59,6 +61,7 @@ import com.ark.socialevent.network.EventRepository
 import com.ark.socialevent.network.UserProfile
 import com.ark.socialevent.network.UserRepository
 import com.ark.socialevent.ui.screens.events.EventsScreen
+import com.ark.socialevent.ui.screens.events.MyEventsScreen
 import com.ark.socialevent.ui.screens.friends.FriendsScreen
 import com.ark.socialevent.ui.screens.home.HomeScreen
 import com.ark.socialevent.ui.screens.news.NewsFeedScreen
@@ -80,6 +83,7 @@ sealed class DrawerScreens(
     object Friends : DrawerScreens("friends", "Друзья", Icons.Filled.Group)
     object Subscriptions : DrawerScreens("subscriptions", "Подписки", Icons.Filled.AccountCircle)
     object Logout : DrawerScreens("logout", "Выйти", Icons.Filled.ExitToApp)
+    object MyEvents : DrawerScreens("my_events", "Мои события", Icons.Filled.EventNote)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -115,6 +119,7 @@ fun MainScreen(
                     DrawerScreens.People,
                     DrawerScreens.News,
                     DrawerScreens.Profile,
+                    DrawerScreens.MyEvents,
                     DrawerScreens.Friends,
                     DrawerScreens.Subscriptions
                 ).forEach { screen ->
@@ -208,14 +213,17 @@ fun MainScreen(
                             currentScreen = DrawerScreens.People
                         }
                     )
+                    DrawerScreens.MyEvents -> MyEventsScreen(
+                        userRepository = userRepository,
+                        eventRepository = eventRepository
+                    )
                     DrawerScreens.Logout -> HomeScreen()
                 }
             }
         }
     }
 
-    // ДИАЛОГ ПОДТВЕРЖДЕНИЯ ВЫХОДА
-    // Альтернативный вариант диалога
+
     if (showLogoutDialog) {
         Dialog(
             onDismissRequest = { showLogoutDialog = false }

@@ -17,6 +17,8 @@ type EventHandler struct {
 	achievementRepo *repository.AchievementRepository
 }
 
+
+
 func NewEventHandler(eventRepo *repository.EventRepository, userRepo *repository.UserRepository, eventSubRepo *repository.EventSubscriptionRepository, achievementRepo *repository.AchievementRepository) *EventHandler {
 	return &EventHandler{
 		eventRepo:       eventRepo,
@@ -853,5 +855,362 @@ func (h *EventHandler) UnsubscribeJSON(c *gin.Context) {
     c.JSON(http.StatusOK, gin.H{
         "success": true,
         "message": "Подписка отменена",
+    })
+}
+
+// GetEventsFeedJSON - получить ленту событий от подписок
+func (h *EventHandler) GetEventsFeedJSON(c *gin.Context) {
+    currentUser := GetUserFromContext(c)
+    if currentUser == nil {
+        c.JSON(http.StatusUnauthorized, gin.H{
+            "success": false,
+            "message": "Не авторизован",
+        })
+        return
+    }
+
+    // Получаем список ID пользователей, на которых подписан
+    subscriptionRepo := repository.NewSubscriptionRepository(h.eventRepo.GetDB())
+    following, err := subscriptionRepo.GetFollowing(currentUser.ID)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "success": false,
+            "message": "Ошибка получения подписок",
+        })
+        return
+    }
+
+    // Если нет подписок - возвращаем пустую ленту
+    if len(following) == 0 {
+        c.JSON(http.StatusOK, gin.H{
+            "success": true,
+            "events":  []gin.H{},
+            "message": "Подпишитесь на пользователей, чтобы видеть их события",
+        })
+        return
+    }
+
+    // Собираем ID пользователей для фильтрации
+    var followingIDs []uint
+    for _, user := range following {
+        followingIDs = append(followingIDs, user.ID)
+    }
+
+    // Получаем события ТОЛЬКО от пользователей, на которых подписан
+    events, err := h.eventRepo.GetEventsFromUsers(followingIDs, 50, 0)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "success": false,
+            "message": "Ошибка загрузки событий",
+        })
+        return
+    }
+
+    // Для каждого события получаем информацию о подписках
+    for _, event := range events {
+        isSubscribed, _ := h.eventSubRepo.IsSubscribed(currentUser.ID, event.ID)
+        event.IsSubscribed = isSubscribed
+
+        subscribersCount, _ := h.eventSubRepo.GetSubscribersCount(event.ID)
+        event.SubscribersCount = subscribersCount
+        event.IsPast = time.Now().After(event.DateTime)
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "events":  events,
+        "message": "Лента событий загружена",
+    })
+}
+
+// GetUserEventsJSON - получить события пользователя
+func (h *EventHandler) GetUserEventsJSON(c *gin.Context) {
+    currentUser := GetUserFromContext(c)
+    if currentUser == nil {
+        c.JSON(http.StatusUnauthorized, gin.H{
+            "success": false,
+            "message": "Не авторизован",
+        })
+        return
+    }
+
+    userIDStr := c.Param("user_id")
+    userID, err := strconv.ParseUint(userIDStr, 10, 32)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "success": false,
+            "message": "Неверный ID пользователя",
+        })
+        return
+    }
+
+    events, err := h.eventRepo.GetUserEvents(uint(userID))
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "success": false,
+            "message": "Ошибка получения событий",
+        })
+        return
+    }
+
+    // Для каждого события получаем информацию о подписках
+    for _, event := range events {
+        isSubscribed, _ := h.eventSubRepo.IsSubscribed(currentUser.ID, event.ID)
+        event.IsSubscribed = isSubscribed
+
+        subscribersCount, _ := h.eventSubRepo.GetSubscribersCount(event.ID)
+        event.SubscribersCount = subscribersCount
+        event.IsPast = time.Now().After(event.DateTime)
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "events":  events,
+        "message": "События пользователя загружены",
+    })
+}
+
+// JoinEventByCodeJSON - присоединиться к событию по коду
+func (h *EventHandler) JoinEventByCodeJSON(c *gin.Context) {
+    currentUser := GetUserFromContext(c)
+    if currentUser == nil {
+        c.JSON(http.StatusUnauthorized, gin.H{
+            "success": false,
+            "message": "Не авторизован",
+        })
+        return
+    }
+
+    var req struct {
+        Code string `json:"code" binding:"required"`
+    }
+
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "success": false,
+            "message": "Неверный код",
+        })
+        return
+    }
+
+    // Находим событие по коду
+    event, err := h.eventRepo.GetEventByInviteCode(req.Code)
+    if err != nil {
+        c.JSON(http.StatusNotFound, gin.H{
+            "success": false,
+            "message": "Событие с таким кодом не найдено",
+        })
+        return
+    }
+
+    // Проверяем, не подписан ли уже
+    isSubscribed, err := h.eventSubRepo.IsSubscribed(currentUser.ID, event.ID)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "success": false,
+            "message": "Ошибка проверки подписки",
+        })
+        return
+    }
+
+    if isSubscribed {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "success": false,
+            "message": "Вы уже подписаны на это событие",
+        })
+        return
+    }
+
+    // Подписываемся на событие
+    err = h.eventSubRepo.Subscribe(currentUser.ID, event.ID)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "success": false,
+            "message": "Ошибка присоединения к событию",
+        })
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "message": "Вы присоединились к событию",
+        "event":   event,
+    })
+}
+
+
+// В event_handler.go добавь:
+
+// UpdateEventJSON - обновление события (JSON API)
+func (h *EventHandler) UpdateEventJSON(c *gin.Context) {
+    currentUser := GetUserFromContext(c)
+    if currentUser == nil {
+        c.JSON(http.StatusUnauthorized, gin.H{
+            "success": false,
+            "message": "Не авторизован",
+        })
+        return
+    }
+
+    eventID := c.Param("id")
+    id, err := strconv.ParseUint(eventID, 10, 32)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "success": false,
+            "message": "Неверный ID события",
+        })
+        return
+    }
+
+    // Получаем существующее событие
+    existingEvent, err := h.eventRepo.GetEventByID(uint(id))
+    if err != nil {
+        c.JSON(http.StatusNotFound, gin.H{
+            "success": false,
+            "message": "Событие не найдено",
+        })
+        return
+    }
+
+    // Проверяем, что текущий пользователь - создатель события
+    if currentUser.ID != existingEvent.CreatorID {
+        c.JSON(http.StatusForbidden, gin.H{
+            "success": false,
+            "message": "Доступ запрещен",
+        })
+        return
+    }
+
+    var req struct {
+        Title           string `json:"title" binding:"required"`
+        Description     string `json:"description" binding:"required"`
+        Type            string `json:"type" binding:"required"`
+        DateTime        string `json:"date_time" binding:"required"`
+        Location        string `json:"location" binding:"required"`
+        Latitude        string `json:"latitude,omitempty"`
+        Longitude       string `json:"longitude,omitempty"`
+        IsPrivate       bool   `json:"is_private"`
+        MaxParticipants *int   `json:"max_participants,omitempty"`
+    }
+
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "success": false,
+            "message": "Неверные данные: " + err.Error(),
+        })
+        return
+    }
+
+    // Парсим дату и время
+    eventTime, err := time.Parse("2006-01-02T15:04", req.DateTime)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "success": false,
+            "message": "Неверный формат даты и времени",
+        })
+        return
+    }
+
+    // Обновляем поля события
+    existingEvent.Title = req.Title
+    existingEvent.Description = req.Description
+    existingEvent.Type = req.Type
+    existingEvent.DateTime = eventTime
+    existingEvent.Location = req.Location
+    existingEvent.IsPrivate = req.IsPrivate
+
+    // Обрабатываем MaxParticipants
+    if req.MaxParticipants != nil {
+        existingEvent.MaxParticipants = *req.MaxParticipants
+    }
+
+    // Обрабатываем координаты
+    if req.Latitude != "" {
+        if lat, err := strconv.ParseFloat(req.Latitude, 64); err == nil {
+            existingEvent.Latitude = lat
+        }
+    }
+    if req.Longitude != "" {
+        if lng, err := strconv.ParseFloat(req.Longitude, 64); err == nil {
+            existingEvent.Longitude = lng
+        }
+    }
+
+    // Если событие стало приватным и у него нет приватного ключа - генерируем
+    if existingEvent.IsPrivate && existingEvent.PrivateKey == "" {
+        existingEvent.GeneratePrivateKey()
+    }
+    if existingEvent.IsPrivate && existingEvent.InviteCode == "" {
+        existingEvent.GenerateInviteCode()
+    }
+
+    // Сохраняем изменения
+    if err := h.eventRepo.UpdateEvent(existingEvent); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "success": false,
+            "message": "Ошибка обновления события: " + err.Error(),
+        })
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "message": "Событие обновлено",
+        "event":   existingEvent,
+    })
+}
+
+// DeleteEventJSON - удаление события (JSON API)
+func (h *EventHandler) DeleteEventJSON(c *gin.Context) {
+    currentUser := GetUserFromContext(c)
+    if currentUser == nil {
+        c.JSON(http.StatusUnauthorized, gin.H{
+            "success": false,
+            "message": "Не авторизован",
+        })
+        return
+    }
+
+    eventID := c.Param("id")
+    id, err := strconv.ParseUint(eventID, 10, 32)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "success": false,
+            "message": "Неверный ID события",
+        })
+        return
+    }
+
+    // Получаем событие
+    event, err := h.eventRepo.GetEventByID(uint(id))
+    if err != nil {
+        c.JSON(http.StatusNotFound, gin.H{
+            "success": false,
+            "message": "Событие не найдено",
+        })
+        return
+    }
+
+    // Проверяем, что текущий пользователь - создатель события
+    if currentUser.ID != event.CreatorID {
+        c.JSON(http.StatusForbidden, gin.H{
+            "success": false,
+            "message": "Доступ запрещен",
+        })
+        return
+    }
+
+    // Удаляем событие
+    if err := h.eventRepo.DeleteEvent(uint(id)); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "success": false,
+            "message": "Ошибка удаления события: " + err.Error(),
+        })
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "message": "Событие удалено",
     })
 }
