@@ -65,12 +65,13 @@ fun FiltersDialog(
                     onValueChange = onTypeChanged,
                     options = listOf(
                         "all" to "Все типы",
+                        "concert" to "Концерт",
                         "sport" to "Спорт",
-                        "culture" to "Культура",
-                        "education" to "Образование",
-                        "music" to "Музыка",
-                        "art" to "Искусство",
-                        "business" to "Бизнес",
+                        "lecture" to "Лекция",
+                        "meeting" to "Встреча",
+                        "party" to "Вечеринка",
+                        "conference" to "Конференция",
+                        "exhibition" to "Выставка",
                         "other" to "Другое"
                     )
                 )

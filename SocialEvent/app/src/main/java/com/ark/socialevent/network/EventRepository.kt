@@ -356,13 +356,12 @@ class EventRepository(private val context: Context) {
         Log.d("EventRepository", "=== GET EVENTS WITH FILTERS ===")
         Log.d("EventRepository", "Filters: type=$type, dateFrom=$dateFrom, dateTo=$dateTo, radius=$radius, timeFilter=$timeFilter")
 
+        // Используем новый endpoint для фильтрации
         api.getEventsWithFilters(
             type = type,
-            dateFrom = dateFrom,
+            dateFrom = dateFrom,  // Retrofit преобразует это в "date_from" благодаря аннотации
             dateTo = dateTo,
             radius = radius,
-            latitude = latitude,
-            longitude = longitude,
             timeFilter = timeFilter
         ).enqueue(object : Callback<EventsResponse> {
             override fun onResponse(
@@ -383,6 +382,13 @@ class EventRepository(private val context: Context) {
                     }
                 } else {
                     Log.e("EventRepository", "❌ Get filtered events HTTP error: ${response.code()}")
+                    try {
+                        val errorBody = response.errorBody()?.string()
+                        Log.e("EventRepository", "Error body: $errorBody")
+                    } catch (e: Exception) {
+                        Log.e("EventRepository", "Error reading error body: ${e.message}")
+                    }
+
                     val errorMsg = when (response.code()) {
                         401 -> "Не авторизован"
                         500 -> "Ошибка сервера"

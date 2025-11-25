@@ -203,7 +203,7 @@ api.Use(strictAuth)
 	api.POST("/friends/subscribe/:id", subscriptionHandler.SubscribeJSON)
 	api.POST("/friends/unsubscribe/:id", subscriptionHandler.UnsubscribeJSON)
 	api.GET("/profile/:id/subscription-stats", subscriptionHandler.GetSubscriptionStatsJSON)
-
+api.GET("/events/filtered", eventHandler.GetAllEventsWithFiltersJSON)
 // Лента новостей
 	api.GET("/news", newsHandler.GetNewsFeedJSON)
 

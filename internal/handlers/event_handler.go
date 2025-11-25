@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+    "log"
 
 	"github.com/gin-gonic/gin"
 )
@@ -1212,5 +1213,135 @@ func (h *EventHandler) DeleteEventJSON(c *gin.Context) {
     c.JSON(http.StatusOK, gin.H{
         "success": true,
         "message": "Событие удалено",
+    })
+}
+
+// GetAllEventsWithFiltersJSON - получение событий с фильтрами (JSON API)
+// GetAllEventsWithFiltersJSON - получение событий с фильтрами (JSON API)
+func (h *EventHandler) GetAllEventsWithFiltersJSON(c *gin.Context) {
+    currentUser := GetUserFromContext(c)
+    if currentUser == nil {
+        c.JSON(http.StatusUnauthorized, gin.H{
+            "success": false,
+            "message": "Не авторизован",
+        })
+        return
+    }
+
+    // Получаем параметры фильтрации из URL - ИСПРАВЛЕНО РЕГИСТР
+    filterType := c.DefaultQuery("type", "all")
+    dateFromStr := c.Query("date_from")  // было dateFrom
+    dateToStr := c.Query("date_to")      // было dateTo
+    radiusStr := c.DefaultQuery("radius", "0")
+    timeFilter := c.DefaultQuery("filter", "upcoming")
+
+    // Логируем параметры для отладки
+    log.Printf("📡 FILTER PARAMS - type: %s, date_from: %s, date_to: %s, radius: %s, time_filter: %s", 
+        filterType, dateFromStr, dateToStr, radiusStr, timeFilter)
+
+    // Парсим радиус
+    radius, _ := strconv.ParseFloat(radiusStr, 64)
+
+    // Парсим даты
+    var dateFrom, dateTo time.Time
+    now := time.Now()
+
+    // Если пользователь указал даты вручную - используем их
+    if dateFromStr != "" {
+        parsedDate, err := time.Parse("2006-01-02", dateFromStr)
+        if err != nil {
+            c.JSON(http.StatusBadRequest, gin.H{
+                "success": false,
+                "message": "Неверный формат даты 'date_from'. Используйте YYYY-MM-DD",
+            })
+            return
+        }
+        dateFrom = parsedDate
+    } else if timeFilter == "upcoming" {
+        // Если не указаны даты и выбрана вкладка "предстоящие" - фильтруем от текущего времени
+        dateFrom = now
+    }
+
+    if dateToStr != "" {
+        parsedDate, err := time.Parse("2006-01-02", dateToStr)
+        if err != nil {
+            c.JSON(http.StatusBadRequest, gin.H{
+                "success": false,
+                "message": "Неверный формат даты 'date_to'. Используйте YYYY-MM-DD",
+            })
+            return
+        }
+        dateTo = parsedDate.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
+    } else if timeFilter == "past" {
+        // Если не указаны даты и выбрана вкладка "прошедшие" - фильтруем до текущего времени
+        dateTo = now
+    }
+
+    // Координаты пользователя (пока фиксированные 0,0)
+    userLat := 0.0
+    userLng := 0.0
+
+    // Создаем фильтр
+    filter := repository.EventFilter{
+        Type:      filterType,
+        DateFrom:  dateFrom,
+        DateTo:    dateTo,
+        Latitude:  userLat,
+        Longitude: userLng,
+        Radius:    radius,
+    }
+
+    // Получаем события с фильтрацией
+    events, err := h.eventRepo.GetEventsWithFilter(filter)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "success": false,
+            "message": "Ошибка получения событий: " + err.Error(),
+        })
+        return
+    }
+
+    // ФИЛЬТРУЕМ: показываем события, к которым пользователь имеет доступ
+    var filteredEvents []*models.Event
+    for _, event := range events {
+        // Если событие публичное - показываем всем
+        if !event.IsPrivate {
+            filteredEvents = append(filteredEvents, event)
+            continue
+        }
+
+        // Если событие приватное, проверяем доступ
+        if currentUser != nil {
+            hasAccess, _ := h.eventRepo.CanUserAccessEvent(currentUser.ID, event.ID)
+            if hasAccess {
+                filteredEvents = append(filteredEvents, event)
+            }
+        }
+        // Если пользователь не авторизован или нет доступа - не показываем приватное событие
+    }
+
+    // Для каждого события получаем информацию о подписках
+    for _, event := range filteredEvents {
+        if currentUser != nil {
+            isSubscribed, _ := h.eventSubRepo.IsSubscribed(currentUser.ID, event.ID)
+            event.IsSubscribed = isSubscribed
+        }
+
+        subscribersCount, _ := h.eventSubRepo.GetSubscribersCount(event.ID)
+        event.SubscribersCount = subscribersCount
+        event.IsPast = time.Now().After(event.DateTime)
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "events":  filteredEvents,
+        "message": "События загружены с фильтрами",
+        "filters": gin.H{
+            "type":        filterType,
+            "date_from":   dateFromStr,
+            "date_to":     dateToStr,
+            "radius":      radius,
+            "time_filter": timeFilter,
+        },
     })
 }

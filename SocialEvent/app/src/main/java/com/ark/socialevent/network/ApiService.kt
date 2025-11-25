@@ -343,6 +343,14 @@ interface ApiService {
         @Query("filter") timeFilter: String? = null
     ): Call<EventsResponse>
 
+    @GET("/api/events/filtered")
+    fun getEventsWithFilters(
+        @Query("type") type: String? = null,
+        @Query("date_from") dateFrom: String? = null,
+        @Query("date_to") dateTo: String? = null,
+        @Query("radius") radius: Double? = null,
+        @Query("filter") timeFilter: String? = null
+    ): Call<EventsResponse>
 
     @GET("/api/event/{id}")
     fun getEvent(@Path("id") eventId: Int): Call<EventResponse>

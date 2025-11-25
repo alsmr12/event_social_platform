@@ -113,7 +113,7 @@ fun CreateEventDialog(
                 ) {
                     EventTypes.eventTypes.forEach { type ->
                         DropdownMenuItem(
-                            text = { Text(type) },
+                            text = { Text(EventTypes.getDisplayName(type)) },
                             onClick = {
                                 selectedType = type
                                 expanded = false
