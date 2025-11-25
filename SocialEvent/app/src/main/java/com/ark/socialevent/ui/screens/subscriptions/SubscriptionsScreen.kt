@@ -1,6 +1,7 @@
 // SubscriptionsScreen.kt
 package com.ark.socialevent.ui.screens.subscriptions
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,7 +18,10 @@ import com.ark.socialevent.network.UserRepository
 import kotlinx.coroutines.launch
 
 @Composable
-fun SubscriptionsScreen(userRepository: UserRepository) {
+fun SubscriptionsScreen(
+    userRepository: UserRepository,
+    onOpenProfile: (Int) -> Unit
+) {
     var subscriptions by remember { mutableStateOf<List<Subscription>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -100,13 +104,14 @@ fun SubscriptionsScreen(userRepository: UserRepository) {
                                 coroutineScope.launch {
                                     userRepository.unsubscribeFromUser(userId) { success, message ->
                                         if (success) {
-                                            loadSubscriptions() // Перезагружаем список
+                                            loadSubscriptions()
                                         } else {
                                             errorMessage = message
                                         }
                                     }
                                 }
-                            }
+                            },
+                            onOpenProfile = onOpenProfile
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                     }
@@ -119,10 +124,18 @@ fun SubscriptionsScreen(userRepository: UserRepository) {
 @Composable
 fun SubscriptionItem(
     subscription: Subscription,
-    onUnsubscribe: (Int) -> Unit
+    onUnsubscribe: (Int) -> Unit,
+    onOpenProfile: (Int) -> Unit
 ) {
+    var showUnsubscribeDialog by remember { mutableStateOf(false) }
+    var isUnsubscribing by remember { mutableStateOf(false) }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                onOpenProfile(subscription.following.id)
+            },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Row(
@@ -131,18 +144,24 @@ fun SubscriptionItem(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Аватар (заглушка)
+            // Аватар
             Icon(
                 Icons.Default.Person,
                 contentDescription = "Пользователь",
-                modifier = Modifier.size(40.dp),
+                modifier = Modifier
+                    .size(48.dp)
+                    .clickable { onOpenProfile(subscription.following.id) },
                 tint = MaterialTheme.colorScheme.primary
             )
 
             Spacer(modifier = Modifier.width(16.dp))
 
             // Информация о пользователе
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onOpenProfile(subscription.following.id) }
+            ) {
                 Text(
                     text = "${subscription.following.firstName} ${subscription.following.lastName}",
                     style = MaterialTheme.typography.bodyLarge,
@@ -153,14 +172,77 @@ fun SubscriptionItem(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Подписан(а)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium
+                )
             }
 
-            // Кнопка отписки
-            IconButton(
-                onClick = { onUnsubscribe(subscription.following.id) }
-            ) {
-                Icon(Icons.Default.Close, contentDescription = "Отписаться")
+            // Красивая кнопка отписки
+            if (isUnsubscribing) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                OutlinedButton(
+                    onClick = { showUnsubscribeDialog = true },
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Icon(
+                        Icons.Default.PersonRemove,
+                        contentDescription = "Отписаться",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Отписаться")
+                }
             }
         }
+    }
+
+    // Диалог подтверждения отписки
+    if (showUnsubscribeDialog) {
+        AlertDialog(
+            onDismissRequest = { showUnsubscribeDialog = false },
+            title = {
+                Text(
+                    "Отписаться?",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            },
+            text = {
+                Text(
+                    "Вы действительно хотите отписаться от ${subscription.following.firstName} ${subscription.following.lastName}?",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        isUnsubscribing = true
+                        showUnsubscribeDialog = false
+                        onUnsubscribe(subscription.following.id)
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Да, отписаться")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showUnsubscribeDialog = false }
+                ) {
+                    Text("Отмена")
+                }
+            }
+        )
     }
 }

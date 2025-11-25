@@ -12,8 +12,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.EventNote
 import androidx.compose.material.icons.filled.ExitToApp
@@ -66,10 +68,12 @@ import com.ark.socialevent.ui.screens.friends.FriendsScreen
 import com.ark.socialevent.ui.screens.home.HomeScreen
 import com.ark.socialevent.ui.screens.news.NewsFeedScreen
 import com.ark.socialevent.ui.screens.people.PeopleScreen
+import com.ark.socialevent.ui.screens.people.UserProfileScreen
 import com.ark.socialevent.ui.screens.profile.EditProfileScreen
 import com.ark.socialevent.ui.screens.profile.ProfileScreen
 import com.ark.socialevent.ui.screens.subscriptions.SubscriptionsScreen
 import kotlinx.coroutines.launch
+
 sealed class DrawerScreens(
     val route: String,
     val title: String,
@@ -94,9 +98,20 @@ fun MainScreen(
     eventRepository: EventRepository,
 ) {
     var currentScreen by remember { mutableStateOf<DrawerScreens>(DrawerScreens.Home) }
-    var showLogoutDialog by remember { mutableStateOf(false) } // ← ДОБАВИМ СОСТОЯНИЕ ДЛЯ ДИАЛОГА
+    var selectedUserId by remember { mutableStateOf<Int?>(null) } // Для открытия профиля пользователя
+    var showLogoutDialog by remember { mutableStateOf(false) }
     val drawerState = remember { DrawerState(DrawerValue.Closed) }
     val coroutineScope = rememberCoroutineScope()
+
+    // Функция для открытия профиля пользователя
+    val openUserProfile = { userId: Int ->
+        selectedUserId = userId
+    }
+
+    // Функция для возврата к основному экрану
+    val onBackFromProfile = {
+        selectedUserId = null
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -129,6 +144,7 @@ fun MainScreen(
                         selected = currentScreen == screen,
                         onClick = {
                             currentScreen = screen
+                            selectedUserId = null // Сбрасываем выбранный профиль при смене экрана
                             coroutineScope.launch {
                                 drawerState.close()
                             }
@@ -147,7 +163,7 @@ fun MainScreen(
                         coroutineScope.launch {
                             drawerState.close()
                         }
-                        showLogoutDialog = true // ← ПОКАЗЫВАЕМ ДИАЛОГ ВМЕСТО НЕМЕДЛЕННОГО ВЫХОДА
+                        showLogoutDialog = true
                     },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
@@ -156,19 +172,35 @@ fun MainScreen(
     ) {
         Scaffold(
             topBar = {
-                CenterAlignedTopAppBar(
-                    title = { Text(currentScreen.title) },
-                    navigationIcon = {
-                        IconButton(onClick = {
-                            coroutineScope.launch {
-                                drawerState.open()
-                            }
-                        }) {
-                            Icon(Icons.Filled.Menu, contentDescription = "Меню")
-                        }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors()
-                )
+                when {
+                    selectedUserId != null -> {
+                        // Показываем кнопку "Назад" когда открыт профиль пользователя
+                        CenterAlignedTopAppBar(
+                            title = { Text("Профиль") },
+                            navigationIcon = {
+                                IconButton(onClick = onBackFromProfile) {
+                                    Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                                }
+                            },
+                            colors = TopAppBarDefaults.centerAlignedTopAppBarColors()
+                        )
+                    }
+                    else -> {
+                        CenterAlignedTopAppBar(
+                            title = { Text(currentScreen.title) },
+                            navigationIcon = {
+                                IconButton(onClick = {
+                                    coroutineScope.launch {
+                                        drawerState.open()
+                                    }
+                                }) {
+                                    Icon(Icons.Filled.Menu, contentDescription = "Меню")
+                                }
+                            },
+                            colors = TopAppBarDefaults.centerAlignedTopAppBarColors()
+                        )
+                    }
+                }
             }
         ) { paddingValues ->
             Box(
@@ -176,53 +208,74 @@ fun MainScreen(
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-                when (currentScreen) {
-                    DrawerScreens.Home -> HomeScreen()
-                    DrawerScreens.Events -> EventsScreen(eventRepository = eventRepository)
-                    DrawerScreens.People -> PeopleScreen(userRepository = userRepository)
-                    DrawerScreens.Profile -> {
-                        var showEditProfile by remember { mutableStateOf(false) }
+                when {
+                    selectedUserId != null -> {
+                        // Показываем профиль пользователя
+                        UserProfileScreen(
+                            userId = selectedUserId!!,
+                            userRepository = userRepository,
+                            onBack = onBackFromProfile
+                        )
+                    }
+                    else -> {
+                        // Показываем обычные экраны
+                        when (currentScreen) {
+                            DrawerScreens.Home -> HomeScreen()
+                            DrawerScreens.Events -> EventsScreen(eventRepository = eventRepository)
+                            DrawerScreens.People -> PeopleScreen(
+                                userRepository = userRepository
+                            )
+                            DrawerScreens.Profile -> {
+                                var showEditProfile by remember { mutableStateOf(false) }
 
-                        if (showEditProfile) {
-                            var currentProfile by remember { mutableStateOf<UserProfile?>(null) }
+                                if (showEditProfile) {
+                                    var currentProfile by remember { mutableStateOf<UserProfile?>(null) }
 
-                            LaunchedEffect(Unit) {
-                                userRepository.getProfile { profile ->
-                                    currentProfile = profile
+                                    LaunchedEffect(Unit) {
+                                        userRepository.getProfile { profile ->
+                                            currentProfile = profile
+                                        }
+                                    }
+
+                                    EditProfileScreen(
+                                        userRepository = userRepository,
+                                        currentProfile = currentProfile,
+                                        onBack = { showEditProfile = false },
+                                        onSaveSuccess = { showEditProfile = false }
+                                    )
+                                } else {
+                                    ProfileScreen(
+                                        userRepository = userRepository,
+                                        onEditProfile = { showEditProfile = true }
+                                    )
                                 }
                             }
+                            DrawerScreens.Friends -> FriendsScreen(
+                                userRepository = userRepository,
+                                onOpenProfile = openUserProfile
+                            )
+                            DrawerScreens.Subscriptions -> SubscriptionsScreen(
+                                userRepository = userRepository,
+                                onOpenProfile = openUserProfile
+                            )
+                            DrawerScreens.News -> NewsFeedScreen(
+                                userRepository = userRepository,
+                                onNavigateToPeople = {
+                                    currentScreen = DrawerScreens.People
+                                },
 
-                            EditProfileScreen(
-                                userRepository = userRepository,
-                                currentProfile = currentProfile,
-                                onBack = { showEditProfile = false },
-                                onSaveSuccess = { showEditProfile = false }
                             )
-                        } else {
-                            ProfileScreen(
+                            DrawerScreens.MyEvents -> MyEventsScreen(
                                 userRepository = userRepository,
-                                onEditProfile = { showEditProfile = true }
+                                eventRepository = eventRepository
                             )
+                            DrawerScreens.Logout -> HomeScreen()
                         }
                     }
-                    DrawerScreens.Friends -> FriendsScreen(userRepository = userRepository)
-                    DrawerScreens.Subscriptions -> SubscriptionsScreen(userRepository = userRepository)
-                    DrawerScreens.News -> NewsFeedScreen(
-                        userRepository = userRepository,
-                        onNavigateToPeople = {
-                            currentScreen = DrawerScreens.People
-                        }
-                    )
-                    DrawerScreens.MyEvents -> MyEventsScreen(
-                        userRepository = userRepository,
-                        eventRepository = eventRepository
-                    )
-                    DrawerScreens.Logout -> HomeScreen()
                 }
             }
         }
     }
-
 
     if (showLogoutDialog) {
         Dialog(

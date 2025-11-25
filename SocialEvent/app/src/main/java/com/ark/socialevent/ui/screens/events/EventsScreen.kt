@@ -28,6 +28,7 @@ fun EventsScreen(eventRepository: EventRepository) {
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
+
     fun loadEvents() {
         isLoading = true
         eventRepository.getEvents { eventsList, error ->

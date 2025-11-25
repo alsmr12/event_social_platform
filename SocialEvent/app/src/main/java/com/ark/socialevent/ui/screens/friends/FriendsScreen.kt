@@ -17,30 +17,12 @@ import com.ark.socialevent.network.FriendRequest
 import com.ark.socialevent.network.UserRepository
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
-import com.ark.socialevent.state.FriendshipStateManager
-
-
-object FriendshipStateManager {
-    var refreshFriendsTrigger by mutableStateOf(0)
-    var refreshPeopleTrigger by mutableStateOf(0)
-
-    fun refreshFriends() {
-        refreshFriendsTrigger++
-    }
-
-    fun refreshPeople() {
-        refreshPeopleTrigger++
-    }
-
-    fun refreshAll() {
-        refreshFriendsTrigger++
-        refreshPeopleTrigger++
-    }
-}
-
 
 @Composable
-fun FriendsScreen(userRepository: UserRepository) {
+fun FriendsScreen(
+    userRepository: UserRepository,
+    onOpenProfile: (Int) -> Unit // Добавляем callback для открытия профиля
+) {
     var currentTab by remember { mutableStateOf(0) }
     val tabs = listOf("Друзья", "Входящие заявки", "Исходящие заявки")
 
@@ -53,7 +35,7 @@ fun FriendsScreen(userRepository: UserRepository) {
     val coroutineScope = rememberCoroutineScope()
 
     // Следим за глобальным триггером обновления
-    val refreshTrigger by remember { mutableStateOf(FriendshipStateManager.refreshFriendsTrigger) }
+    val refreshTrigger by remember { mutableStateOf(com.ark.socialevent.state.FriendshipStateManager.refreshFriendsTrigger) }
 
     // Функция для принудительного обновления данных текущей вкладки
     val refreshCurrentTab = {
@@ -97,7 +79,6 @@ fun FriendsScreen(userRepository: UserRepository) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Добавляем кнопку обновления в заголовок
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -122,7 +103,6 @@ fun FriendsScreen(userRepository: UserRepository) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Табы
         TabRow(selectedTabIndex = currentTab) {
             tabs.forEachIndexed { index, title ->
                 Tab(
@@ -135,7 +115,6 @@ fun FriendsScreen(userRepository: UserRepository) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Сообщение об ошибке
         errorMessage?.let { message ->
             Card(
                 modifier = Modifier
@@ -151,7 +130,6 @@ fun FriendsScreen(userRepository: UserRepository) {
             }
         }
 
-        // Контент в зависимости от выбранной вкладки
         when {
             loading -> {
                 Box(
@@ -166,17 +144,20 @@ fun FriendsScreen(userRepository: UserRepository) {
                     0 -> FriendsList(
                         friends = friends,
                         userRepository = userRepository,
-                        onFriendRemoved = refreshCurrentTab // Используем новую функцию
+                        onFriendRemoved = refreshCurrentTab,
+                        onOpenProfile = onOpenProfile
                     )
                     1 -> PendingRequestsList(
                         requests = pendingRequests,
                         userRepository = userRepository,
-                        onRequestProcessed = refreshCurrentTab // Используем новую функцию
+                        onRequestProcessed = refreshCurrentTab,
+                        onOpenProfile = onOpenProfile
                     )
                     2 -> SentRequestsList(
                         requests = sentRequests,
                         userRepository = userRepository,
-                        onRequestCancelled = refreshCurrentTab // Добавляем для отмены заявок
+                        onRequestCancelled = refreshCurrentTab,
+                        onOpenProfile = onOpenProfile
                     )
                 }
             }
@@ -188,7 +169,8 @@ fun FriendsScreen(userRepository: UserRepository) {
 fun FriendsList(
     friends: List<Friend>,
     userRepository: UserRepository,
-    onFriendRemoved: () -> Unit
+    onFriendRemoved: () -> Unit,
+    onOpenProfile: (Int) -> Unit
 ) {
     if (friends.isEmpty()) {
         Box(
@@ -203,7 +185,8 @@ fun FriendsList(
                 FriendItem(
                     friend = friend,
                     userRepository = userRepository,
-                    onFriendRemoved = onFriendRemoved
+                    onFriendRemoved = onFriendRemoved,
+                    onOpenProfile = onOpenProfile
                 )
             }
         }
@@ -214,7 +197,8 @@ fun FriendsList(
 fun FriendItem(
     friend: Friend,
     userRepository: UserRepository,
-    onFriendRemoved: () -> Unit
+    onFriendRemoved: () -> Unit,
+    onOpenProfile: (Int) -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
     var isRemoving by remember { mutableStateOf(false) }
@@ -222,7 +206,11 @@ fun FriendItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
+            .padding(vertical = 4.dp),
+        onClick = {
+            // При клике на карточку открываем профиль
+            onOpenProfile(friend.id)
+        }
     ) {
         Row(
             modifier = Modifier
@@ -231,7 +219,7 @@ fun FriendItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     "${friend.firstName} ${friend.lastName}",
                     style = MaterialTheme.typography.bodyLarge,
@@ -248,7 +236,10 @@ fun FriendItem(
                 CircularProgressIndicator(modifier = Modifier.size(20.dp))
             } else {
                 IconButton(
-                    onClick = { showDialog = true },
+                    onClick = {
+                        // Останавливаем распространение события, чтобы не открывался профиль
+                        showDialog = true
+                    },
                     enabled = !isRemoving
                 ) {
                     Icon(Icons.Filled.MoreVert, contentDescription = "Действия")
@@ -270,7 +261,7 @@ fun FriendItem(
                             isRemoving = false
                             showDialog = false
                             if (success) {
-                                onFriendRemoved() // Обновляем данные
+                                onFriendRemoved()
                             }
                         }
                     },
@@ -299,7 +290,8 @@ fun FriendItem(
 fun PendingRequestsList(
     requests: List<FriendRequest>,
     userRepository: UserRepository,
-    onRequestProcessed: () -> Unit
+    onRequestProcessed: () -> Unit,
+    onOpenProfile: (Int) -> Unit
 ) {
     if (requests.isEmpty()) {
         Box(
@@ -314,7 +306,8 @@ fun PendingRequestsList(
                 PendingRequestItem(
                     request = request,
                     userRepository = userRepository,
-                    onRequestProcessed = onRequestProcessed
+                    onRequestProcessed = onRequestProcessed,
+                    onOpenProfile = onOpenProfile
                 )
             }
         }
@@ -325,14 +318,19 @@ fun PendingRequestsList(
 fun PendingRequestItem(
     request: FriendRequest,
     userRepository: UserRepository,
-    onRequestProcessed: () -> Unit
+    onRequestProcessed: () -> Unit,
+    onOpenProfile: (Int) -> Unit
 ) {
     var isProcessing by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
+            .padding(vertical = 4.dp),
+        onClick = {
+            // При клике на карточку открываем профиль пользователя
+            onOpenProfile(request.user.id)
+        }
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -410,7 +408,6 @@ fun PendingRequestItem(
                     }
                 }
             } else {
-                // Для исходящих заявок добавляем возможность отмены
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -427,7 +424,6 @@ fun PendingRequestItem(
                         modifier = Modifier.weight(1f)
                     )
 
-                    // Кнопка отмены заявки
                     TextButton(
                         onClick = {
                             if (!isProcessing) {
@@ -458,7 +454,8 @@ fun PendingRequestItem(
 fun SentRequestsList(
     requests: List<FriendRequest>,
     userRepository: UserRepository,
-    onRequestCancelled: () -> Unit
+    onRequestCancelled: () -> Unit,
+    onOpenProfile: (Int) -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
 
@@ -477,7 +474,11 @@ fun SentRequestsList(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp)
+                        .padding(vertical = 4.dp),
+                    onClick = {
+                        // При клике на карточку открываем профиль пользователя
+                        onOpenProfile(request.friend.id)
+                    }
                 ) {
                     Row(
                         modifier = Modifier
@@ -505,12 +506,11 @@ fun SentRequestsList(
                                 onClick = {
                                     isCancelling = true
                                     userRepository.rejectFriendRequest(request.friend.id) { success, message ->
-                                        // ВЫЗЫВАЕМ В КОРУТИНЕ
                                         coroutineScope.launch {
                                             isCancelling = false
                                             if (success) {
                                                 Log.d("FriendsScreen", "✅ Request cancelled successfully")
-                                                delay(500) // Ждем полсекунды
+                                                delay(500)
                                                 onRequestCancelled()
                                             } else {
                                                 Log.e("FriendsScreen", "❌ Failed to cancel request: $message")
