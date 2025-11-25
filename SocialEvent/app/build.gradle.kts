@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "com.ark.socialevent"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -40,6 +40,9 @@ android {
 }
 
 dependencies {
+    implementation("androidx.compose.material3:material3:1.1.2")
+    implementation("io.github.vanpra.compose-material-dialogs:datetime:0.8.1-rc")
+    implementation("io.github.vanpra.compose-material-dialogs:core:0.8.1-rc")
     implementation("com.google.accompanist:accompanist-permissions:0.32.0")
 // Pager (для DatePicker)
     implementation("com.google.accompanist:accompanist-pager:0.32.0")

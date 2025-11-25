@@ -4,7 +4,14 @@ import com.google.gson.annotations.SerializedName
 import retrofit2.Call
 import retrofit2.http.*
 
-
+data class EventsRequest(
+    @SerializedName("type") val type: String? = null,
+    @SerializedName("date_from") val dateFrom: String? = null,
+    @SerializedName("date_to") val dateTo: String? = null,
+    @SerializedName("radius") val radius: Double? = null,
+    @SerializedName("latitude") val latitude: Double? = null,
+    @SerializedName("longitude") val longitude: Double? = null
+)
 data class Subscription(
     val id: Int,
     val follower: UserProfile,
@@ -326,7 +333,16 @@ interface ApiService {
     fun getNewsFeed(): Call<NewsFeedResponse>
 
     @GET("/api/events")
-    fun getEvents(): Call<EventsResponse>
+    fun getEventsWithFilters(
+        @Query("type") type: String? = null,
+        @Query("date_from") dateFrom: String? = null,
+        @Query("date_to") dateTo: String? = null,
+        @Query("radius") radius: Double? = null,
+        @Query("latitude") latitude: Double? = null,
+        @Query("longitude") longitude: Double? = null,
+        @Query("filter") timeFilter: String? = null
+    ): Call<EventsResponse>
+
 
     @GET("/api/event/{id}")
     fun getEvent(@Path("id") eventId: Int): Call<EventResponse>

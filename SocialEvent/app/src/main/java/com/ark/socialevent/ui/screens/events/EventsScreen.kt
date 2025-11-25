@@ -1,5 +1,6 @@
 package com.ark.socialevent.ui.screens.events
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,76 +17,84 @@ import com.ark.socialevent.network.EventRepository
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
-import androidx.compose.foundation.clickable
-import kotlinx.coroutines.coroutineScope
 
 // Перечисление для типов вкладок
 enum class EventsTab {
     UPCOMING, PAST
 }
 
+// Модель для фильтров
+data class EventFilters(
+    val type: String = "all",
+    val dateFrom: String = "",
+    val dateTo: String = "",
+    val radius: String = "0"
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventsScreen(eventRepository: EventRepository) {
     var events by remember { mutableStateOf<List<Event>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
+    var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var selectedTab by remember { mutableStateOf(EventsTab.UPCOMING) }
     var showCreateEventDialog by remember { mutableStateOf(false) }
     var showJoinByCodeDialog by remember { mutableStateOf(false) }
     var showFiltersDialog by remember { mutableStateOf(false) }
-
-    // Параметры фильтрации
-    var selectedType by remember { mutableStateOf("all") }
-    var dateFrom by remember { mutableStateOf("") }
-    var dateTo by remember { mutableStateOf("") }
-    var radius by remember { mutableStateOf("0") }
     var selectedEvent by remember { mutableStateOf<Event?>(null) }
+
+    // Текущие активные фильтры
+    var currentFilters by remember { mutableStateOf(EventFilters()) }
+
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
+    // Функция загрузки событий
     fun loadEvents() {
         isLoading = true
-        // Здесь можно добавить параметры фильтрации когда API будет поддерживать
-        eventRepository.getEvents { eventsList, error ->
+        errorMessage = null
+
+        // Преобразуем даты в формат для сервера (YYYY-MM-DD)
+        val serverDateFrom = if (currentFilters.dateFrom.isNotEmpty()) {
+            convertDateToServerFormat(currentFilters.dateFrom)
+        } else null
+
+        val serverDateTo = if (currentFilters.dateTo.isNotEmpty()) {
+            convertDateToServerFormat(currentFilters.dateTo)
+        } else null
+
+        eventRepository.getEventsWithFilters(
+            type = if (currentFilters.type != "all") currentFilters.type else null,
+            dateFrom = serverDateFrom,
+            dateTo = serverDateTo,
+            radius = if (currentFilters.radius.isNotEmpty() && currentFilters.radius != "0")
+                currentFilters.radius.toDoubleOrNull() else null,
+            timeFilter = if (selectedTab == EventsTab.PAST) "past" else "upcoming"
+        ) { eventsList, error ->
             isLoading = false
             if (error != null) {
                 errorMessage = error
+                events = emptyList()
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar("Ошибка загрузки: $error")
+                }
             } else {
                 events = eventsList ?: emptyList()
-                errorMessage = null
             }
         }
     }
 
+    // Загружаем события при первом запуске
+    LaunchedEffect(Unit) {
+        loadEvents()
+    }
+
+    // Перезагружаем при смене вкладки
     LaunchedEffect(selectedTab) {
         loadEvents()
     }
 
-    // Функция для получения текущего списка событий в зависимости от вкладки
-    fun getCurrentEvents(): List<Event> {
-        val now = System.currentTimeMillis()
-        return when (selectedTab) {
-            EventsTab.UPCOMING -> events.filter {
-                try {
-                    val eventTime = parseDate(it.dateTime)?.time ?: 0
-                    eventTime > now
-                } catch (e: Exception) {
-                    false
-                }
-            }
-            EventsTab.PAST -> events.filter {
-                try {
-                    val eventTime = parseDate(it.dateTime)?.time ?: 0
-                    eventTime <= now
-                } catch (e: Exception) {
-                    false
-                }
-            }
-        }
-    }
-
-    // Функция для получения заголовка в зависимости от вкладки
+    // Функция для получения заголовка
     fun getScreenTitle(): String {
         return when (selectedTab) {
             EventsTab.UPCOMING -> "Предстоящие события"
@@ -101,18 +110,54 @@ fun EventsScreen(eventRepository: EventRepository) {
         }
     }
 
+    // Функция для проверки активных фильтров
+    fun hasActiveFilters(): Boolean {
+        return currentFilters.type != "all" ||
+                currentFilters.dateFrom.isNotEmpty() ||
+                currentFilters.dateTo.isNotEmpty() ||
+                (currentFilters.radius.isNotEmpty() && currentFilters.radius != "0")
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(getScreenTitle()) },
+                title = {
+                    Column {
+                        Text(getScreenTitle())
+                        // Показываем активные фильтры
+                        if (hasActiveFilters()) {
+                            Text(
+                                "Фильтры активны",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                },
                 actions = {
+                    // Кнопка обновления
+                    IconButton(
+                        onClick = { loadEvents() },
+                        enabled = !isLoading
+                    ) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = "Обновить"
+                        )
+                    }
                     // Кнопка фильтров
                     IconButton(
                         onClick = { showFiltersDialog = true },
                         enabled = !isLoading
                     ) {
-                        Icon(Icons.Default.FilterList, contentDescription = "Фильтры")
+                        Icon(
+                            Icons.Default.FilterList,
+                            contentDescription = "Фильтры",
+                            tint = if (hasActiveFilters())
+                                MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
             )
@@ -144,35 +189,34 @@ fun EventsScreen(eventRepository: EventRepository) {
                 .padding(paddingValues)
         ) {
             // Вкладки
-            EventsTabs(
-                selectedTab = selectedTab,
-                onTabSelected = { tab ->
-                    selectedTab = tab
-                }
-            )
+            TabRow(selectedTabIndex = selectedTab.ordinal) {
+                Tab(
+                    text = { Text("Предстоящие") },
+                    selected = selectedTab == EventsTab.UPCOMING,
+                    onClick = { selectedTab = EventsTab.UPCOMING }
+                )
+                Tab(
+                    text = { Text("Прошедшие") },
+                    selected = selectedTab == EventsTab.PAST,
+                    onClick = { selectedTab = EventsTab.PAST }
+                )
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
             // Содержимое
             EventsContent(
-                events = getCurrentEvents(),
+                events = events,
                 isLoading = isLoading,
                 errorMessage = errorMessage,
                 emptyMessage = getEmptyMessage(),
-                eventRepository = eventRepository,
                 onRetry = { loadEvents() },
-                onShowMessage = { message ->
-                    coroutineScope.launch {
-                        snackbarHostState.showSnackbar(message)
-                        loadEvents()
-                    }
-                }, onEventClick = { event ->  selectedEvent = event
-                }
+                onEventClick = { selectedEvent = it }
             )
         }
     }
 
-    // Диалог создания события
+    // Диалог создания события - используем твой готовый CreateEventDialog
     if (showCreateEventDialog) {
         CreateEventDialog(
             eventRepository = eventRepository,
@@ -192,7 +236,7 @@ fun EventsScreen(eventRepository: EventRepository) {
         )
     }
 
-    // Диалог присоединения по коду
+    // Диалог присоединения по коду - используем твой готовый JoinEventByCodeDialog
     if (showJoinByCodeDialog) {
         JoinEventByCodeDialog(
             eventRepository = eventRepository,
@@ -212,17 +256,17 @@ fun EventsScreen(eventRepository: EventRepository) {
         )
     }
 
-    // Диалог фильтров
+    // Диалог фильтров - используем твой готовый FiltersDialog
     if (showFiltersDialog) {
         FiltersDialog(
-            selectedType = selectedType,
-            dateFrom = dateFrom,
-            dateTo = dateTo,
-            radius = radius,
-            onTypeChanged = { selectedType = it },
-            onDateFromChanged = { dateFrom = it },
-            onDateToChanged = { dateTo = it },
-            onRadiusChanged = { radius = it },
+            selectedType = currentFilters.type,
+            dateFrom = currentFilters.dateFrom,
+            dateTo = currentFilters.dateTo,
+            radius = currentFilters.radius,
+            onTypeChanged = { currentFilters = currentFilters.copy(type = it) },
+            onDateFromChanged = { currentFilters = currentFilters.copy(dateFrom = it) },
+            onDateToChanged = { currentFilters = currentFilters.copy(dateTo = it) },
+            onRadiusChanged = { currentFilters = currentFilters.copy(radius = it) },
             onApplyFilters = {
                 showFiltersDialog = false
                 loadEvents()
@@ -231,10 +275,7 @@ fun EventsScreen(eventRepository: EventRepository) {
                 }
             },
             onClearFilters = {
-                selectedType = "all"
-                dateFrom = ""
-                dateTo = ""
-                radius = "0"
+                currentFilters = EventFilters()
                 showFiltersDialog = false
                 loadEvents()
                 coroutineScope.launch {
@@ -245,6 +286,7 @@ fun EventsScreen(eventRepository: EventRepository) {
         )
     }
 
+    // Диалог деталей события - используем твой готовый EventDetailsDialog
     if (selectedEvent != null) {
         EventDetailsDialog(
             event = selectedEvent!!,
@@ -253,30 +295,10 @@ fun EventsScreen(eventRepository: EventRepository) {
             onShowMessage = { message ->
                 coroutineScope.launch {
                     snackbarHostState.showSnackbar(message)
-                    loadEvents() // Перезагружаем события после действия
-                    selectedEvent = null // Закрываем диалог
+                    loadEvents()
+                    selectedEvent = null
                 }
             }
-        )
-    }
-
-}
-
-@Composable
-fun EventsTabs(
-    selectedTab: EventsTab,
-    onTabSelected: (EventsTab) -> Unit
-) {
-    TabRow(selectedTabIndex = selectedTab.ordinal) {
-        Tab(
-            text = { Text("Предстоящие") },
-            selected = selectedTab == EventsTab.UPCOMING,
-            onClick = { onTabSelected(EventsTab.UPCOMING) }
-        )
-        Tab(
-            text = { Text("Прошедшие") },
-            selected = selectedTab == EventsTab.PAST,
-            onClick = { onTabSelected(EventsTab.PAST) }
         )
     }
 }
@@ -287,198 +309,80 @@ fun EventsContent(
     isLoading: Boolean,
     errorMessage: String?,
     emptyMessage: String,
-    eventRepository: EventRepository,
     onRetry: () -> Unit,
-    onShowMessage: (String) -> Unit,
-    onEventClick: (Event) -> Unit  // Добавь этот параметр
+    onEventClick: (Event) -> Unit
 ) {
-    if (isLoading) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                CircularProgressIndicator()
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Загрузка событий...")
+    when {
+        isLoading -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator()
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Загрузка событий...")
+                }
             }
         }
-    } else if (errorMessage != null) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-                ) {
+        errorMessage != null -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                    ) {
+                        Text(
+                            errorMessage,
+                            modifier = Modifier.padding(16.dp),
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = onRetry) {
+                        Icon(Icons.Default.Refresh, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Повторить")
+                    }
+                }
+            }
+        }
+        events.isEmpty() -> {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Default.Event,
+                        contentDescription = "Нет событий",
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        errorMessage ?: "Ошибка загрузки",
-                        modifier = Modifier.padding(16.dp),
-                        color = MaterialTheme.colorScheme.onErrorContainer
+                        emptyMessage,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = onRetry) {
-                    Icon(Icons.Default.Refresh, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Повторить")
+            }
+        }
+        else -> {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp)
+            ) {
+                items(events, key = { it.id }) { event ->
+                    EventCard(
+                        event = event,
+                        onEventClick = { onEventClick(event) }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
-            }
-        }
-    } else if (events.isEmpty()) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    Icons.Default.Event,
-                    contentDescription = "Нет событий",
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    emptyMessage,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    } else {
-        LazyColumn(
-            modifier = Modifier.padding(horizontal = 16.dp)
-        ) {
-            items(events) { event ->
-                EventCard(
-                    event = event,
-                    eventRepository = eventRepository,
-                    onShowMessage = onShowMessage,
-                    onEventClick = { onEventClick(event) }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        }
-    }
-}
-
-@Composable
-fun FiltersDialog(
-    selectedType: String,
-    dateFrom: String,
-    dateTo: String,
-    radius: String,
-    onTypeChanged: (String) -> Unit,
-    onDateFromChanged: (String) -> Unit,
-    onDateToChanged: (String) -> Unit,
-    onRadiusChanged: (String) -> Unit,
-    onApplyFilters: () -> Unit,
-    onClearFilters: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Фильтры событий") },
-        text = {
-            Column {
-                // Тип события
-                Text("Тип события:", style = MaterialTheme.typography.bodyMedium)
-                DropdownMenuBox(
-                    selectedValue = selectedType,
-                    onValueChange = onTypeChanged,
-                    options = listOf("all" to "Все типы", "sport" to "Спорт", "culture" to "Культура", "education" to "Образование")
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Дата от
-                Text("Дата от:", style = MaterialTheme.typography.bodyMedium)
-                OutlinedTextField(
-                    value = dateFrom,
-                    onValueChange = onDateFromChanged,
-                    placeholder = { Text("ГГГГ-ММ-ДД") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Дата до
-                Text("Дата до:", style = MaterialTheme.typography.bodyMedium)
-                OutlinedTextField(
-                    value = dateTo,
-                    onValueChange = onDateToChanged,
-                    placeholder = { Text("ГГГГ-ММ-ДД") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Радиус
-                Text("Радиус поиска (км):", style = MaterialTheme.typography.bodyMedium)
-                OutlinedTextField(
-                    value = radius,
-                    onValueChange = onRadiusChanged,
-                    placeholder = { Text("0") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Row {
-                OutlinedButton(
-                    onClick = onClearFilters,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Сбросить")
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(
-                    onClick = onApplyFilters,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Применить")
-                }
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Отмена")
-            }
-        }
-    )
-}
-
-@Composable
-fun DropdownMenuBox(
-    selectedValue: String,
-    onValueChange: (String) -> Unit,
-    options: List<Pair<String, String>>
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    Box(modifier = Modifier.fillMaxWidth()) {
-        OutlinedButton(
-            onClick = { expanded = true },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(options.find { it.first == selectedValue }?.second ?: "Выберите тип")
-            Spacer(modifier = Modifier.weight(1f))
-            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-        }
-
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            options.forEach { (value, label) ->
-                DropdownMenuItem(
-                    text = { Text(label) },
-                    onClick = {
-                        onValueChange(value)
-                        expanded = false
-                    }
-                )
             }
         }
     }
@@ -487,14 +391,12 @@ fun DropdownMenuBox(
 @Composable
 fun EventCard(
     event: Event,
-    eventRepository: EventRepository,
-    onShowMessage: (String) -> Unit,
     onEventClick: () -> Unit
 ) {
-    var isLoading by remember { mutableStateOf(false) }
-
     Card(
-        modifier = Modifier.fillMaxWidth().clickable { onEventClick() },
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onEventClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -533,36 +435,6 @@ fun EventCard(
 
             // Информация о событии
             EventInfo(event = event)
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Кнопка подписки
-            EventSubscriptionButton(
-                event = event,
-                isLoading = isLoading,
-                onSubscribe = {
-                    isLoading = true
-                    eventRepository.subscribeToEvent(event.id) { success, message ->
-                        isLoading = false
-                        if (success) {
-                            onShowMessage(message ?: "Подписка оформлена")
-                        } else {
-                            onShowMessage(message ?: "Ошибка подписки")
-                        }
-                    }
-                },
-                onUnsubscribe = {
-                    isLoading = true
-                    eventRepository.unsubscribeFromEvent(event.id) { success, message ->
-                        isLoading = false
-                        if (success) {
-                            onShowMessage(message ?: "Подписка отменена")
-                        } else {
-                            onShowMessage(message ?: "Ошибка отписки")
-                        }
-                    }
-                }
-            )
         }
     }
 }
@@ -680,7 +552,8 @@ fun formatEventDate(dateString: String): String {
     return try {
         val formats = arrayOf(
             SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()),
-            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()),
+            SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         )
 
         var parsedDate: Date? = null
@@ -698,25 +571,14 @@ fun formatEventDate(dateString: String): String {
     }
 }
 
-fun parseDate(dateString: String): Date? {
+// Функция для конвертации даты в формат сервера (DD.MM.YYYY -> YYYY-MM-DD)
+fun convertDateToServerFormat(date: String): String? {
     return try {
-        val formats = arrayOf(
-            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()),
-            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()),
-            SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        )
-
-        for (format in formats) {
-            try {
-                return format.parse(dateString)
-            } catch (e: Exception) {
-                continue
-            }
-        }
-        null
+        val inputFormat = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+        val outputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val parsedDate = inputFormat.parse(date)
+        parsedDate?.let { outputFormat.format(it) }
     } catch (e: Exception) {
         null
     }
-
-
 }

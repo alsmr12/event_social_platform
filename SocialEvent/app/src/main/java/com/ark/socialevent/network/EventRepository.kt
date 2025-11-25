@@ -12,44 +12,6 @@ class EventRepository(private val context: Context) {
         ApiClient.getApiService()
     }
 
-    fun getEvents(callback: (List<Event>?, String?) -> Unit) {
-        Log.d("EventRepository", "=== GET EVENTS ===")
-
-        api.getEvents().enqueue(object : Callback<EventsResponse> {
-            override fun onResponse(
-                call: Call<EventsResponse>,
-                response: Response<EventsResponse>
-            ) {
-                Log.d("EventRepository", "Events response: ${response.code()}")
-
-                if (response.isSuccessful) {
-                    val body = response.body()
-                    if (body != null && body.success) {
-                        Log.d("EventRepository", "✅ Loaded ${body.events?.size ?: 0} events")
-                        callback(body.events ?: emptyList(), null)
-                    } else {
-                        val errorMsg = body?.message ?: "Неизвестная ошибка"
-                        Log.e("EventRepository", "❌ Get events failed: $errorMsg")
-                        callback(null, errorMsg)
-                    }
-                } else {
-                    Log.e("EventRepository", "❌ Get events HTTP error: ${response.code()}")
-                    val errorMsg = when (response.code()) {
-                        401 -> "Не авторизован"
-                        500 -> "Ошибка сервера"
-                        else -> "Ошибка: ${response.code()}"
-                    }
-                    callback(null, errorMsg)
-                }
-            }
-
-            override fun onFailure(call: Call<EventsResponse>, t: Throwable) {
-                Log.e("EventRepository", "❌ Get events NETWORK failed: ${t.message}")
-                callback(null, "Ошибка сети: ${t.message}")
-            }
-        })
-    }
-
     fun createEvent(
         title: String,
         description: String,
@@ -377,6 +339,62 @@ class EventRepository(private val context: Context) {
             override fun onFailure(call: Call<OperationResponse>, t: Throwable) {
                 Log.e("EventRepository", "❌ Delete event NETWORK failed: ${t.message}")
                 callback(false, "Ошибка сети: ${t.message}")
+            }
+        })
+    }
+
+    fun getEventsWithFilters(
+        type: String? = null,
+        dateFrom: String? = null,
+        dateTo: String? = null,
+        radius: Double? = null,
+        latitude: Double? = null,
+        longitude: Double? = null,
+        timeFilter: String? = null,
+        callback: (List<Event>?, String?) -> Unit
+    ) {
+        Log.d("EventRepository", "=== GET EVENTS WITH FILTERS ===")
+        Log.d("EventRepository", "Filters: type=$type, dateFrom=$dateFrom, dateTo=$dateTo, radius=$radius, timeFilter=$timeFilter")
+
+        api.getEventsWithFilters(
+            type = type,
+            dateFrom = dateFrom,
+            dateTo = dateTo,
+            radius = radius,
+            latitude = latitude,
+            longitude = longitude,
+            timeFilter = timeFilter
+        ).enqueue(object : Callback<EventsResponse> {
+            override fun onResponse(
+                call: Call<EventsResponse>,
+                response: Response<EventsResponse>
+            ) {
+                Log.d("EventRepository", "Filtered events response: ${response.code()}")
+
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        Log.d("EventRepository", "✅ Loaded ${body.events?.size ?: 0} filtered events")
+                        callback(body.events ?: emptyList(), null)
+                    } else {
+                        val errorMsg = body?.message ?: "Неизвестная ошибка"
+                        Log.e("EventRepository", "❌ Get filtered events failed: $errorMsg")
+                        callback(null, errorMsg)
+                    }
+                } else {
+                    Log.e("EventRepository", "❌ Get filtered events HTTP error: ${response.code()}")
+                    val errorMsg = when (response.code()) {
+                        401 -> "Не авторизован"
+                        500 -> "Ошибка сервера"
+                        else -> "Ошибка: ${response.code()}"
+                    }
+                    callback(null, errorMsg)
+                }
+            }
+
+            override fun onFailure(call: Call<EventsResponse>, t: Throwable) {
+                Log.e("EventRepository", "❌ Get filtered events NETWORK failed: ${t.message}")
+                callback(null, "Ошибка сети: ${t.message}")
             }
         })
     }
