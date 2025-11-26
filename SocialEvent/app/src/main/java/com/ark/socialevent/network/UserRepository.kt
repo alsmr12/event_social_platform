@@ -24,21 +24,26 @@ class UserRepository(private val context: Context) {
         firstName: String,
         lastName: String,
         gender: String,
-        age: Int,
+        birthDate: String, // Изменили age на birthDate (формат: "2006-01-02")
         phone: String,
         callback: (Boolean, String?) -> Unit
     ) {
-        val request = RegisterRequest(firstName, lastName, email, password, gender, age, phone)
+        Log.d("UserRepository", "=== REGISTER ===")
+        Log.d("UserRepository", "Data: $firstName $lastName, $email, $gender, $birthDate, $phone")
+
+        val request = RegisterRequest(firstName, lastName, email, password, gender, birthDate, phone)
         api.register(request).enqueue(object : Callback<RegisterResponse> {
             override fun onResponse(call: Call<RegisterResponse>, response: Response<RegisterResponse>) {
+                Log.d("UserRepository", "Register response: ${response.code()}")
+
                 if (response.isSuccessful) {
                     val body = response.body()
                     if (body != null && body.success) {
-                        Log.d("UserRepository", "Register successful")
+                        Log.d("UserRepository", "✅ Register successful")
                         callback(true, body.message ?: "Регистрация успешна")
                     } else {
                         val errorMsg = body?.message ?: "Неизвестная ошибка регистрации"
-                        Log.e("UserRepository", "Register failed: $errorMsg")
+                        Log.e("UserRepository", "❌ Register failed: $errorMsg")
                         callback(false, errorMsg)
                     }
                 } else {
@@ -48,70 +53,13 @@ class UserRepository(private val context: Context) {
                         500 -> "Ошибка сервера"
                         else -> "Ошибка: ${response.code()}"
                     }
-                    Log.e("UserRepository", "Register HTTP error: ${response.code()}")
+                    Log.e("UserRepository", "❌ Register HTTP error: ${response.code()}")
                     callback(false, errorMsg)
                 }
             }
 
             override fun onFailure(call: Call<RegisterResponse>, t: Throwable) {
-                Log.e("UserRepository", "Register network failed: ${t.message}")
-                callback(false, "Ошибка сети: ${t.message}")
-            }
-        })
-    }
-
-    // Логин пользователя - ОБНОВЛЕННЫЙ!
-    fun login(email: String, password: String, callback: (Boolean, String?) -> Unit) {
-        Log.d("UserRepository", "=== LOGIN START ===")
-        Log.d("UserRepository", "Email: $email")
-
-        val request = LoginRequest(email, password)
-        api.login(request).enqueue(object : Callback<LoginResponse> {
-            override fun onResponse(call: Call<LoginResponse>, response: Response<LoginResponse>) {
-                Log.d("UserRepository", "=== LOGIN RESPONSE ===")
-                Log.d("UserRepository", "Response code: ${response.code()}")
-
-                if (response.isSuccessful) {
-                    val body = response.body()
-                    if (body != null && body.success) {
-                        Log.d("UserRepository", "✅ Login successful")
-
-                        // ВАЖНО: Сохраняем токен и сразу проверяем
-                        body.token?.let { token ->
-                            Log.d("UserRepository", "💾 Saving token: $token")
-                            ApiClient.saveSessionToken(token)
-
-                            // СРАЗУ ПРОВЕРИМ что сохранилось
-                            val savedToken = ApiClient.getSessionToken()
-                            if (savedToken == token) {
-                                Log.d("UserRepository", "✅ Token saved correctly: $savedToken")
-                            } else {
-                                Log.e("UserRepository", "❌ Token save FAILED! Saved: $savedToken, Expected: $token")
-                            }
-                        } ?: run {
-                            Log.e("UserRepository", "❌ No token in login response!")
-                        }
-
-                        callback(true, body.message ?: "Вход выполнен")
-                    } else {
-                        val errorMsg = body?.message ?: "Неверный email или пароль"
-                        Log.e("UserRepository", "❌ Login failed: $errorMsg")
-                        callback(false, errorMsg)
-                    }
-                } else {
-                    val errorMsg = when (response.code()) {
-                        400 -> "Некорректные данные"
-                        401 -> "Неверный email или пароль"
-                        500 -> "Ошибка сервера"
-                        else -> "Ошибка: ${response.code()}"
-                    }
-                    Log.e("UserRepository", "❌ Login HTTP error: ${response.code()}")
-                    callback(false, errorMsg)
-                }
-            }
-
-            override fun onFailure(call: Call<LoginResponse>, t: Throwable) {
-                Log.e("UserRepository", "❌ Login network failed: ${t.message}")
+                Log.e("UserRepository", "❌ Register network failed: ${t.message}")
                 callback(false, "Ошибка сети: ${t.message}")
             }
         })
@@ -423,12 +371,12 @@ class UserRepository(private val context: Context) {
         firstName: String,
         lastName: String,
         gender: String,
-        age: Int,
+        birthDate: String,
         phone: String,
         callback: (Boolean, String?, UserProfile?) -> Unit
     ) {
         Log.d("UserRepository", "=== UPDATE PROFILE START ===")
-        Log.d("UserRepository", "Data: $firstName $lastName, $gender, $age, $phone")
+        Log.d("UserRepository", "Data: $firstName $lastName, $gender, $birthDate, $phone")
 
         // Проверим токен перед запросом
         val token = ApiClient.getSessionToken()
@@ -440,7 +388,7 @@ class UserRepository(private val context: Context) {
             return
         }
 
-        val request = UpdateProfileRequest(firstName, lastName, gender, age, phone)
+        val request = UpdateProfileRequest(firstName, lastName, gender,birthDate, phone)
         Log.d("UserRepository", "🚀 Making update profile request...")
 
         api.updateProfile(request).enqueue(object : Callback<UpdateProfileResponse> {
@@ -876,5 +824,51 @@ class UserRepository(private val context: Context) {
     fun logout() {
         ApiClient.clearSessionToken()
         Log.d("UserRepository", "User logged out")
+    }
+
+    fun login(email: String, password: String, callback: (Boolean, String?) -> Unit) {
+        Log.d("UserRepository", "=== LOGIN START ===")
+        Log.d("UserRepository", "Email: $email")
+
+        val request = LoginRequest(email, password)
+        api.login(request).enqueue(object : Callback<LoginResponse> {
+            override fun onResponse(call: Call<LoginResponse>, response: Response<LoginResponse>) {
+                Log.d("UserRepository", "=== LOGIN RESPONSE ===")
+                Log.d("UserRepository", "Response code: ${response.code()}")
+
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        Log.d("UserRepository", "✅ Login successful")
+
+                        // Сохраняем токен
+                        body.token?.let { token ->
+                            Log.d("UserRepository", "💾 Saving token: $token")
+                            ApiClient.saveSessionToken(token)
+                        }
+
+                        callback(true, body.message ?: "Вход выполнен")
+                    } else {
+                        val errorMsg = body?.message ?: "Неверный email или пароль"
+                        Log.e("UserRepository", "❌ Login failed: $errorMsg")
+                        callback(false, errorMsg)
+                    }
+                } else {
+                    val errorMsg = when (response.code()) {
+                        400 -> "Некорректные данные"
+                        401 -> "Неверный email или пароль"
+                        500 -> "Ошибка сервера"
+                        else -> "Ошибка: ${response.code()}"
+                    }
+                    Log.e("UserRepository", "❌ Login HTTP error: ${response.code()}")
+                    callback(false, errorMsg)
+                }
+            }
+
+            override fun onFailure(call: Call<LoginResponse>, t: Throwable) {
+                Log.e("UserRepository", "❌ Login network failed: ${t.message}")
+                callback(false, "Ошибка сети: ${t.message}")
+            }
+        })
     }
 }

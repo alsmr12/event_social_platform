@@ -41,42 +41,49 @@ fun RegisterScreen(
     val genders = listOf("Мужской", "Женский")
     var genderExpanded by remember { mutableStateOf(false) }
 
+    // Переменные для хранения выбранной даты
+    var selectedYear by remember { mutableStateOf(0) }
+    var selectedMonth by remember { mutableStateOf(0) }
+    var selectedDay by remember { mutableStateOf(0) }
+
+    // Функция для преобразования даты в формат "2006-01-02"
+    fun formatBirthDateForAPI(day: Int, month: Int, year: Int): String {
+        return String.format(Locale.getDefault(), "%04d-%02d-%02d", year, month + 1, day)
+    }
+
+    // Функция для отображения даты в формате "dd/MM/yyyy"
+    fun formatBirthDateForDisplay(day: Int, month: Int, year: Int): String {
+        return "%02d/%02d/%04d".format(day, month + 1, year)
+    }
+
     // Функция для вычисления возраста из даты рождения
-    fun calculateAge(birthday: String): Int {
-        return try {
-            val parts = birthday.split("/")
-            if (parts.size != 3) return 0
-
-            val day = parts[0].toInt()
-            val month = parts[1].toInt() - 1 // Calendar месяцы с 0
-            val year = parts[2].toInt()
-
-            val birthDate = Calendar.getInstance().apply {
-                set(year, month, day)
-            }
-            val today = Calendar.getInstance()
-
-            var age = today.get(Calendar.YEAR) - birthDate.get(Calendar.YEAR)
-
-            // Проверяем, был ли уже день рождения в этом году
-            if (today.get(Calendar.DAY_OF_YEAR) < birthDate.get(Calendar.DAY_OF_YEAR)) {
-                age--
-            }
-
-            age
-        } catch (e: Exception) {
-            0
+    fun calculateAge(year: Int, month: Int, day: Int): Int {
+        val birthDate = Calendar.getInstance().apply {
+            set(year, month, day)
         }
+        val today = Calendar.getInstance()
+
+        var age = today.get(Calendar.YEAR) - birthDate.get(Calendar.YEAR)
+
+        // Проверяем, был ли уже день рождения в этом году
+        if (today.get(Calendar.DAY_OF_YEAR) < birthDate.get(Calendar.DAY_OF_YEAR)) {
+            age--
+        }
+
+        return age
     }
 
     val calendar = Calendar.getInstance()
     val datePicker = DatePickerDialog(
         context,
         { _, year, month, dayOfMonth ->
-            birthday = "%02d/%02d/%04d".format(dayOfMonth, month + 1, year)
+            selectedYear = year
+            selectedMonth = month
+            selectedDay = dayOfMonth
+            birthday = formatBirthDateForDisplay(dayOfMonth, month, year)
             birthdayError = ""
         },
-        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.YEAR) - 25, // По умолчанию 25 лет
         calendar.get(Calendar.MONTH),
         calendar.get(Calendar.DAY_OF_MONTH)
     ).apply {
@@ -330,8 +337,14 @@ fun RegisterScreen(
                 }
 
                 if (!hasError) {
-                    // ВЫЧИСЛЯЕМ ВОЗРАСТ из даты рождения
-                    val age = calculateAge(birthday)
+                    // Проверяем что дата выбрана
+                    if (selectedYear == 0) {
+                        birthdayError = "Выберите дату рождения"
+                        return@Button
+                    }
+
+                    // ВЫЧИСЛЯЕМ ВОЗРАСТ для проверки
+                    val age = calculateAge(selectedYear, selectedMonth, selectedDay)
 
                     // Проверяем что возраст корректен
                     if (age < 14) {
@@ -343,6 +356,9 @@ fun RegisterScreen(
                         return@Button
                     }
 
+                    // ПОДГОТАВЛИВАЕМ ДАТУ ДЛЯ API в формате "2006-01-02"
+                    val birthDateForAPI = formatBirthDateForAPI(selectedDay, selectedMonth, selectedYear)
+
                     // ОТЛАДОЧНАЯ ИНФОРМАЦИЯ
                     android.util.Log.d("RegisterScreen", "Отправка данных:")
                     android.util.Log.d("RegisterScreen", "Имя: $firstName")
@@ -350,13 +366,19 @@ fun RegisterScreen(
                     android.util.Log.d("RegisterScreen", "Email: $email")
                     android.util.Log.d("RegisterScreen", "Пароль: ${password.length} символов")
                     android.util.Log.d("RegisterScreen", "Пол: $gender")
+                    android.util.Log.d("RegisterScreen", "Дата рождения: $birthDateForAPI")
                     android.util.Log.d("RegisterScreen", "Возраст: $age")
                     android.util.Log.d("RegisterScreen", "Телефон: $phone")
 
+                    // ВЫЗЫВАЕМ РЕГИСТРАЦИЮ С ДАТОЙ РОЖДЕНИЯ
                     userRepo.register(
-                        email, password, firstName, lastName, gender,
-                        age, // ВОТ ТУТ ПЕРЕДАЕМ ВЫЧИСЛЕННЫЙ ВОЗРАСТ, а не 0
-                        phone
+                        email = email,
+                        password = password,
+                        firstName = firstName,
+                        lastName = lastName,
+                        gender = gender,
+                        birthDate = birthDateForAPI, // ПЕРЕДАЕМ ДАТУ РОЖДЕНИЯ
+                        phone = phone
                     ) { success, msg ->
                         if (success) {
                             Toast.makeText(context, "Профиль успешно создан", Toast.LENGTH_SHORT).show()

@@ -85,7 +85,7 @@ data class RegisterRequest(
     val email: String,
     val password: String,
     val gender: String,
-    val age: Int,
+    @SerializedName("birth_date") val birthDate: String,
     val phone: String
 )
 
@@ -117,7 +117,8 @@ data class UserProfile(
     @SerializedName("first_name") val firstName: String,
     @SerializedName("last_name") val lastName: String,
     val gender: String,
-    val age: Int,
+    val age: Int, // Оставляем age для отображения (будет вычисляться на сервере)
+    @SerializedName("birth_date") val birthDate: String? = null, // Добавляем birth_date
     val phone: String
 )
 
@@ -147,6 +148,7 @@ data class Friend(
     val email: String,
     val gender: String,
     val age: Int,
+    @SerializedName("birth_date") val birthDate: String? = null,
     val phone: String
 )
 
@@ -157,7 +159,7 @@ data class FriendRequest(
     val friend: UserProfile,    // Получатель заявки
     val status: String,
     @SerializedName("created_at") val createdAt: String,
-    val isIncoming: Boolean = false  // Добавьте это поле
+    val isIncoming: Boolean = false
 )
 // Ответ для списка друзей
 data class FriendsResponse(
@@ -191,7 +193,7 @@ data class UpdateProfileRequest(
     @SerializedName("first_name") val firstName: String,
     @SerializedName("last_name") val lastName: String,
     val gender: String,
-    val age: Int,
+    @SerializedName("birth_date") val birthDate: String,
     val phone: String
 )
 
@@ -201,7 +203,6 @@ data class UpdateProfileResponse(
     val message: String? = null,
     val user: UserProfile? = null
 )
-
 // Модель статистики
 data class UserStats(
     @SerializedName("friends_count") val friendsCount: Int,

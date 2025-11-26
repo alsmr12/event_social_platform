@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ark.socialevent.network.*
+import com.ark.socialevent.utils.DateUtils // Импортируем утилиты для дат
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -255,7 +256,7 @@ fun ProfileContent(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
-        // Основная информация
+        // Основная информация - ОБНОВЛЕННАЯ
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -271,7 +272,35 @@ fun ProfileContent(
 
                 InfoRow(icon = Icons.Default.Email, text = userProfile.email)
                 InfoRow(icon = Icons.Default.Person, text = userProfile.gender)
-                InfoRow(icon = Icons.Default.Cake, text = "${userProfile.age} лет")
+
+                // ОБНОВЛЕННАЯ СЕКЦИЯ ВОЗРАСТА И ДАТЫ РОЖДЕНИЯ
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Cake,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "${userProfile.age} лет",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        // Добавляем дату рождения, если она есть
+                        userProfile.birthDate?.let { birthDate ->
+                            Text(
+                                text = "Родился(ась): ${DateUtils.formatBirthDate(birthDate)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
                 InfoRow(icon = Icons.Default.Phone, text = userProfile.phone)
             }
         }

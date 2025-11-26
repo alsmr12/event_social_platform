@@ -260,6 +260,19 @@ fun UserInfo(user: UserProfile) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                // Добавляем отображение даты рождения, если она есть
+                user.birthDate?.let { birthDate ->
+                    Text(
+                        text = " • ",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = formatBirthDate(birthDate),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 Text(
                     text = " • ",
                     style = MaterialTheme.typography.bodySmall,
@@ -555,5 +568,21 @@ fun SubscriptionSection(
                 }
             }
         }
+    }
+
+
+}
+
+private fun formatBirthDate(birthDate: String): String {
+    return try {
+        // Преобразуем из "2006-01-02" в "02.01.2006"
+        val parts = birthDate.split("-")
+        if (parts.size == 3) {
+            "${parts[2]}.${parts[1]}.${parts[0]}"
+        } else {
+            birthDate
+        }
+    } catch (e: Exception) {
+        birthDate
     }
 }

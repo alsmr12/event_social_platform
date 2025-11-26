@@ -1,6 +1,6 @@
-// UserProfileScreen.kt - ИСПРАВЛЕННАЯ ВЕРСИЯ
-package com.ark.socialevent.ui.screens.people
 
+package com.ark.socialevent.ui.screens.people
+import com.ark.socialevent.utils.DateUtils
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -259,7 +259,7 @@ fun UserProfileHeader(
     Column(
         modifier = Modifier.padding(16.dp)
     ) {
-        // Аватар и основная информация
+        // Аватар и основная информация - ОБНОВЛЕННАЯ
         Row(verticalAlignment = Alignment.CenterVertically) {
             // Аватар
             Icon(
@@ -273,7 +273,7 @@ fun UserProfileHeader(
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Информация
+            // Информация - ОБНОВЛЕННАЯ
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "${user.firstName} ${user.lastName}",
@@ -286,11 +286,41 @@ fun UserProfileHeader(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "${user.age} лет • ${user.gender}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+
+                // ОБНОВЛЕННАЯ СЕКЦИЯ С ВОЗРАСТОМ И ДАТОЙ РОЖДЕНИЯ
+                Row {
+                    Text(
+                        text = "${user.age} лет",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    // Добавляем дату рождения, если она есть
+                    user.birthDate?.let { birthDate ->
+                        Text(
+                            text = " • ",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = DateUtils.formatBirthDate(birthDate),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Text(
+                        text = " • ",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = user.gender,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
                 Text(
                     text = user.phone,
                     style = MaterialTheme.typography.bodySmall,
@@ -341,6 +371,8 @@ fun UserProfileHeader(
         }
     }
 }
+
+
 
 @Composable
 fun StatItem(value: String, label: String) {

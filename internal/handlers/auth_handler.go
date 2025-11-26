@@ -155,18 +155,11 @@ func (h *AuthHandler) LoginJSON(c *gin.Context) {
 
 	c.SetCookie("session_token", token, 3600*24, "/", "", false, true)
 
+	// Возвращаем полного пользователя (будет автоматически сериализован с возрастом)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"user": gin.H{
-			"id":         user.ID,
-			"email":      user.Email,
-			"first_name": user.FirstName,
-			"last_name":  user.LastName,
-			"gender":     user.Gender,
-			"BirthDate":  user.BirthDate,
-			"phone":      user.Phone,
-		},
-		"token": token,
+		"user":    user, // Теперь MarshalJSON добавит поле age автоматически
+		"token":   token,
 	})
 }
 
@@ -238,15 +231,7 @@ func (h *AuthHandler) ProfileJSON(c *gin.Context) {
 	log.Printf("✅ ProfileJSON: Returning profile for user %s", user.Email)
 
 	c.JSON(http.StatusOK, gin.H{
-		"user": gin.H{
-			"id":         user.ID,
-			"email":      user.Email,
-			"first_name": user.FirstName,
-			"last_name":  user.LastName,
-			"gender":     user.Gender,
-			"BirthDate":  user.BirthDate,
-			"phone":      user.Phone,
-		},
+		"user":          user, // Теперь возвращаем полного пользователя с автоматическим age
 		"posts":         posts,
 		"social_links":  socialLinks,
 		"followers":     followersCount,
@@ -256,7 +241,16 @@ func (h *AuthHandler) ProfileJSON(c *gin.Context) {
 }
 
 func (h *AuthHandler) RegisterJSON(c *gin.Context) {
-	var req models.RegisterRequest // используем существующую структуру
+	var req struct {
+		Email     string `json:"email" binding:"required,email"`
+		Password  string `json:"password" binding:"required,min=6"`
+		FirstName string `json:"first_name" binding:"required"`
+		LastName  string `json:"last_name" binding:"required"`
+		Gender    string `json:"gender"`
+		BirthDate string `json:"birth_date"` // Формат "2006-01-02"
+		Phone     string `json:"phone"`
+	}
+	
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -273,7 +267,7 @@ func (h *AuthHandler) RegisterJSON(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"success": false,
-				"message": "Неверная дата: " + err.Error(),
+				"message": "Неверный формат даты рождения. Используйте формат ГГГГ-ММ-ДД",
 			})
 			return
 		}
@@ -302,7 +296,7 @@ func (h *AuthHandler) RegisterJSON(c *gin.Context) {
 	if err := user.HashPassword(req.Password); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Ошибка пароля",
+			"message": "Ошибка при создании пароля",
 		})
 		return
 	}
@@ -311,15 +305,31 @@ func (h *AuthHandler) RegisterJSON(c *gin.Context) {
 	if err := h.userRepo.CreateUser(user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Ошибка создания",
+			"message": "Ошибка создания пользователя",
 		})
 		return
 	}
 
+	// Создаем сессию для автоматического входа после регистрации
+	token := uuid.New().String()
+	session := &models.Session{
+		UserID:    user.ID,
+		Token:     token,
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+	}
+
+	if err := h.sessionRepo.CreateSession(session); err != nil {
+		log.Printf("⚠️ Could not create session after registration: %v", err)
+		// Не прерываем регистрацию, если не удалось создать сессию
+	} else {
+		c.SetCookie("session_token", token, 3600*24, "/", "", false, true)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"success":      true,
-		"message":      "Профиль создан",
-		"redirect_url": "/login",
+		"success": true,
+		"message": "Профиль успешно создан",
+		"user":    user, // Возвращаем пользователя с автоматическим age
+		"token":   token,
 	})
 }
 

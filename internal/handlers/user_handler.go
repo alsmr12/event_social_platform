@@ -36,72 +36,71 @@ func (h *UserHandler) ShowCreateProfileForm(c *gin.Context) {
 }
 
 func (h *UserHandler) CreateProfile(c *gin.Context) {
-	var req models.CreateUserRequest
-	if err := c.ShouldBind(&req); err != nil {
-		c.HTML(http.StatusBadRequest, "base.html", gin.H{
-			"Title":     "Регистрация",
-			"NavActive": "register",
-			"Error":     "Неверные данные формы: " + err.Error(),
-		})
-		return
-	}
+    var req models.CreateUserRequest
+    if err := c.ShouldBind(&req); err != nil {
+        c.HTML(http.StatusBadRequest, "base.html", gin.H{
+            "Title":     "Регистрация",
+            "NavActive": "register",
+            "Error":     "Неверные данные формы: " + err.Error(),
+        })
+        return
+    }
 
-	// Конвертация строки даты в time.Time
-	var birthDate time.Time
-	if req.BirthDate != "" {
-		var err error
-		birthDate, err = time.Parse("2006-01-02", req.BirthDate)
-		if err != nil {
-			c.HTML(http.StatusBadRequest, "base.html", gin.H{
-				"Title":     "Регистрация",
-				"NavActive": "register",
-				"Error":     "Неверный формат даты рождения: " + err.Error(),
-			})
-			return
-		}
-	}
+    // Конвертация строки даты в time.Time
+    var birthDate time.Time
+    if req.BirthDate != "" {
+        var err error
+        birthDate, err = time.Parse("2006-01-02", req.BirthDate)
+        if err != nil {
+            c.HTML(http.StatusBadRequest, "base.html", gin.H{
+                "Title":     "Регистрация",
+                "NavActive": "register",
+                "Error":     "Неверный формат даты рождения. Используйте формат ГГГГ-ММ-ДД: " + err.Error(),
+            })
+            return
+        }
+    }
 
-	if h.userRepo.UserExists(req.Email) {
-		c.HTML(http.StatusBadRequest, "base.html", gin.H{
-			"Title":     "Регистрация",
-			"NavActive": "register",
-			"Error":     "Пользователь с таким email уже существует",
-		})
-		return
-	}
+    if h.userRepo.UserExists(req.Email) {
+        c.HTML(http.StatusBadRequest, "base.html", gin.H{
+            "Title":     "Регистрация",
+            "NavActive": "register",
+            "Error":     "Пользователь с таким email уже существует",
+        })
+        return
+    }
 
-	user := &models.User{
-		Email:     req.Email,
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
-		Gender:    req.Gender,
-		BirthDate: birthDate,
-		Phone:     req.Phone,
-		City:      req.City,
-		Latitude:  req.Latitude,
-		Longitude: req.Longitude,
-		//SocialLinks: req.SocialLinks,
-	}
+    user := &models.User{
+        Email:     req.Email,
+        FirstName: req.FirstName,
+        LastName:  req.LastName,
+        Gender:    req.Gender,
+        BirthDate: birthDate,
+        Phone:     req.Phone,
+        City:      req.City,
+        Latitude:  req.Latitude,
+        Longitude: req.Longitude,
+    }
 
-	if err := user.HashPassword(req.Password); err != nil {
-		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
-			"Title":     "Регистрация",
-			"NavActive": "register",
-			"Error":     "Ошибка при хешировании пароля: " + err.Error(),
-		})
-		return
-	}
+    if err := user.HashPassword(req.Password); err != nil {
+        c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+            "Title":     "Регистрация",
+            "NavActive": "register",
+            "Error":     "Ошибка при хешировании пароля: " + err.Error(),
+        })
+        return
+    }
 
-	if err := h.userRepo.CreateUser(user); err != nil {
-		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
-			"Title":     "Регистрация",
-			"NavActive": "register",
-			"Error":     "Ошибка при создании профиля: " + err.Error(),
-		})
-		return
-	}
+    if err := h.userRepo.CreateUser(user); err != nil {
+        c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+            "Title":     "Регистрация",
+            "NavActive": "register",
+            "Error":     "Ошибка при создании профиля: " + err.Error(),
+        })
+        return
+    }
 
-	c.Redirect(http.StatusSeeOther, "/login")
+    c.Redirect(http.StatusSeeOther, "/login")
 }
 
 func (h *UserHandler) GetProfile(c *gin.Context) {
@@ -210,87 +209,75 @@ func (h *UserHandler) GetAllProfilesJSON(c *gin.Context) {
 
 // UpdateProfileJSON - обновление профиля пользователя
 func (h *UserHandler) UpdateProfileJSON(c *gin.Context) {
-	log.Printf("🔍 UpdateProfileJSON called")
+    log.Printf("🔍 UpdateProfileJSON called")
 
-	// Получаем текущего пользователя
-	user := GetUserFromContext(c)
-	if user == nil {
-		log.Printf("❌ UpdateProfileJSON: User not found in context")
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"message": "Не авторизован",
-		})
-		return
-	}
+    user := GetUserFromContext(c)
+    if user == nil {
+        log.Printf("❌ UpdateProfileJSON: User not found in context")
+        c.JSON(http.StatusUnauthorized, gin.H{
+            "success": false,
+            "message": "Не авторизован",
+        })
+        return
+    }
 
-	log.Printf("✅ UpdateProfileJSON: Updating user %s (ID: %d)", user.Email, user.ID)
+    var req struct {
+        FirstName string `json:"first_name" binding:"required"`
+        LastName  string `json:"last_name" binding:"required"`
+        Gender    string `json:"gender"`
+        BirthDate string `json:"birth_date"` // Формат "2006-01-02"
+        Phone     string `json:"phone"`
+    }
 
-	var req struct {
-		FirstName   string               `json:"first_name" binding:"required"`
-		LastName    string               `json:"last_name" binding:"required"`
-		Gender      string               `json:"gender"`
-		BirthDate   string               `json:"birth_date"`
-		Phone       string               `json:"phone"`
-		SocialLinks []*models.SocialLink `json:"social_links"`
-	}
+    if err := c.ShouldBindJSON(&req); err != nil {
+        log.Printf("❌ UpdateProfileJSON: Invalid request data: %v", err)
+        c.JSON(http.StatusBadRequest, gin.H{
+            "success": false,
+            "message": "Неверные данные: " + err.Error(),
+        })
+        return
+    }
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Printf("❌ UpdateProfileJSON: Invalid request data: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "Неверные данные: " + err.Error(),
-		})
-		return
-	}
+    // Обновляем данные пользователя
+    user.FirstName = req.FirstName
+    user.LastName = req.LastName
+    user.Gender = req.Gender
+    user.Phone = req.Phone
 
-	// Обновляем данные пользователя
-	user.FirstName = req.FirstName
-	user.LastName = req.LastName
-	user.Gender = req.Gender
-	user.Phone = req.Phone
+    // Обрабатываем дату рождения
+    if req.BirthDate != "" {
+        birthDate, err := time.Parse("2006-01-02", req.BirthDate)
+        if err != nil {
+            log.Printf("❌ UpdateProfileJSON: Invalid birth date: %v", err)
+            c.JSON(http.StatusBadRequest, gin.H{
+                "success": false,
+                "message": "Неверный формат даты рождения. Используйте формат ГГГГ-ММ-ДД",
+            })
+            return
+        }
+        user.BirthDate = birthDate
+    } else {
+        // Если дата рождения не передана, устанавливаем нулевую дату
+        user.BirthDate = time.Time{}
+    }
 
-	// Обрабатываем дату рождения
-	if req.BirthDate != "" {
-		birthDate, err := time.Parse("2006-01-02", req.BirthDate)
-		if err != nil {
-			log.Printf("❌ UpdateProfileJSON: Invalid birth date: %v", err)
-			c.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"message": "Неверный формат даты рождения",
-			})
-			return
-		}
-		user.BirthDate = birthDate
-	} else {
-		// Если дата рождения не передана, устанавливаем нулевую дату
-		user.BirthDate = time.Time{}
-	}
+    if err := h.userRepo.UpdateUser(user); err != nil {
+        log.Printf("❌ UpdateProfileJSON: Error updating user: %v", err)
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "success": false,
+            "message": "Ошибка обновления профиля: " + err.Error(),
+        })
+        return
+    }
 
-	if err := h.userRepo.UpdateUser(user); err != nil {
-		log.Printf("❌ UpdateProfileJSON: Error updating user: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "Ошибка обновления профиля: " + err.Error(),
-		})
-		return
-	}
+    log.Printf("✅ UpdateProfileJSON: Profile updated successfully for user %s", user.Email)
 
-	log.Printf("✅ UpdateProfileJSON: Profile updated successfully for user %s", user.Email)
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Профиль успешно обновлен",
-		"user": gin.H{
-			"id":         user.ID,
-			"email":      user.Email,
-			"first_name": user.FirstName,
-			"last_name":  user.LastName,
-			"gender":     user.Gender,
-			"birth_date": user.BirthDate.Format("2006-01-02"),
-			"age":        user.GetAge(), // Вычисляем возраст на лету
-			"phone":      user.Phone,
-		},
-	})
+    // Теперь при сериализации User автоматически добавится поле Age
+    c.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "message": "Профиль успешно обновлен",
+        "user":    user, // Просто возвращаем user, MarshalJSON сделает всё остальное
+    })
 }
 
 // GetUserStatsJSON - получение статистики пользователя
