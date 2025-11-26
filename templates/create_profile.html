@@ -1,14 +1,10 @@
+[file name]: templates/register.html
+[file content begin]
 {{define "register_content"}}
 <div class="card" style="max-width: 600px; margin: 30px auto;">
     <h2 style="text-align: center; margin-bottom: 30px;">Создание профиля</h2>
 
-    {{if .Error}}
-    <div class="alert alert-error">
-        {{.Error}}
-    </div>
-    {{end}}
-
-    <form action="/create-profile" method="POST" id="registrationForm">
+    <form id="create-profile-form">
         <div class="form-row">
             <div class="form-group">
                 <label for="first_name">Имя *</label>
@@ -41,17 +37,15 @@
             </div>
             <div class="form-group">
                 <label for="birth_date">Дата рождения</label>
-                <input type="date" id="birth_date" name="birth_date" class="form-control" required>
+                <input type="date" id="birth_date" name="birth_date" class="form-control">
                 <small style="color: var(--text-muted);">Возраст: <span id="age-display">0</span> лет</small>
             </div>
         </div>
 
         <div class="form-group">
             <label for="phone">Телефон</label>
-            <input type="tel" id="phone" name="phone" class="form-control" 
-                   placeholder="+7 (900) 123-45-67"
-                   pattern="\+7\s?[\(]?\d{3}[\)]?\s?\d{3}[\-]?\d{2}[\-]?\d{2}"
-                   title="Формат: +7 (XXX) XXX-XX-XX">
+            <input type="tel" id="phone" name="phone" class="form-control"
+                   placeholder="+7 (900) 123-45-67">
             <small style="color: var(--text-muted);">Формат: +7 (XXX) XXX-XX-XX</small>
         </div>
 
@@ -63,144 +57,5 @@
     </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const phoneInput = document.getElementById('phone');
-    const form = document.getElementById('registrationForm');
-    const birthDateInput = document.getElementById('birth_date');
-    const ageDisplay = document.getElementById('age-display');
-
-    // Функция для вычисления возраста
-    function calculateAge(birthDate) {
-        const today = new Date();
-        let age = today.getFullYear() - birthDate.getFullYear();
-        const monthDiff = today.getMonth() - birthDate.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-            age--;
-        }
-        return age;
-    }
-
-    // Обновление отображения возраста
-    function updateAgeDisplay() {
-        const birthDateValue = birthDateInput.value;
-        if (birthDateValue) {
-            const birthDate = new Date(birthDateValue);
-            ageDisplay.textContent = calculateAge(birthDate);
-        } else {
-            ageDisplay.textContent = '0';
-        }
-    }
-
-    // Обновляем возраст при изменении даты
-    birthDateInput.addEventListener('change', updateAgeDisplay);
-
-    // Установка максимальной даты (сегодня)
-    const today = new Date().toISOString().split('T')[0];
-    birthDateInput.setAttribute('max', today);
-    birthDateInput.setAttribute('min', '1900-01-01');
-
-    // Инициализируем отображение возраста
-    updateAgeDisplay();
-
-    // Маска для телефона
-    phoneInput.addEventListener('input', function(e) {
-        let value = e.target.value.replace(/\D/g, '');
-        
-        if (value.startsWith('7') || value.startsWith('8')) {
-            value = '7' + value.substring(1);
-        } else if (value.startsWith('9') && value.length === 10) {
-            value = '7' + value;
-        }
-        
-        if (value.length > 0) {
-            value = '+7' + value.substring(1);
-        }
-        
-        if (value.length > 2) {
-            value = value.substring(0, 2) + ' (' + value.substring(2);
-        }
-        if (value.length > 7) {
-            value = value.substring(0, 7) + ') ' + value.substring(7);
-        }
-        if (value.length > 12) {
-            value = value.substring(0, 12) + '-' + value.substring(12);
-        }
-        if (value.length > 15) {
-            value = value.substring(0, 15) + '-' + value.substring(15);
-        }
-        
-        e.target.value = value.substring(0, 18);
-    });
-
-    // Валидация формы
-    form.addEventListener('submit', function(e) {
-        const phone = phoneInput.value;
-        
-        // Проверка телефона (если заполнен)
-        if (phone && !/^\+7\s?\(\d{3}\)\s?\d{3}-\d{2}-\d{2}$/.test(phone)) {
-            e.preventDefault();
-            alert('Пожалуйста, введите корректный номер телефона в формате: +7 (XXX) XXX-XX-XX');
-            phoneInput.focus();
-            return false;
-        }
-
-        // Проверка даты рождения (если заполнена)
-        if (birthDateInput.value) {
-            const birthDate = new Date(birthDateInput.value);
-            const today = new Date();
-            
-            if (birthDate > today) {
-                e.preventDefault();
-                alert('Дата рождения не может быть в будущем');
-                birthDateInput.focus();
-                return false;
-            }
-        }
-    });
-
-    // Подсказка при фокусе на телефоне
-    phoneInput.addEventListener('focus', function() {
-        if (!this.value) {
-            this.value = '+7 (';
-        }
-    });
-
-    // Автозаполнение скобок
-    phoneInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Backspace' && this.value === '+7 (') {
-            this.value = '';
-        }
-    });
-});
-</script>
-
-<style>
-/* Стили для календаря */
-input[type="date"] {
-    position: relative;
-}
-
-input[type="date"]::-webkit-calendar-picker-indicator {
-    background: transparent;
-    bottom: 0;
-    color: transparent;
-    cursor: pointer;
-    height: auto;
-    left: 0;
-    position: absolute;
-    right: 0;
-    top: 0;
-    width: auto;
-}
-
-/* Подсветка невалидных полей */
-input:invalid {
-    border-color: var(--danger-color);
-}
-
-input:valid {
-    border-color: var(--success-color);
-}
-</style>
+<script src="/static/js/create_profile.js"></script>
 {{end}}

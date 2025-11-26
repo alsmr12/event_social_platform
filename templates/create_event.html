@@ -1,79 +1,19 @@
 {{define "create_event_content"}}
 <div class="card" style="max-width: 600px; margin: 0 auto;">
-    <h2 style="text-align: center; margin-bottom: 30px;">Создание события</h2>
-
-    {{if .Error}}
-    <div class="alert alert-error">
-        {{.Error}}
+    <div id="create-event-content">
+        <div class="loading">Загрузка формы...</div>
     </div>
-    {{end}}
-
-    <form action="/create-event" method="POST">
-        <div class="form-group">
-            <label for="title">Название события *</label>
-            <input type="text" id="title" name="title" class="form-control" required>
-        </div>
-
-        <div class="form-group">
-            <label for="description">Описание *</label>
-            <textarea id="description" name="description" class="form-control" required></textarea>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label for="type">Тип события *</label>
-                <select id="type" name="type" class="form-control" required>
-                    <option value="">Выберите тип</option>
-                    <option value="concert">Концерт</option>
-                    <option value="lecture">Лекция</option>
-                    <option value="sport">Спорт</option>
-                    <option value="meeting">Встреча</option>
-                    <option value="party">Вечеринка</option>
-                    <option value="conference">Конференция</option>
-                    <option value="exhibition">Выставка</option>
-                    <option value="other">Другое</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="date_time">Дата и время *</label>
-                <input type="datetime-local" id="date_time" name="date_time" class="form-control" required>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label for="location">Место проведения *</label>
-            <input type="text" id="location" name="location" class="form-control" required>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label for="latitude">Широта</label>
-                <input type="text" id="latitude" name="latitude" class="form-control" placeholder="55.7558">
-            </div>
-            <div class="form-group">
-                <label for="longitude">Долгота</label>
-                <input type="text" id="longitude" name="longitude" class="form-control" placeholder="37.6173">
-            </div>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label for="max_participants">Макс. участников</label>
-                <input type="number" id="max_participants" name="max_participants" class="form-control" min="1">
-            </div>
-            <div class="form-group">
-                <label style="display: flex; align-items: center; gap: 8px;">
-                    <input type="checkbox" id="is_private" name="is_private" value="true">
-                    Приватное событие
-                </label>
-                <small style="color: var(--text-muted);">Только по приглашению</small>
-            </div>
-        </div>
-
-        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 30px;">
-            <a href="/events" class="btn btn-secondary">Отмена</a>
-            <button type="submit" class="btn btn-primary">Создать событие</button>
-        </div>
-    </form>
+    <script>
+        window.currentUser = {{if .CurrentUser}}{
+            id: {{.CurrentUser.ID}},
+            email: "{{.CurrentUser.Email}}",
+                firstName: "{{.CurrentUser.FirstName}}",
+                lastName: "{{.CurrentUser.LastName}}",
+                gender: "{{.CurrentUser.Gender}}",
+                latitude: {{.CurrentUser.Latitude}},
+            longitude: {{.CurrentUser.Longitude}}
+        }{{else}}null{{end}};
+    </script>
+    <script src="/static/js/create-event.js"></script>
 </div>
 {{end}}

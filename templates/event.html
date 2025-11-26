@@ -1,177 +1,21 @@
 {{define "event_content"}}
 <div class="card">
-    {{if .Event}}
-
-    <!-- Блок сообщений -->
-    {{if .Message}}
-    <div class="alert {{if eq .Message "subscribed"}}alert-success{{else if eq .Message "unsubscribed"}}alert-success{{else if eq .Message "already_subscribed"}}alert-error{{else if eq .Message "event_ended"}}alert-error{{else}}alert-error{{end}}" style="margin-bottom: 20px;">
-    {{if eq .Message "subscribed"}}✅ Вы успешно подписались на событие{{end}}
-    {{if eq .Message "unsubscribed"}}✅ Вы отписались от события{{end}}
-    {{if eq .Message "already_subscribed"}}❌ Вы уже подписаны на это событие{{end}}
-    {{if eq .Message "event_ended"}}❌ Нельзя подписаться на прошедшее событие{{end}}
-    {{if eq .Message "error"}}❌ Произошла ошибка при подписке{{end}}
-</div>
-{{end}}
-
-<!-- Приватная ссылка-приглашение -->
-{{if .Event.IsPrivate}}
-<div class="private-event-info" style="background: #f0f8ff; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #007bff;">
-    <h4 style="margin: 0 0 10px 0; color: #007bff;">
-        <i class="fas fa-lock"></i> Приватное событие
-    </h4>
-    <p style="margin: 0 0 10px 0; color: #666;">
-        Это приватное событие. Поделитесь ссылкой-приглашением для доступа:
-    </p>
-    <div class="invite-link" style="display: flex; gap: 10px; align-items: center;">
-        <input type="text" 
-               value="{{.BaseURL}}/event/private/{{.Event.PrivateKey}}" 
-               readonly 
-               id="inviteLink"
-               style="flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9; font-family: monospace;">
-        <button onclick="copyInviteLink()" 
-                style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap;">
-            Копировать ссылку
-        </button>
+    <div id="event-content"
+         data-event-id="{{.EventID}}"
+         data-private-key="{{.PrivateKey}}">
+        <div class="loading">Загрузка события...</div>
     </div>
-    {{if .Event.InviteCode}}
-    <p style="margin: 10px 0 0 0; font-size: 0.9em; color: #666;">
-        Код приглашения: <code style="background: #e9ecef; padding: 2px 6px; border-radius: 3px;">{{.Event.InviteCode}}</code>
-    </p>
-    {{end}}
-</div>
-
-<script>
-function copyInviteLink() {
-    const link = document.getElementById('inviteLink');
-    link.select();
-    link.setSelectionRange(0, 99999);
-    document.execCommand('copy');
-    
-    // Показываем уведомление
-    const button = event.target;
-    const originalText = button.textContent;
-    button.textContent = 'Скопировано!';
-    button.style.background = '#28a745';
-    
-    setTimeout(() => {
-        button.textContent = originalText;
-        button.style.background = '#007bff';
-    }, 2000);
-}
-</script>
-{{end}}
-
-<!-- Остальная часть шаблона без изменений -->
-<div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
-    <div>
-        <h2>{{.Event.Title}}</h2>
-        <!-- ... остальной код ... -->
-        <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;">
-                <span class="badge" style="background: #007bff; color: white; border: 1px solid #0056b3; padding: 2px 6px; border-radius: 4px; font-size: 0.875em; font-weight: 600;">
-                    {{if eq .Event.Type "concert"}}Концерт
-                    {{else if eq .Event.Type "lecture"}}Лекция
-                    {{else if eq .Event.Type "sport"}}Спорт
-                    {{else if eq .Event.Type "meeting"}}Встреча
-                    {{else if eq .Event.Type "party"}}Вечеринка
-                    {{else if eq .Event.Type "conference"}}Конференция
-                    {{else if eq .Event.Type "exhibition"}}Выставка
-                    {{else if eq .Event.Type "other"}}Другое
-                    {{else}}{{.Event.Type}}{{end}}
-                </span>
-            {{if .Event.IsPrivate}}<span class="badge" style="background: var(--danger-color); color: white;">🔒 Приватное</span>{{end}}
-            {{if .Event.IsPast}}<span class="badge" style="background: #6c757d; color: white;">Завершено</span>{{end}}
-        </div>
-    </div>
-    <div style="display: flex; gap: 8px; align-items: center;">
-        <!-- Кнопки подписки -->
-        {{if .CurrentUser}}
-        {{if .Event.IsPast}}
-        <button class="btn btn-outline btn-small" disabled>Событие завершено</button>
-        {{else}}
-        {{if .IsSubscribed}}
-        <form action="/event/{{.Event.ID}}/unsubscribe" method="POST" style="display: inline;">
-            <button type="submit" class="btn btn-outline btn-small">✅ Отписаться</button>
-        </form>
-        {{else}}
-        <form action="/event/{{.Event.ID}}/subscribe" method="POST" style="display: inline;">
-            <button type="submit" class="btn btn-primary btn-small">🔔 Подписаться</button>
-        </form>
-        {{end}}
-        {{end}}
-        {{end}}
-
-        {{if eq .Event.CreatorID .CurrentUser.ID}}
-        <div style="display: flex; gap: 8px;">
-            <a href="/event/edit/{{.Event.ID}}" class="btn btn-outline btn-small">Редактировать</a>
-            <form action="/event/delete/{{.Event.ID}}" method="POST" style="display: inline;">
-                <button type="submit" class="btn btn-danger btn-small"
-                        onclick="return confirm('Удалить событие?')">Удалить</button>
-            </form>
-        </div>
-        {{end}}
-    </div>
-</div>
-
-<div class="grid grid-2">
-    <div>
-        <h3>Описание</h3>
-        <p style="line-height: 1.6;">{{.Event.Description}}</p>
-
-        <!-- Информация о подписке пользователя -->
-        {{if .CurrentUser}}
-        <div style="margin-top: 20px; padding: 15px; background: var(--bg-secondary); border-radius: var(--radius);">
-            <h4>📋 Ваше участие</h4>
-            {{if .IsSubscribed}}
-            <p>✅ <strong>Вы подписаны на это событие</strong></p>
-            <p><small>Подписка оформлена.</small></p>
-            {{else}}
-            <p>❌ <strong>Вы не подписаны на это событие</strong></p>
-            <p><small>Подпишитесь!</small></p>
-            {{end}}
-        </div>
-        {{end}}
-
-        <!-- Информация о подписчиках -->
-        {{if .SubscribersCount}}
-        <div style="margin-top: 20px; padding: 15px; background: var(--bg-secondary); border-radius: var(--radius);">
-            <h4>🔔 Подписчики</h4>
-            <p>На это событие подписано: <strong>{{.SubscribersCount}}</strong> человек</p>
-        </div>
-        {{end}}
-    </div>
-
-    <div>
-        <h3>Информация</h3>
-        <div style="line-height: 2;">
-            <div><strong>📅 Дата и время:</strong> {{.Event.DateTime.Format "02.01.2006 15:04"}}</div>
-            <div><strong>📍 Место:</strong> {{.Event.Location}}</div>
-            {{if .Event.Latitude}}<div><strong>🌐 Координаты:</strong> {{.Event.Latitude}}, {{.Event.Longitude}}</div>{{end}}
-            <div><strong>👤 Организатор:</strong> {{.Event.Creator.FirstName}} {{.Event.Creator.LastName}}</div>
-            {{if .Event.MaxParticipants}}<div><strong>👥 Макс. участников:</strong> {{.Event.MaxParticipants}}</div>{{end}}
-            <div><strong>📅 Создано:</strong> {{.Event.CreatedAt.Format "02.01.2006"}}</div>
-            {{if .Event.IsPast}}<div><strong>📊 Статус:</strong> <span style="color: #6c757d;">Завершено</span></div>{{end}}
-            {{if .Event.IsPrivate}}
-            <div><strong>🔐 Доступ:</strong> <span style="color: #e9c46a;">Приватное (только по ссылке-приглашению)</span></div>
-            <div><strong>🔑 Код приглашения:</strong> <code style="background: #f8f9fa; padding: 2px 6px; border-radius: 3px;">{{.Event.InviteCode}}</code></div>
-            <!-- УБРАН приватный ключ из интерфейса -->
-            {{end}}
-        </div>
-    </div>
-</div>
-
-{{else}}
-<div class="empty-state">
-    <h3>Событие не найдено</h3>
-    <p>Событие с таким ID не существует.</p>
-</div>
-{{end}}
-
-<div class="page-actions">
-    <a href="/events" class="btn btn-outline">← Все события</a>
-    {{if .CurrentUser}}
-    <a href="/event-subscriptions" class="btn btn-outline">📋 Мои подписки</a>
-    {{end}}
-    <a href="/create-event" class="btn btn-success">Создать событие</a>
-</div>
+    <script>
+        window.currentUser = {{if .CurrentUser}}{
+            id: {{.CurrentUser.ID}},
+            email: "{{.CurrentUser.Email}}",
+                firstName: "{{.CurrentUser.FirstName}}",
+                lastName: "{{.CurrentUser.LastName}}",
+                gender: "{{.CurrentUser.Gender}}",
+                latitude: {{.CurrentUser.Latitude}},
+            longitude: {{.CurrentUser.Longitude}}
+        }{{else}}null{{end}};
+    </script>
+    <script src="/static/js/event.js"></script>
 </div>
 {{end}}

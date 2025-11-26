@@ -1,172 +1,22 @@
 {{define "profile_content"}}
 <div class="card">
-    {{if .User}}
-    <h2>{{.User.FirstName}} {{.User.LastName}}</h2>
-
-    <!-- Статистика -->
-    <div class="stats">
-        <div class="stat-item">
-            <div class="stat-number">{{.FollowersCount}}</div>
-            <div class="stat-label">Подписчиков</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-number">{{.FollowingCount}}</div>
-            <div class="stat-label">Подписок</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-number">{{.FriendsCount}}</div>
-            <div class="stat-label">Друзей</div>
-        </div>
+    <div id="profile-content" data-profile-id="{{.ProfileID}}">
+        <div class="loading">Загрузка профиля...</div>
     </div>
+    <script>
+        window.currentUser = {{if .CurrentUser}}{
+            id: {{.CurrentUser.ID}},
+            email: "{{.CurrentUser.Email}}",
+                firstName: "{{.CurrentUser.FirstName}}",
+                lastName: "{{.CurrentUser.LastName}}",
+                gender: "{{.CurrentUser.Gender}}"
+        }{{else}}null{{end}};
 
-    <!-- Информация профиля -->
-    <div class="grid grid-2" style="margin-bottom: 30px;">
-        <div>
-            <h3>Информация</h3>
-            <div style="line-height: 2;">
-                <div><strong>Email:</strong> {{.User.Email}}</div>
-                <div><strong>Имя:</strong> {{.User.FirstName}} {{.User.LastName}}</div>
-                {{if .User.Gender}}
-                    <div><strong>Пол:</strong> 
-                        {{if eq .User.Gender "male"}}Мужской
-                        {{else if eq .User.Gender "female"}}Женский
-                        {{else}}{{.User.Gender}}{{end}}
-                    </div>
-                {{end}}
-                {{if .User.BirthDate}}<div><strong>Возраст:</strong> {{.User.GetAge}} лет</div>{{end}}
-                {{if .User.Phone}}<div><strong>Телефон:</strong> {{.User.Phone}}</div>{{end}}
-                <div><strong>Зарегистрирован:</strong> {{.User.CreatedAt.Format "02.01.2006"}}</div>
-            </div>
-        </div>
-
-        {{if .SocialLinks}}
-        <div>
-            <h3>Социальные сети</h3>
-            <div class="social-links">
-                {{range .SocialLinks}}
-                {{if eq .Platform "vk"}}
-                <div class="social-link">
-                    <img src="/static/images/vk1.png" alt="VK" class="social-icon">
-                    <a href="https://vk.com/{{.Username}}" target="_blank">{{.Username}}</a>
-                </div>
-                {{else if eq .Platform "tg"}}
-                <div class="social-link">
-                    <img src="/static/images/tg1.png" alt="Telegram" class="social-icon">
-                    <a href="https://t.me/{{.Username}}" target="_blank">{{.Username}}</a>
-                </div>
-                {{else}}
-                <div class="social-link">
-                    {{if .CustomName}}{{.CustomName}}:
-                    {{else}}Соцсеть:{{end}}
-                    <a href="{{.Username}}" target="_blank">{{.Username}}</a>
-                </div>
-                {{end}}
-                {{end}}
-            </div>
-        </div>
-        {{end}}
-    </div>
-
-    <!-- Действия -->
-    {{if and .CurrentUser (ne .CurrentUser.ID .User.ID)}}
-    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 30px; padding: 20px; background: var(--light-bg); border-radius: 8px;">
-        <!-- Подписки -->
-        <div>
-            {{if .IsSubscribed}}
-            <a href="/unsubscribe/{{.User.ID}}" class="btn btn-secondary btn-small">Отписаться</a>
-            {{else}}
-            <a href="/subscribe/{{.User.ID}}" class="btn btn-primary btn-small">Подписаться</a>
-            {{end}}
-        </div>
-
-        <!-- Дружба -->
-        <div>
-            {{if eq .FriendshipStatus "none"}}
-            <a href="/friends/add/{{.User.ID}}" class="btn btn-success btn-small">Добавить в друзья</a>
-            {{else if eq .FriendshipStatus "pending"}}
-            {{if .IsIncomingRequest}}
-            <div style="display: flex; gap: 8px; align-items: center;">
-                <span style="color: var(--text-muted);">Запрос на дружбу отправлен вам</span>
-                <a href="/friends/accept/{{.User.ID}}" class="btn btn-success btn-small">Принять</a>
-                <a href="/friends/reject/{{.User.ID}}" class="btn btn-danger btn-small">Отклонить</a>
-            </div>
-            {{else}}
-            <div style="display: flex; gap: 8px; align-items: center;">
-                <span style="color: var(--text-muted);">Запрос на дружбу отправлен</span>
-                <span class="badge badge-pending">ожидает</span>
-                <a href="/friends/remove/{{.User.ID}}" class="btn btn-secondary btn-small" onclick="return confirm('Отменить запрос в друзья?')">Отменить</a>
-            </div>
-            {{end}}
-            {{else if eq .FriendshipStatus "accepted"}}
-            <div style="display: flex; gap: 8px; align-items: center;">
-                <span style="color: var(--success-color);">✓ В друзьях</span>
-                <a href="/friends/remove/{{.User.ID}}" class="btn btn-danger btn-small" onclick="return confirm('Удалить из друзей?')">Удалить</a>
-            </div>
-            {{end}}
-        </div>
-    </div>
-    {{end}}
-
-    <!-- Стена -->
-    <h3>Стена пользователя</h3>
-
-    <!-- Форма новой записи -->
-    {{if .CurrentUser}}
-    <div style="background: var(--light-bg); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-        <form action="/wall/post" method="POST">
-            <textarea name="content" class="form-control" placeholder="Напишите сообщение на стене..." required maxlength="1000"></textarea>
-            <input type="hidden" name="user_id" value="{{.User.ID}}">
-            <button type="submit" class="btn btn-primary" style="margin-top: 10px;">Опубликовать</button>
-        </form>
-    </div>
-    {{else}}
-    <div style="text-align: center; padding: 20px; color: var(--text-muted); background: var(--light-bg); border-radius: 8px; margin-bottom: 20px;">
-        <a href="/login">Войдите</a>, чтобы написать на стене
-    </div>
-    {{end}}
-
-    <!-- Список записей -->
-    <div class="posts">
-        {{range .Posts}}
-        <div class="post">
-            <div class="post-header">
-                <span class="post-author">{{.Author.FirstName}} {{.Author.LastName}}</span>
-                <span class="post-date">{{.CreatedAt.Format "02.01.2006 15:04"}}</span>
-            </div>
-            <div class="post-content">{{.Content}}</div>
-            <div class="post-actions">
-                {{if and $.CurrentUser (or (eq $.CurrentUser.ID .AuthorID) (eq $.CurrentUser.ID .UserID))}}
-                {{if eq $.CurrentUser.ID .AuthorID}}
-                <a href="/wall/edit/{{.ID}}" class="btn btn-outline btn-small">Редактировать</a>
-                {{end}}
-                <a href="/wall/delete/{{.ID}}" class="btn btn-danger btn-small" onclick="return confirm('Удалить запись?')">Удалить</a>
-                {{end}}
-            </div>
-        </div>
-        {{else}}
-        <div class="empty-state">
-            <p>Пока нет записей на стене.</p>
-            {{if .CurrentUser}}
-            <p>Будьте первым, кто оставит запись!</p>
-            {{end}}
-        </div>
-        {{end}}
-    </div>
-
-    {{else}}
-    <div class="empty-state">
-        <h3>Профиль не найден</h3>
-        <p>Пользователь с таким ID не существует.</p>
-    </div>
-    {{end}}
-
-    <div class="page-actions">
-        <a href="/profiles" class="btn btn-outline">← Назад к списку</a>
-        {{if .CurrentUser}}
-        <a href="/friends" class="btn btn-primary">Мои друзья</a>
-        {{else}}
-        <a href="/create-profile" class="btn btn-primary">Создать профиль</a>
-        {{end}}
-    </div>
+        // Передаем ID профиля, который нужно открыть
+        window.profileId = "{{.ProfileID}}";
+        // Передаем флаг, является ли профиль своим
+        window.isOwnProfile = {{.IsOwnProfile}};
+    </script>
+    <script src="/static/js/profile.js"></script>
 </div>
 {{end}}

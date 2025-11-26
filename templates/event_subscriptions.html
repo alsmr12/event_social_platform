@@ -1,134 +1,19 @@
 {{define "event_subscriptions_content"}}
 <div class="card">
-    <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 30px;">
-        <h2>Мои подписки на события</h2>
+    <div id="event-subscriptions-content">
+        <div class="loading">Загрузка подписок...</div>
     </div>
-
-    <!-- Вкладки -->
-    <div class="tabs" style="margin-bottom: 20px;">
-        <button class="tab-btn {{if not .ShowPastEvents}}active{{end}}" onclick="switchTab('upcoming')">Предстоящие события</button>
-        <button class="tab-btn {{if .ShowPastEvents}}active{{end}}" onclick="switchTab('past')">Прошедшие события</button>
-    </div>
-
-    {{if .Subscriptions}}
-    <div class="grid grid-2">
-        {{range .Subscriptions}}
-        <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
-                <h3 style="margin: 0;">{{.Event.Title}}</h3>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    {{if .Event.IsPast}}
-                    <span class="badge" style="background: #6c757d; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75em; font-weight: 600;">
-                        Завершено
-                    </span>
-                    {{end}}
-                    <span class="badge" style="background: #007bff; color: white; border: 1px solid #0056b3; padding: 4px 8px; border-radius: 4px; font-size: 0.875em; font-weight: 600;">
-                        {{if eq .Event.Type "concert"}}Концерт
-                        {{else if eq .Event.Type "lecture"}}Лекция
-                        {{else if eq .Event.Type "sport"}}Спорт
-                        {{else if eq .Event.Type "meeting"}}Встреча
-                        {{else if eq .Event.Type "party"}}Вечеринка
-                        {{else if eq .Event.Type "conference"}}Конференция
-                        {{else if eq .Event.Type "exhibition"}}Выставка
-                        {{else if eq .Event.Type "other"}}Другое
-                        {{else}}{{.Event.Type}}{{end}}
-                    </span>
-                </div>
-            </div>
-
-            <p style="color: var(--text-muted); margin-bottom: 15px;">{{.Event.Description}}</p>
-
-            <div style="line-height: 1.8; margin-bottom: 20px;">
-                <div><strong>📅 Когда:</strong> {{.Event.DateTime.Format "02.01.2006 15:04"}}</div>
-                <div><strong>📍 Где:</strong> {{.Event.Location}}</div>
-                <div><strong>👤 Организатор:</strong> {{.Event.Creator.FirstName}} {{.Event.Creator.LastName}}</div>
-                {{if .Event.MaxParticipants}}<div><strong>👥 Участников:</strong> до {{.Event.MaxParticipants}} человек</div>{{end}}
-                {{if .Event.IsPrivate}}<div><strong>🔒 Приватное событие</strong></div>{{end}}
-                <div><strong>📅 Подписан:</strong> {{.CreatedAt.Format "02.01.2006"}}</div>
-
-                <!-- Информация о подписчиках -->
-                {{if .Event.SubscribersCount}}
-                <div style="margin-top: 10px; padding: 8px 12px; background: var(--bg-secondary); border-radius: var(--radius);">
-                    <strong>🔔 Подписчиков:</strong> {{.Event.SubscribersCount}}
-                </div>
-                {{end}}
-            </div>
-
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <a href="/event/{{.Event.ID}}" class="btn btn-outline btn-small">Подробнее</a>
-                {{if .Event.IsPast}}
-                <button class="btn btn-outline btn-small" disabled>Событие завершено</button>
-                {{else}}
-                <form action="/event/{{.Event.ID}}/unsubscribe" method="POST" style="display: inline;">
-                    <button type="submit" class="btn btn-danger btn-small">Отписаться</button>
-                </form>
-                {{end}}
-            </div>
-        </div>
-        {{end}}
-    </div>
-    {{else}}
-    <div class="empty-state">
-        {{if .ShowPastEvents}}
-        <p>У вас нет подписок на прошедшие события.</p>
-        {{else}}
-        <p>Вы еще не подписаны ни на одно событие.</p>
-        {{end}}
-        <a href="/events" class="btn btn-primary">Найти события</a>
-    </div>
-    {{end}}
+    <script>
+        window.currentUser = {{if .CurrentUser}}{
+            id: {{.CurrentUser.ID}},
+            email: "{{.CurrentUser.Email}}",
+                firstName: "{{.CurrentUser.FirstName}}",
+                lastName: "{{.CurrentUser.LastName}}",
+                gender: "{{.CurrentUser.Gender}}",
+                latitude: {{.CurrentUser.Latitude}},
+            longitude: {{.CurrentUser.Longitude}}
+        }{{else}}null{{end}};
+    </script>
+    <script src="/static/js/event-subscriptions.js"></script>
 </div>
-
-<style>
-    .tabs {
-        display: flex;
-        border-bottom: 1px solid #dee2e6;
-        margin-bottom: 1rem;
-    }
-
-    .tab-btn {
-        padding: 0.75rem 1.5rem;
-        background: none;
-        border: none;
-        border-bottom: 2px solid transparent;
-        cursor: pointer;
-        font-size: 1rem;
-        color: #6c757d;
-        transition: all 0.2s;
-    }
-
-    .tab-btn:hover {
-        color: #007bff;
-    }
-
-    .tab-btn.active {
-        color: #007bff;
-        border-bottom-color: #007bff;
-        font-weight: 600;
-    }
-</style>
-
-<script>
-    function switchTab(tab) {
-        if (tab === 'upcoming') {
-            window.location.href = '/event-subscriptions?filter=upcoming';
-        } else if (tab === 'past') {
-            window.location.href = '/event-subscriptions?filter=past';
-        }
-    }
-
-    // Определяем активную вкладку на основе URL параметра
-    document.addEventListener('DOMContentLoaded', function() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const filter = urlParams.get('filter');
-
-        if (filter === 'past') {
-            document.querySelectorAll('.tab-btn')[1].classList.add('active');
-            document.querySelectorAll('.tab-btn')[0].classList.remove('active');
-        } else {
-            document.querySelectorAll('.tab-btn')[0].classList.add('active');
-            document.querySelectorAll('.tab-btn')[1].classList.remove('active');
-        }
-    });
-</script>
 {{end}}

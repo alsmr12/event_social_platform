@@ -737,7 +737,7 @@
                     {{if .CurrentUser}}
                     <a href="/news" class="dropdown-item {{if eq .NavActive "news"}}active{{end}}">Новости</a>
                     {{end}}
-                    <a href="/profile" class="dropdown-item {{if eq .NavActive "my_profile"}}active{{end}}">Профиль</a>
+                    <a href="/profile" class="dropdown-item {{if or (eq .NavActive "my_profile") (eq .NavActive "profile")}}active{{end}}">Профиль</a>
                     <a href="/events" class="dropdown-item {{if eq .NavActive "events"}}active{{end}}">События</a>
                 <a href="/map" class="dropdown-item {{if eq .NavActive "map"}}active{{end}}">Карта</a>
                 </div>

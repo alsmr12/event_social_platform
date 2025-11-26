@@ -192,3 +192,167 @@ func (h *EventSubscriptionHandler) GetUserSubscriptions(c *gin.Context) {
 		"ShowPastEvents": filter == "past",
 	})
 }
+
+// GetUserSubscriptionsJSON - получить подписки пользователя (JSON)
+func (h *EventSubscriptionHandler) GetUserSubscriptionsJSON(c *gin.Context) {
+	currentUser := GetUserFromContext(c)
+	if currentUser == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Не авторизован",
+		})
+		return
+	}
+
+	// Получаем параметр фильтра из URL
+	filter := c.DefaultQuery("filter", "upcoming")
+
+	var subscriptions []*models.EventSubscription
+	var err error
+
+	if filter == "past" {
+		subscriptions, err = h.eventSubRepo.GetUserPastSubscriptions(currentUser.ID)
+	} else {
+		subscriptions, err = h.eventSubRepo.GetUserUpcomingSubscriptions(currentUser.ID)
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Ошибка получения подписок",
+		})
+		return
+	}
+
+	// Добавляем информацию о подписчиках и статусе события
+	for _, subscription := range subscriptions {
+		subscribersCount, _ := h.eventSubRepo.GetSubscribersCount(subscription.EventID)
+		subscription.Event.SubscribersCount = subscribersCount
+		subscription.Event.IsPast = time.Now().After(subscription.Event.DateTime)
+
+		// Добавляем информацию о подписке текущего пользователя
+		subscription.Event.IsSubscribed = true
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":       true,
+		"subscriptions": subscriptions,
+		"filter":        filter,
+		"message":       "Подписки загружены",
+	})
+}
+
+// SubscribeJSON - подписаться на событие (JSON)
+func (h *EventSubscriptionHandler) SubscribeJSON(c *gin.Context) {
+	currentUser := GetUserFromContext(c)
+	if currentUser == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Не авторизован",
+		})
+		return
+	}
+
+	eventID := c.Param("id")
+	id, err := strconv.ParseUint(eventID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Неверный ID события",
+		})
+		return
+	}
+
+	// Получаем информацию о событии
+	event, err := h.eventRepo.GetEventByID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"message": "Событие не найдено",
+		})
+		return
+	}
+
+	// Проверяем, не является ли событие прошедшим
+	if time.Now().After(event.DateTime) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Нельзя подписаться на прошедшее событие",
+		})
+		return
+	}
+
+	// Проверяем, не подписан ли уже
+	isSubscribed, err := h.eventSubRepo.IsSubscribed(currentUser.ID, uint(id))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Ошибка проверки подписки",
+		})
+		return
+	}
+
+	if isSubscribed {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Вы уже подписаны на это событие",
+		})
+		return
+	}
+
+	err = h.eventSubRepo.Subscribe(currentUser.ID, uint(id))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Ошибка подписки на событие",
+		})
+		return
+	}
+
+	// Обновляем достижения
+	if h.achievementRepo != nil {
+		go h.achievementRepo.UpdateAchievementsOnEventSubscribed(currentUser.ID)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Вы успешно подписались на событие",
+		"event":   event,
+	})
+}
+
+// UnsubscribeJSON - отписаться от события (JSON)
+func (h *EventSubscriptionHandler) UnsubscribeJSON(c *gin.Context) {
+	currentUser := GetUserFromContext(c)
+	if currentUser == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Не авторизован",
+		})
+		return
+	}
+
+	eventID := c.Param("id")
+	id, err := strconv.ParseUint(eventID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Неверный ID события",
+		})
+		return
+	}
+
+	err = h.eventSubRepo.Unsubscribe(currentUser.ID, uint(id))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Ошибка отписки от события",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Вы отписались от события",
+	})
+}

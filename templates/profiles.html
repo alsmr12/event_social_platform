@@ -1,53 +1,18 @@
 {{define "profiles_content"}}
 <div class="card">
-    <h2>Все пользователи ({{len .Users}})</h2>
-
-    {{if .Users}}
-    <div class="grid grid-3">
-        {{range .Users}}
-        <div class="card">
-            <h4>{{.FirstName}} {{.LastName}}</h4>
-            <p style="color: var(--text-muted); margin: 10px 0;">{{.Email}}</p>
-            {{if .BirthDate}}<p>Возраст: {{.GetAge}} лет</p>{{end}}
-
-            <!-- Статистика -->
-            <div style="font-size: 0.9em; color: var(--text-muted); margin: 15px 0; padding: 10px; background: var(--light-bg); border-radius: 4px;">
-                <div>Подписчиков: {{.FollowersCount}}</div>
-                <div>Подписок: {{.FollowingCount}}</div>
-            </div>
-
-            <!-- Действия -->
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <a href="/profile/{{.ID}}" class="btn btn-outline btn-small">Профиль</a>
-                {{if and $.CurrentUser (ne $.CurrentUser.ID .ID)}}
-                {{if .IsSubscribed}}
-                <a href="/unsubscribe/{{.ID}}" class="btn btn-secondary btn-small">Отписаться</a>
-                {{else}}
-                <a href="/subscribe/{{.ID}}" class="btn btn-primary btn-small">Подписаться</a>
-                {{end}}
-
-                {{if eq .FriendshipStatus "none"}}
-                <a href="/friends/add/{{.ID}}" class="btn btn-success btn-small">Добавить в друзья</a>
-                {{else if eq .FriendshipStatus "pending"}}
-                <span class="badge badge-pending">Запрос отправлен</span>
-                {{else if eq .FriendshipStatus "accepted"}}
-                <span class="badge badge-success">В друзьях</span>
-                {{end}}
-                {{end}}
-            </div>
-        </div>
-        {{end}}
+    <div id="profiles-content">
+        <div class="loading">Загрузка пользователей...</div>
     </div>
-    {{else}}
-    <div class="empty-state">
-        <p>Пока нет пользователей.</p>
-        <a href="/create-profile" class="btn btn-primary">Создать первый профиль</a>
-    </div>
-    {{end}}
-
-    <div class="page-actions">
-        <a href="/profile" class="btn btn-outline">← Мой профиль</a>
-        <a href="/friends" class="btn btn-primary">Мои друзья</a>
-    </div>
+    <script>
+        // Передаем данные текущего пользователя в JavaScript
+        window.currentUser = {{if .CurrentUser}}{
+            id: {{.CurrentUser.ID}},
+            email: "{{.CurrentUser.Email}}",
+            firstName: "{{.CurrentUser.FirstName}}",
+            lastName: "{{.CurrentUser.LastName}}",
+            gender: "{{.CurrentUser.Gender}}"
+        }{{else}}null{{end}};
+    </script>
+    <script src="/static/js/profiles.js"></script>
 </div>
 {{end}}

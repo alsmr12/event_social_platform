@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"event_social_platform/internal/middleware"
+	"event_social_platform/internal/models"
 	"event_social_platform/internal/repository"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"log"
+	"net/http"
 )
 
 func SetupRoutes(router *gin.Engine, db *gorm.DB) {
@@ -61,8 +63,23 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 
 	// Аутентификация
 	// Веб
-	router.GET("/login", authHandler.ShowLoginForm)
-	router.POST("/login", authHandler.Login)
+	//router.GET("/login", authHandler.ShowLoginForm)
+	//router.POST("/login", authHandler.Login)
+	// Аутентификация
+	// Web маршруты (только отдают HTML)
+	router.GET("/login", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "base.html", gin.H{
+			"Title":     "Вход в систему",
+			"NavActive": "login",
+		})
+	})
+
+	router.GET("/create-profile", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "base.html", gin.H{
+			"Title":     "Создание профиля",
+			"NavActive": "register",
+		})
+	})
 
 	// Android / JSON API
 	router.POST("/api/login", authHandler.LoginJSON)
@@ -72,7 +89,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	router.GET("/api/profiles", userHandler.GetAllProfilesJSON)
 
 	// Создание профиля (регистрация)
-	router.GET("/create-profile", userHandler.ShowCreateProfileForm)
+	//router.GET("/create-profile", userHandler.ShowCreateProfileForm)
 	router.POST("/create-profile", userHandler.CreateProfile)
 
 	// Группа защищенных маршрутов
@@ -92,20 +109,68 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 		protected.GET("/api/heatmap", mapHandler.HandleHeatmap)
 
 		// Новости
-		protected.GET("/news", newsHandler.ShowNewsFeed)
+		//protected.GET("/news", newsHandler.ShowNewsFeed)
+		protected.GET("/news", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "base.html", gin.H{
+				"Title":       "Новости",
+				"NavActive":   "news",
+				"CurrentUser": GetUserFromContext(c),
+			})
+		})
 
 		// Профили
-		protected.GET("/profiles", userHandler.GetAllProfiles)
-		protected.GET("/profile/:id", userHandler.GetProfile)
-		protected.GET("/profile", authHandler.ShowProfile)
+		// Используем те же методы, что и для API, аналогично реализации с картой
+		//userHandler := NewUserHandler(userRepo)
+		protected.GET("/profiles", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "base.html", gin.H{
+				"Title":       "Все пользователи",
+				"NavActive":   "profiles",
+				"CurrentUser": GetUserFromContext(c),
+			})
+		})
+		// В разделе protected добавляем правильные маршруты для профилей:
+		protected.GET("/profile", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "base.html", gin.H{
+				"Title":       "Мой профиль",
+				"NavActive":   "my_profile",
+				"CurrentUser": GetUserFromContext(c),
+			})
+		})
+
+		protected.GET("/profile/:id", func(c *gin.Context) {
+			idStr := c.Param("id")
+			c.HTML(http.StatusOK, "base.html", gin.H{
+				"Title":       "Профиль пользователя",
+				"NavActive":   "profile",
+				"ProfileID":   idStr,
+				"CurrentUser": GetUserFromContext(c),
+			})
+		})
+
+		// В разделе protected добавляем:
+		protected.GET("/events", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "base.html", gin.H{
+				"Title":       "Все события",
+				"NavActive":   "events",
+				"CurrentUser": GetUserFromContext(c),
+			})
+		})
+
+		protected.GET("/create-event", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "base.html", gin.H{
+				"Title":       "Создание события",
+				"NavActive":   "create_event",
+				"CurrentUser": GetUserFromContext(c),
+			})
+		})
 
 		protected.GET("/social-links", socialHandler.ShowSocialLinksForm)
 		protected.POST("/social-links", socialHandler.UpdateSocialLinks)
 
 		// События - общие маршруты
-		protected.GET("/events", eventHandler.GetAllEvents)
-		protected.GET("/create-event", eventHandler.ShowCreateEventForm)
-		protected.POST("/create-event", eventHandler.CreateEvent)
+		//protected.GET("/events", eventHandler.GetAllEvents)
+		//protected.GET("/create-event", eventHandler.ShowCreateEventForm)
+		//protected.POST("/create-event", eventHandler.CreateEvent)
 
 		// В разделе защищенных маршрутов добавь:
 		protected.GET("/invite", eventHandler.AccessByInviteCodeForm)
@@ -113,30 +178,76 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 		// И обнови существующий маршрут:
 		protected.GET("/invite/:code", eventHandler.AccessByInviteCode)
 
-		// Маршруты для событий
+		/*
+			// Маршруты для событий
+			eventGroup := protected.Group("/event")
+			{
+				// Публичные события по ID
+				eventGroup.GET("/:id", eventHandler.GetEvent)
+
+				// Приватные события по уникальному ключу
+				eventGroup.GET("/private/:key", eventHandler.GetPrivateEvent)
+
+				// Подписки на события
+				eventGroup.POST("/:id/subscribe", eventSubHandler.Subscribe)
+				eventGroup.POST("/:id/unsubscribe", eventSubHandler.Unsubscribe)
+
+				// Управление событиями (только для создателя)
+				eventGroup.POST("/delete/:id", eventHandler.DeleteEvent)
+				eventGroup.GET("/edit/:id", eventHandler.ShowEditEventForm)
+				eventGroup.POST("/edit/:id", eventHandler.UpdateEvent)
+
+				// И в API группе добавь:
+
+			}*/
 		eventGroup := protected.Group("/event")
 		{
-			// Публичные события по ID
-			eventGroup.GET("/:id", eventHandler.GetEvent)
+			// Web-маршруты (только отдают HTML контейнер)
+			eventGroup.GET("/:id", func(c *gin.Context) {
+				idStr := c.Param("id")
+				c.HTML(http.StatusOK, "base.html", gin.H{
+					"Title":       "Событие",
+					"NavActive":   "event",
+					"EventID":     idStr,
+					"CurrentUser": GetUserFromContext(c),
+				})
+			})
 
-			// Приватные события по уникальному ключу
-			eventGroup.GET("/private/:key", eventHandler.GetPrivateEvent)
+			eventGroup.GET("/private/:key", func(c *gin.Context) {
+				privateKey := c.Param("key")
+				c.HTML(http.StatusOK, "base.html", gin.H{
+					"Title":       "Событие",
+					"NavActive":   "event",
+					"PrivateKey":  privateKey,
+					"CurrentUser": GetUserFromContext(c),
+				})
+			})
 
-			// Подписки на события
+			eventGroup.GET("/edit/:id", func(c *gin.Context) {
+				idStr := c.Param("id")
+				c.HTML(http.StatusOK, "base.html", gin.H{
+					"Title":       "Редактирование события",
+					"NavActive":   "edit_event",
+					"EventID":     idStr,
+					"CurrentUser": GetUserFromContext(c),
+				})
+			})
+			protected.GET("/event-subscriptions", func(c *gin.Context) {
+				c.HTML(http.StatusOK, "base.html", gin.H{
+					"Title":       "Мои подписки на события",
+					"NavActive":   "event_subscriptions",
+					"CurrentUser": GetUserFromContext(c),
+				})
+			})
+			// API маршруты (обрабатывают действия)
 			eventGroup.POST("/:id/subscribe", eventSubHandler.Subscribe)
 			eventGroup.POST("/:id/unsubscribe", eventSubHandler.Unsubscribe)
-
-			// Управление событиями (только для создателя)
-			eventGroup.POST("/delete/:id", eventHandler.DeleteEvent)
-			eventGroup.GET("/edit/:id", eventHandler.ShowEditEventForm)
-			eventGroup.POST("/edit/:id", eventHandler.UpdateEvent)
-
-			// И в API группе добавь:
-
+			//eventGroup.POST("/delete/:id", eventHandler.DeleteEvent)
+			//eventGroup.POST("/edit/:id", eventHandler.UpdateEvent)
 		}
 
 		// Подписки на события
-		protected.GET("/event-subscriptions", eventSubHandler.GetUserSubscriptions)
+		//protected.GET("/event-subscriptions", eventSubHandler.GetUserSubscriptions)
 
 		// Действия со стеной
 		protected.POST("/wall/post", wallHandler.CreatePost)
@@ -144,7 +255,21 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 		protected.GET("/wall/edit/:id", wallHandler.ShowEditForm)
 		protected.POST("/wall/edit/:id", wallHandler.UpdatePost)
 
-		// Подписки
+		protected.GET("/friends", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "base.html", gin.H{
+				"Title":       "Мои друзья",
+				"NavActive":   "friends",
+				"CurrentUser": GetUserFromContext(c),
+			})
+		})
+		protected.GET("/subscriptions", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "base.html", gin.H{
+				"Title":       "Мои подписки",
+				"NavActive":   "subscriptions",
+				"CurrentUser": GetUserFromContext(c),
+			})
+		})
+		/*// Подписки
 		protected.GET("/subscriptions", subscriptionHandler.MySubscriptions)
 		protected.GET("/subscribe/:id", subscriptionHandler.Subscribe)
 		protected.GET("/unsubscribe/:id", subscriptionHandler.Unsubscribe)
@@ -154,14 +279,35 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 		protected.GET("/friends/add/:id", friendshipHandler.SendFriendRequest)
 		protected.GET("/friends/accept/:id", friendshipHandler.AcceptFriendRequest)
 		protected.GET("/friends/reject/:id", friendshipHandler.RejectFriendRequest)
-		protected.GET("/friends/remove/:id", friendshipHandler.RemoveFriend)
+		protected.GET("/friends/remove/:id", friendshipHandler.RemoveFriend)*/
 
 		// Награды и рейтинг
 		protected.GET("/ratings", achievementHandler.ShowRatings)
 		protected.GET("/my-achievements", achievementHandler.ShowMyAchievements)
 
-		protected.GET("/edit-profile", userHandler.ShowEditProfileForm)
-		protected.POST("/edit-profile", userHandler.UpdateProfile)
+		//protected.GET("/edit-profile", userHandler.ShowEditProfileForm)
+		//protected.POST("/edit-profile", userHandler.UpdateProfile)
+		protected.GET("/edit-profile", func(c *gin.Context) {
+			currentUser := GetUserFromContext(c)
+			if currentUser == nil {
+				c.Redirect(http.StatusSeeOther, "/login")
+				return
+			}
+
+			// Получаем социальные сети пользователя
+			socialRepo := repository.NewSocialLinkRepository(db)
+			socialLinks, err := socialRepo.GetByUserID(currentUser.ID)
+			if err != nil {
+				socialLinks = []*models.SocialLink{}
+			}
+
+			c.HTML(http.StatusOK, "base.html", gin.H{
+				"Title":       "Редактирование профиля",
+				"NavActive":   "edit_profile",
+				"CurrentUser": currentUser,
+				"SocialLinks": socialLinks,
+			})
+		})
 
 		protected.GET("/api/events", eventHandler.GetAllEventsJSON)
 		protected.POST("/api/create-event", eventHandler.CreateEventJSON)
@@ -177,7 +323,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	}
 
 	// Инициализируем базовые достижения
-	achievementRepo.InitializeAchievements()
+	//achievementRepo.InitializeAchievements()
 	// ==================== ANDROID API ROUTES ====================
 	api := router.Group("/api")
 	api.Use(strictAuth)
@@ -201,9 +347,13 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 
 		api.PUT("/events/:id", eventHandler.UpdateEventJSON)
 		api.DELETE("/events/:id", eventHandler.DeleteEventJSON)
+		api.GET("/event/private/:key", eventHandler.GetPrivateEventJSON)
 		api.POST("/events/:id/update", eventHandler.UpdateEventJSON)
 		api.POST("/events/:id/delete", eventHandler.DeleteEventJSON)
 		api.GET("/event/:id", eventHandler.GetEventJSON)
+		api.GET("/event-subscriptions", eventSubHandler.GetUserSubscriptionsJSON)
+		api.POST("/event-subscriptions/:id/subscribe", eventSubHandler.SubscribeJSON)
+		api.POST("/event-subscriptions/:id/unsubscribe", eventSubHandler.UnsubscribeJSON)
 		api.GET("/friends/subscriptions", subscriptionHandler.GetSubscriptionsJSON)
 		api.GET("/friends/check-subscription/:id", subscriptionHandler.CheckSubscriptionJSON)
 		api.POST("/friends/subscribe/:id", subscriptionHandler.SubscribeJSON)

@@ -27,7 +27,7 @@ func NewEventHandler(eventRepo *repository.EventRepository, userRepo *repository
 	}
 }
 
-func (h *EventHandler) ShowCreateEventForm(c *gin.Context) {
+/*func (h *EventHandler) ShowCreateEventForm(c *gin.Context) {
 	currentUser := GetUserFromContext(c)
 	if currentUser == nil {
 		c.Redirect(http.StatusSeeOther, "/login")
@@ -350,6 +350,7 @@ func (h *EventHandler) GetPrivateEvent(c *gin.Context) {
 		"BaseURL":          baseURL,
 	})
 }
+*/
 
 // AccessByInviteCode - доступ к событию по коду приглашения
 func (h *EventHandler) AccessByInviteCode(c *gin.Context) {
@@ -393,6 +394,7 @@ func (h *EventHandler) AccessByInviteCodeForm(c *gin.Context) {
 	})
 }
 
+/*
 func (h *EventHandler) DeleteEvent(c *gin.Context) {
 	currentUser := GetUserFromContext(c)
 	if currentUser == nil {
@@ -433,7 +435,6 @@ func (h *EventHandler) DeleteEvent(c *gin.Context) {
 	// Перенаправляем обратно на страницу событий
 	c.Redirect(302, "/events")
 }
-
 // Показать форму редактирования
 func (h *EventHandler) ShowEditEventForm(c *gin.Context) {
 	eventID := c.Param("id")
@@ -608,6 +609,7 @@ func (h *EventHandler) UpdateEvent(c *gin.Context) {
 		c.Redirect(302, "/event/"+eventID)
 	}
 }
+*/
 
 // getBaseURL - вспомогательная функция для получения базового URL
 func getBaseURL(c *gin.Context) string {
@@ -1279,9 +1281,15 @@ func (h *EventHandler) GetAllEventsWithFiltersJSON(c *gin.Context) {
 		dateTo = now
 	}
 
-	// Координаты пользователя (пока фиксированные 0,0)
-	userLat := 0.0
-	userLng := 0.0
+	// Получаем координаты пользователя
+	var userLat, userLng float64
+	if currentUser != nil {
+		userLat = currentUser.Latitude
+		userLng = currentUser.Longitude
+	} else {
+		userLat = 0.0
+		userLng = 0.0
+	}
 
 	// Создаем фильтр
 	filter := repository.EventFilter{
@@ -1389,6 +1397,51 @@ func (h *EventHandler) GetEventJSON(c *gin.Context) {
 			})
 			return
 		}
+	}
+
+	// Получаем информацию о подписке
+	isSubscribed, _ := h.eventSubRepo.IsSubscribed(currentUser.ID, event.ID)
+	subscribersCount, _ := h.eventSubRepo.GetSubscribersCount(event.ID)
+
+	event.IsSubscribed = isSubscribed
+	event.SubscribersCount = subscribersCount
+	event.IsPast = time.Now().After(event.DateTime)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"event":   event,
+		"message": "Событие загружено",
+	})
+}
+
+func (h *EventHandler) GetPrivateEventJSON(c *gin.Context) {
+	currentUser := GetUserFromContext(c)
+	if currentUser == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Не авторизован",
+		})
+		return
+	}
+
+	privateKey := c.Param("key")
+	event, err := h.eventRepo.GetEventByPrivateKey(privateKey)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"message": "Событие не найдено",
+		})
+		return
+	}
+
+	// Проверяем доступ
+	hasAccess, _ := h.eventRepo.CanUserAccessEvent(currentUser.ID, event.ID)
+	if !hasAccess {
+		c.JSON(http.StatusForbidden, gin.H{
+			"success": false,
+			"message": "У вас нет доступа к этому приватному событию",
+		})
+		return
 	}
 
 	// Получаем информацию о подписке

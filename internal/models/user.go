@@ -22,6 +22,13 @@ type User struct {
 	CreatedAt time.Time      `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+
+	// Поля для статистики (не сохраняются в БД)
+	FollowersCount int           `json:"followers_count,omitempty"`
+	FollowingCount int           `json:"following_count,omitempty"`
+	FriendsCount   int           `json:"friends_count,omitempty"`
+	SocialLinks    []*SocialLink `json:"social_links,omitempty"`
+	Posts          []*WallPost   `json:"posts,omitempty"`
 }
 
 // HashPassword хеширует пароль перед сохранением
