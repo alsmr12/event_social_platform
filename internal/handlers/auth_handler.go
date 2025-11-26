@@ -163,8 +163,8 @@ func (h *AuthHandler) LoginJSON(c *gin.Context) {
 			"first_name": user.FirstName,
 			"last_name":  user.LastName,
 			"gender":     user.Gender,
-			"age":        user.Age,
-			"phone":      user.Phone,
+			//"age":        user.Age,
+			"phone": user.Phone,
 		},
 		"token": token,
 	})
@@ -244,8 +244,8 @@ func (h *AuthHandler) ProfileJSON(c *gin.Context) {
 			"first_name": user.FirstName,
 			"last_name":  user.LastName,
 			"gender":     user.Gender,
-			"age":        user.Age,
-			"phone":      user.Phone,
+			//"age":        user.Age,
+			"phone": user.Phone,
 		},
 		"posts":         posts,
 		"social_links":  socialLinks,
@@ -283,8 +283,8 @@ func (h *AuthHandler) RegisterJSON(c *gin.Context) {
 		Email:     req.Email,
 		Password:  req.Password, // пока plain text
 		Gender:    req.Gender,
-		Age:       req.Age,
-		Phone:     req.Phone,
+		//Age:       req.Age,
+		Phone: req.Phone,
 	}
 
 	// ХЕШИРУЕМ ПАРОЛЬ перед сохранением
@@ -313,8 +313,8 @@ func (h *AuthHandler) RegisterJSON(c *gin.Context) {
 			"first_name": user.FirstName,
 			"last_name":  user.LastName,
 			"gender":     user.Gender,
-			"age":        user.Age,
-			"phone":      user.Phone,
+			//"age":        user.Age,
+			"phone": user.Phone,
 		},
 	})
 }
