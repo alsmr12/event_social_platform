@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                         <div><strong>Пол:</strong> ${user.gender === 'male' ? 'Мужской' : user.gender === 'female' ? 'Женский' : 'Не указан'}</div>
                         ${user.birth_date && user.birth_date !== '0001-01-01T00:00:00Z' ?
             `<div><strong>Дата рождения:</strong> ${new Date(user.birth_date).toLocaleDateString('ru-RU')}</div>
-                             <div><strong>Возраст:</strong> ${calculateAge(user.birth_date)}</div>` :
+                             <div><strong>Возраст:</strong> ${calculateAge(user.birth_date)} ${getAgeText(calculateAge(user.birth_date))}</div>` :
             ''}
                         ${user.phone ? `<div><strong>Телефон:</strong> ${user.phone}</div>` : ''}
                         <div><strong>Зарегистрирован:</strong> ${createdAt}</div>
@@ -315,4 +315,14 @@ function calculateAge(birthDate) {
     }
 
     return age;
+}
+
+function getAgeText(age) {
+    if (age === 1 || (age % 10 === 1 && age % 100 !== 11)) {
+        return "год";
+    } else if (age >= 2 && age <= 4 || 
+             (age % 10 >= 2 && age % 10 <= 4 && !(age % 100 >= 12 && age % 100 <= 14))) {
+        return "года";
+    }
+    return "лет";
 }

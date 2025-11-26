@@ -10,13 +10,15 @@
     window.currentUser = {{if .CurrentUser}}{
         id: {{.CurrentUser.ID}},
         email: "{{.CurrentUser.Email}}",
-            firstName: "{{.CurrentUser.FirstName}}",
-            lastName: "{{.CurrentUser.LastName}}",
-            gender: "{{.CurrentUser.Gender}}",
-            birthDate: "{{.CurrentUser.BirthDate}}",
-            phone: "{{.CurrentUser.Phone}}"
+        firstName: "{{.CurrentUser.FirstName}}",
+        lastName: "{{.CurrentUser.LastName}}",
+        gender: "{{.CurrentUser.Gender}}",
+        birthDate: "{{.CurrentUser.BirthDate}}",
+        phone: "{{.CurrentUser.Phone}}",
+        age: {{if .Age}}{{.Age}}{{else}}0{{end}},
+        ageText: "{{.AgeText}}"
     }{{else}}null{{end}};
-
+    
     // Передаем социальные сети если есть
     window.socialLinks = {{if .SocialLinks}}[
         {{range .SocialLinks}}

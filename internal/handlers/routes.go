@@ -136,7 +136,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 				"CurrentUser": GetUserFromContext(c),
 			})
 		})
-
+		//protected.GET("/profile", authHandler.ShowProfile)
 		protected.GET("/profile/:id", userHandler.GetProfile)
 
 		// В разделе protected добавляем:

@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                             <div class="card">
                                 <h4>${request.user.first_name} ${request.user.last_name}</h4>
                                 <p style="color: var(--text-muted); margin: 10px 0;">${request.user.email}</p>
-                                ${request.user.birth_date ? `<p>${calculateAge(request.user.birth_date)} лет</p>` : ''}
+                                
                                 <div style="font-size: 0.85em; color: var(--text-muted); margin: 10px 0;">
                                     Запрос отправлен: ${formatDateTime(request.created_at)}
                                 </div>
@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                             <div class="card">
                                 <h4>${request.friend.first_name} ${request.friend.last_name}</h4>
                                 <p style="color: var(--text-muted); margin: 10px 0;">${request.friend.email}</p>
-                                ${request.friend.birth_date ? `<p>${calculateAge(request.friend.birth_date)} лет</p>` : ''}
+                                
                                 <div style="font-size: 0.85em; color: var(--text-muted); margin: 10px 0;">
                                     Запрос отправлен: ${formatDateTime(request.created_at)}
                                 </div>
@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                             <div class="card">
                                 <h4>${friend.first_name} ${friend.last_name}</h4>
                                 <p style="color: var(--text-muted); margin: 10px 0;">${friend.email}</p>
-                                ${friend.birth_date ? `<p>${calculateAge(friend.birth_date)} лет</p>` : ''}
+                                
                                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                                     <a href="/profile/${friend.id}" class="btn btn-outline btn-small">Профиль</a>
                                     <button class="btn btn-danger btn-small remove-btn" data-user-id="${friend.id}">Удалить</button>

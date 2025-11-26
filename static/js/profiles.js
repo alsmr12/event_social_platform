@@ -15,58 +15,23 @@ document.addEventListener('DOMContentLoaded', async function() {
                 <h2>Все пользователи (${users.length})</h2>
 
                 ${users.length > 0 ? `
-                <div style="display: flex; flex-direction: column; gap: 16px;">
+                <div class="grid grid-3">
                     ${users.map(user => `
-                        <div class="card" style="padding: 20px;">
-                            <div style="display: flex; align-items: flex-start; gap: 16px;">
-                                <!-- Аватар -->
-                                <div style="
-                                    width: 48px; 
-                                    height: 48px; 
-                                    border-radius: 8px; 
-                                    background: var(--light-bg);
-                                    display: flex; 
-                                    align-items: center; 
-                                    justify-content: center; 
-                                    color: var(--text-muted); 
-                                    font-weight: bold; 
-                                    font-size: 1.1em;
-                                    flex-shrink: 0;
-                                    border: 1px solid var(--border-color);
-                                ">
-                                    ${user.first_name ? user.first_name[0].toUpperCase() : 'U'}
-                                </div>
-                                
-                                <!-- Основная информация -->
-                                <div style="flex: 1;">
-                                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                                        <h4 style="margin: 0; color: var(--text-color);">${user.first_name} ${user.last_name}</h4>
-                                        ${user.age ? `<span style="color: var(--text-muted); font-size: 0.9em;">${user.age} лет</span>` : ''}
-                                    </div>
-                                    
-                                    <p style="color: var(--text-muted); margin: 0 0 16px 0;">${user.email}</p>
-                                    
-                                    <!-- Статистика -->
-                                    <div style="display: flex; gap: 24px;">
-                                        <div style="text-align: center;">
-                                            <div style="font-size: 1.2em; font-weight: 600; color: var(--text-color);">${user.followers_count || 0}</div>
-                                            <div style="font-size: 0.8em; color: var(--text-muted);">Подписчиков</div>
-                                        </div>
-                                        <div style="text-align: center;">
-                                            <div style="font-size: 1.2em; font-weight: 600; color: var(--text-color);">${user.following_count || 0}</div>
-                                            <div style="font-size: 0.8em; color: var(--text-muted);">Подписок</div>
-                                        </div>
-                                        <div style="text-align: center;">
-                                            <div style="font-size: 1.2em; font-weight: 600; color: var(--text-color);">${user.friends_count || 0}</div>
-                                            <div style="font-size: 0.8em; color: var(--text-muted);">Друзей</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Кнопка -->
-                                <div style="flex-shrink: 0;">
-                                    <a href="/profile/${user.id}" class="btn btn-outline btn-small">Профиль</a>
-                                </div>
+                        <div class="card">
+                            <h4>${user.first_name} ${user.last_name}</h4>
+                            <p style="color: var(--text-muted); margin: 10px 0;">${user.email}</p>
+                            ${user.age ? `<p>Возраст: ${user.age} ${user.age === 1 || (user.age % 10 === 1 && user.age % 100 !== 11) ? 'год' : (user.age >= 2 && user.age <= 4 || (user.age % 10 >= 2 && user.age % 10 <= 4 && !(user.age % 100 >= 12 && user.age % 100 <= 14))) ? 'года' : 'лет'}</p>` : ''}
+
+                            <!-- Статистика -->
+                            <div style="font-size: 0.9em; color: var(--text-muted); margin: 15px 0; padding: 10px; background: var(--light-bg); border-radius: 4px;">
+                                <div>Подписчиков: ${user.followers_count || 0}</div>
+                                <div>Подписок: ${user.following_count || 0}</div>
+                                <div>Друзей: ${user.friends_count || 0}</div>
+                            </div>
+
+                            <!-- Действия -->
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <a href="/profile/${user.id}" class="btn btn-outline btn-small">Профиль</a>
                             </div>
                         </div>
                     `).join('')}

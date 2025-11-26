@@ -179,6 +179,9 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	friendshipRepo := repository.NewFriendshipRepository(db)
 	friendsCount, _ := friendshipRepo.GetFriendsCount(uint(id))
 
+	age := user.GetAge()
+	ageText := getAgeText(age)
+
 	c.HTML(http.StatusOK, "base.html", gin.H{
 		"Title":             "Профиль " + user.FirstName + " " + user.LastName,
 		"NavActive":         "profile",
@@ -192,6 +195,8 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		"IsSubscribed":      isSubscribed,
 		"FriendshipStatus":  friendshipStatus,
 		"IsIncomingRequest": isIncomingRequest,
+		"Age":               age,
+		"AgeText":           ageText,
 	})
 }
 
@@ -211,11 +216,16 @@ func (h *UserHandler) ShowEditProfileForm(c *gin.Context) {
 		socialLinks = []*models.SocialLink{}
 	}
 
+	age := currentUser.GetAge()
+	ageText := getAgeText(age)
+
 	c.HTML(http.StatusOK, "base.html", gin.H{
 		"Title":       "Редактирование профиля",
 		"NavActive":   "edit_profile",
 		"CurrentUser": currentUser,
 		"SocialLinks": socialLinks,
+		"Age":         age,
+		"AgeText":     ageText,
 	})
 }
 
@@ -260,6 +270,10 @@ func (h *UserHandler) GetAllProfilesJSON(c *gin.Context) {
 		wallRepo := repository.NewWallRepository(h.userRepo.GetDB())
 		posts, _ := wallRepo.GetPostsByUserID(user.ID)
 		user.Posts = posts
+
+		// Добавляем возраст и текст
+		age := user.GetAge()
+		user.AgeText = getAgeText(age)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -339,6 +353,9 @@ func (h *UserHandler) UpdateProfileJSON(c *gin.Context) {
 
 	log.Printf("✅ UpdateProfileJSON: Profile updated successfully for user %s", user.Email)
 
+	age := user.GetAge()
+	ageText := getAgeText(age)
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Профиль успешно обновлен",
@@ -349,10 +366,21 @@ func (h *UserHandler) UpdateProfileJSON(c *gin.Context) {
 			"last_name":  user.LastName,
 			"gender":     user.Gender,
 			"birth_date": user.BirthDate.Format("2006-01-02"),
-			"age":        user.GetAge(), // Вычисляем возраст на лету
+			"age":        age,
+			"age_text":   ageText,
 			"phone":      user.Phone,
 		},
 	})
+}
+
+// getAgeText возвращает правильную форму слова "год" в зависимости от возраста
+func getAgeText(age int) string {
+	if age == 1 || (age%10 == 1 && age%100 != 11) {
+		return "год"
+	} else if age >= 2 && age <= 4 || (age%10 >= 2 && age%10 <= 4 && !(age%100 >= 12 && age%100 <= 14)) {
+		return "года"
+	}
+	return "лет"
 }
 
 // GetUserStatsJSON - получение статистики пользователя
@@ -365,6 +393,9 @@ func (h *UserHandler) GetUserStatsJSON(c *gin.Context) {
 		})
 		return
 	}
+
+	age := currentUser.GetAge()
+	ageText := getAgeText(age)
 
 	db := h.userRepo.GetDB()
 
@@ -388,6 +419,8 @@ func (h *UserHandler) GetUserStatsJSON(c *gin.Context) {
 			"followers_count": followersCount,
 			"following_count": followingCount,
 			"events_count":    userEventsCount,
+			"age":             age,
+			"age_text":        ageText,
 		},
 	})
 }

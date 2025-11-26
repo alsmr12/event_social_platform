@@ -29,6 +29,7 @@ type User struct {
 	FriendsCount   int           `json:"friends_count,omitempty"`
 	SocialLinks    []*SocialLink `json:"social_links,omitempty"`
 	Posts          []*WallPost   `json:"posts,omitempty"`
+	AgeText        string        `json:"age_text,omitempty"` // Текст для правильного склонения возраста
 }
 
 // HashPassword хеширует пароль перед сохранением
