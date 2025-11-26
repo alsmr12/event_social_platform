@@ -137,15 +137,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 			})
 		})
 
-		protected.GET("/profile/:id", func(c *gin.Context) {
-			idStr := c.Param("id")
-			c.HTML(http.StatusOK, "base.html", gin.H{
-				"Title":       "Профиль пользователя",
-				"NavActive":   "profile",
-				"ProfileID":   idStr,
-				"CurrentUser": GetUserFromContext(c),
-			})
-		})
+		protected.GET("/profile/:id", userHandler.GetProfile)
 
 		// В разделе protected добавляем:
 		protected.GET("/events", func(c *gin.Context) {
