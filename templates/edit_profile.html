@@ -1,0 +1,183 @@
+{{define "edit_profile_content"}}
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    <h2 style="text-align: center; margin-bottom: 30px;">Редактирование профиля</h2>
+
+    {{if .Error}}
+    <div class="alert alert-error">
+        {{.Error}}
+    </div>
+    {{end}}
+
+    <form action="/edit-profile" method="POST">
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" value="{{.User.Email}}" class="form-control" readonly style="background: var(--light-bg);">
+            <small style="color: var(--text-muted);">Email нельзя изменить</small>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="first_name">Имя *</label>
+                <input type="text" id="first_name" name="first_name" value="{{.User.FirstName}}" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="last_name">Фамилия *</label>
+                <input type="text" id="last_name" name="last_name" value="{{.User.LastName}}" class="form-control" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="gender">Пол</label>
+                <select id="gender" name="gender" class="form-control">
+                    <option value="">Не указано</option>
+                    <option value="male" {{if eq .User.Gender "male"}}selected{{end}}>Мужской</option>
+                    <option value="female" {{if eq .User.Gender "female"}}selected{{end}}>Женский</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="birth_date">Дата рождения</label>
+                <input type="date" id="birth_date" name="birth_date" value="{{if not .User.BirthDate.IsZero}}{{.User.BirthDate.Format "2006-01-02"}}{{end}}" class="form-control">
+                <small style="color: var(--text-muted);">Возраст: <span id="age-display">{{.User.GetAge}}</span> лет</small>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="phone">Телефон</label>
+            <input type="tel" id="phone" name="phone" value="{{.User.Phone}}" class="form-control" placeholder="+7 (XXX) XXX-XX-XX">
+        </div>
+
+        <!-- ЗАМЕНА: вместо textarea - форма для соцсетей -->
+        <div class="form-group">
+            <label>Социальные сети</label>
+            <div id="social-links-container">
+                {{range .SocialLinks}}
+                <div class="social-link-item" style="margin-bottom: 15px; padding: 15px; border: 1px solid var(--border-color); border-radius: 8px;">
+                    <div class="grid grid-3" style="gap: 10px;">
+                        <div>
+                            <label>Платформа</label>
+                            <select name="platform[]" class="form-control">
+                                <option value="">Выберите платформу</option>
+                                <option value="vk" {{if eq .Platform "vk"}}selected{{end}}>VK</option>
+                                <option value="tg" {{if eq .Platform "tg"}}selected{{end}}>Telegram</option>
+                                <option value="custom" {{if eq .Platform "custom"}}selected{{end}}>Другая сеть</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Username/Ссылка</label>
+                            <input type="text" name="username[]" class="form-control" value="{{.Username}}" placeholder="username или ссылка" required>
+                        </div>
+                        <div>
+                            <label>Название (для кастомных)</label>
+                            <input type="text" name="custom_name[]" class="form-control" value="{{.CustomName}}" placeholder="Название соцсети">
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-danger btn-small" onclick="removeSocialLink(this)" style="margin-top: 10px;">Удалить</button>
+                </div>
+                {{else}}
+                <div class="social-link-item" style="margin-bottom: 15px; padding: 15px; border: 1px solid var(--border-color); border-radius: 8px;">
+                    <div class="grid grid-3" style="gap: 10px;">
+                        <div>
+                            <label>Платформа</label>
+                            <select name="platform[]" class="form-control">
+                                <option value="">Выберите платформу</option>
+                                <option value="vk">VK</option>
+                                <option value="tg">Telegram</option>
+                                <option value="custom">Другая сеть</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Username/Ссылка</label>
+                            <input type="text" name="username[]" class="form-control" placeholder="username или ссылка" required>
+                        </div>
+                        <div>
+                            <label>Название (для кастомных)</label>
+                            <input type="text" name="custom_name[]" class="form-control" placeholder="Название соцсети">
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-danger btn-small" onclick="removeSocialLink(this)" style="margin-top: 10px;">Удалить</button>
+                </div>
+                {{end}}
+            </div>
+
+            <div style="margin: 10px 0;">
+                <button type="button" class="btn btn-outline" onclick="addSocialLink()">+ Добавить соцсеть</button>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+            <a href="/profile" class="btn btn-secondary">Отмена</a>
+            <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Обновление отображения возраста при изменении даты рождения
+    document.addEventListener('DOMContentLoaded', function() {
+        const birthDateInput = document.getElementById('birth_date');
+        const ageDisplay = document.getElementById('age-display');
+
+        function updateAgeDisplay() {
+            const birthDate = birthDateInput.value;
+            if (birthDate) {
+                const birth = new Date(birthDate);
+                const today = new Date();
+                let age = today.getFullYear() - birth.getFullYear();
+                const monthDiff = today.getMonth() - birth.getMonth();
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+                    age--;
+                }
+                ageDisplay.textContent = age;
+            }
+        }
+
+        // Обновляем при изменении даты
+        birthDateInput.addEventListener('change', updateAgeDisplay);
+
+        // Устанавливаем максимальную дату (сегодня)
+        const today = new Date().toISOString().split('T')[0];
+        birthDateInput.setAttribute('max', today);
+        birthDateInput.setAttribute('min', '1900-01-01');
+    });
+    function addSocialLink() {
+        const container = document.getElementById('social-links-container');
+        const newItem = document.createElement('div');
+        newItem.className = 'social-link-item';
+        newItem.style.marginBottom = '15px';
+        newItem.style.padding = '15px';
+        newItem.style.border = '1px solid var(--border-color)';
+        newItem.style.borderRadius = '8px';
+
+        newItem.innerHTML = `
+        <div class="grid grid-3" style="gap: 10px;">
+            <div>
+                <label>Платформа</label>
+                <select name="platform[]" class="form-control">
+                    <option value="">Выберите платформу</option>
+                    <option value="vk">VK</option>
+                    <option value="tg">Telegram</option>
+                    <option value="custom">Другая сеть</option>
+                </select>
+            </div>
+            <div>
+                <label>Username/Ссылка</label>
+                <input type="text" name="username[]" class="form-control" placeholder="username или ссылка" required>
+            </div>
+            <div>
+                <label>Название (для кастомных)</label>
+                <input type="text" name="custom_name[]" class="form-control" placeholder="Название соцсети">
+            </div>
+        </div>
+        <button type="button" class="btn btn-danger btn-small" onclick="removeSocialLink(this)" style="margin-top: 10px;">Удалить</button>
+    `;
+
+        container.appendChild(newItem);
+    }
+
+    function removeSocialLink(button) {
+        const item = button.closest('.social-link-item');
+        item.remove();
+    }
+</script>
+{{end}}
