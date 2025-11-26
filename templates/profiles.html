@@ -8,7 +8,7 @@
         <div class="card">
             <h4>{{.FirstName}} {{.LastName}}</h4>
             <p style="color: var(--text-muted); margin: 10px 0;">{{.Email}}</p>
-            {{if .Age}}<p>{{.Age}} </p>{{end}}
+            {{if .BirthDate}}<p>Возраст: {{.GetAge}} лет</p>{{end}}
 
             <!-- Статистика -->
             <div style="font-size: 0.9em; color: var(--text-muted); margin: 15px 0; padding: 10px; background: var(--light-bg); border-radius: 4px;">

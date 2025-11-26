@@ -41,8 +41,8 @@
             </div>
             <div class="form-group">
                 <label for="birth_date">Дата рождения</label>
-                <input type="date" id="birth_date" name="birth_date" class="form-control">
-                <small style="color: var(--text-muted);">Выберите дату рождения</small>
+                <input type="date" id="birth_date" name="birth_date" class="form-control" required>
+                <small style="color: var(--text-muted);">Возраст: <span id="age-display">0</span> лет</small>
             </div>
         </div>
 
@@ -68,11 +68,40 @@ document.addEventListener('DOMContentLoaded', function() {
     const phoneInput = document.getElementById('phone');
     const form = document.getElementById('registrationForm');
     const birthDateInput = document.getElementById('birth_date');
+    const ageDisplay = document.getElementById('age-display');
+
+    // Функция для вычисления возраста
+    function calculateAge(birthDate) {
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age;
+    }
+
+    // Обновление отображения возраста
+    function updateAgeDisplay() {
+        const birthDateValue = birthDateInput.value;
+        if (birthDateValue) {
+            const birthDate = new Date(birthDateValue);
+            ageDisplay.textContent = calculateAge(birthDate);
+        } else {
+            ageDisplay.textContent = '0';
+        }
+    }
+
+    // Обновляем возраст при изменении даты
+    birthDateInput.addEventListener('change', updateAgeDisplay);
 
     // Установка максимальной даты (сегодня)
     const today = new Date().toISOString().split('T')[0];
     birthDateInput.setAttribute('max', today);
     birthDateInput.setAttribute('min', '1900-01-01');
+
+    // Инициализируем отображение возраста
+    updateAgeDisplay();
 
     // Маска для телефона
     phoneInput.addEventListener('input', function(e) {

@@ -7,14 +7,14 @@ import (
 )
 
 type User struct {
-	ID        uint   `gorm:"primaryKey" json:"id"`
-	Email     string `gorm:"uniqueIndex;not null" json:"email"`
-	Password  string `gorm:"not null" json:"-"`
-	FirstName string `gorm:"not null" json:"first_name"`
-	LastName  string `gorm:"not null" json:"last_name"`
-	Gender    string `gorm:"size:10" json:"gender"`
-	Age       int    `json:"age"`
-	Phone     string `json:"phone"`
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Email     string    `gorm:"uniqueIndex;not null" json:"email"`
+	Password  string    `gorm:"not null" json:"-"`
+	FirstName string    `gorm:"not null" json:"first_name"`
+	LastName  string    `gorm:"not null" json:"last_name"`
+	Gender    string    `gorm:"size:10" json:"gender"`
+	BirthDate time.Time `gorm:"index" json:"birth_date"`
+	Phone     string    `json:"phone"`
 	//SocialLinks string         `gorm:"type:text" json:"social_links"`
 	City      string         `gorm:"size:100" json:"city"`
 	Latitude  float64        `gorm:"index" json:"latitude"`
@@ -40,13 +40,26 @@ func (u *User) CheckPassword(password string) bool {
 	return err == nil
 }
 
+// GetAge возвращает возраст пользователя на основе даты рождения
+func (u *User) GetAge() int {
+	if u.BirthDate.IsZero() {
+		return 0
+	}
+	now := time.Now()
+	age := now.Year() - u.BirthDate.Year()
+	if now.Month() < u.BirthDate.Month() || (now.Month() == u.BirthDate.Month() && now.Day() < u.BirthDate.Day()) {
+		age--
+	}
+	return age
+}
+
 type CreateUserRequest struct {
 	Email     string  `form:"email" binding:"required,email"`
 	Password  string  `form:"password" binding:"required"`
 	FirstName string  `form:"first_name" binding:"required"`
 	LastName  string  `form:"last_name" binding:"required"`
 	Gender    string  `form:"gender"`
-	Age       int     `form:"age"`
+	BirthDate string  `form:"birth_date"`
 	Phone     string  `form:"phone"`
 	City      string  `form:"city"`
 	Latitude  float64 `form:"latitude"`
@@ -58,7 +71,7 @@ type UpdateUserRequest struct {
 	FirstName string  `form:"first_name" binding:"required"`
 	LastName  string  `form:"last_name" binding:"required"`
 	Gender    string  `form:"gender"`
-	Age       int     `form:"age"`
+	BirthDate string  `form:"birth_date"`
 	Phone     string  `form:"phone"`
 	City      string  `form:"city"`
 	Latitude  float64 `form:"latitude"`

@@ -36,8 +36,9 @@
                 </select>
             </div>
             <div class="form-group">
-                <label for="age">Возраст</label>
-                <input type="number" id="age" name="age" value="{{.User.Age}}" class="form-control" min="1" max="120">
+                <label for="birth_date">Дата рождения</label>
+                <input type="date" id="birth_date" name="birth_date" value="{{if not .User.BirthDate.IsZero}}{{.User.BirthDate.Format "2006-01-02"}}{{end}}" class="form-control">
+                <small style="color: var(--text-muted);">Возраст: <span id="age-display">{{.User.GetAge}}</span> лет</small>
             </div>
         </div>
 
@@ -112,6 +113,33 @@
 </div>
 
 <script>
+    // Обновление отображения возраста при изменении даты рождения
+    document.addEventListener('DOMContentLoaded', function() {
+        const birthDateInput = document.getElementById('birth_date');
+        const ageDisplay = document.getElementById('age-display');
+
+        function updateAgeDisplay() {
+            const birthDate = birthDateInput.value;
+            if (birthDate) {
+                const birth = new Date(birthDate);
+                const today = new Date();
+                let age = today.getFullYear() - birth.getFullYear();
+                const monthDiff = today.getMonth() - birth.getMonth();
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+                    age--;
+                }
+                ageDisplay.textContent = age;
+            }
+        }
+
+        // Обновляем при изменении даты
+        birthDateInput.addEventListener('change', updateAgeDisplay);
+
+        // Устанавливаем максимальную дату (сегодня)
+        const today = new Date().toISOString().split('T')[0];
+        birthDateInput.setAttribute('max', today);
+        birthDateInput.setAttribute('min', '1900-01-01');
+    });
     function addSocialLink() {
         const container = document.getElementById('social-links-container');
         const newItem = document.createElement('div');

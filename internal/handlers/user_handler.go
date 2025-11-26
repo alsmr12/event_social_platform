@@ -5,6 +5,7 @@ import (
 	"event_social_platform/internal/repository"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -40,9 +41,24 @@ func (h *UserHandler) CreateProfile(c *gin.Context) {
 		c.HTML(http.StatusBadRequest, "base.html", gin.H{
 			"Title":     "Регистрация",
 			"NavActive": "register",
-			"Error":     "Неверные данные формы",
+			"Error":     "Неверные данные формы: " + err.Error(),
 		})
 		return
+	}
+
+	// Конвертация строки даты в time.Time
+	var birthDate time.Time
+	if req.BirthDate != "" {
+		var err error
+		birthDate, err = time.Parse("2006-01-02", req.BirthDate)
+		if err != nil {
+			c.HTML(http.StatusBadRequest, "base.html", gin.H{
+				"Title":     "Регистрация",
+				"NavActive": "register",
+				"Error":     "Неверный формат даты рождения: " + err.Error(),
+			})
+			return
+		}
 	}
 
 	if h.userRepo.UserExists(req.Email) {
@@ -59,7 +75,7 @@ func (h *UserHandler) CreateProfile(c *gin.Context) {
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
 		Gender:    req.Gender,
-		Age:       req.Age,
+		BirthDate: birthDate,
 		Phone:     req.Phone,
 		City:      req.City,
 		Latitude:  req.Latitude,
@@ -285,11 +301,26 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	// Обновляем данные пользователя
+	// Конвертация строки даты в time.Time
+	if req.BirthDate != "" {
+		birthDate, err := time.Parse("2006-01-02", req.BirthDate)
+		if err != nil {
+			c.HTML(http.StatusBadRequest, "base.html", gin.H{
+				"Title":       "Редактирование профиля",
+				"NavActive":   "profile",
+				"Error":       "Неверный формат даты рождения: " + err.Error(),
+				"User":        currentUser,
+				"CurrentUser": currentUser,
+			})
+			return
+		}
+		currentUser.BirthDate = birthDate
+	}
+
+	// Обновляем остальные данные пользователя
 	currentUser.FirstName = req.FirstName
 	currentUser.LastName = req.LastName
 	currentUser.Gender = req.Gender
-	currentUser.Age = req.Age
 	currentUser.Phone = req.Phone
 	currentUser.City = req.City
 	currentUser.Latitude = req.Latitude

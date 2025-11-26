@@ -37,7 +37,7 @@
                         {{else}}{{.User.Gender}}{{end}}
                     </div>
                 {{end}}
-                {{if .User.Age}}<div><strong>Возраст:</strong> {{.User.Age}} </div>{{end}}
+                {{if .User.BirthDate}}<div><strong>Возраст:</strong> {{.User.GetAge}} лет</div>{{end}}
                 {{if .User.Phone}}<div><strong>Телефон:</strong> {{.User.Phone}}</div>{{end}}
                 <div><strong>Зарегистрирован:</strong> {{.User.CreatedAt.Format "02.01.2006"}}</div>
             </div>
