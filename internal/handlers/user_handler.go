@@ -126,10 +126,26 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	// Получаем записи на стене пользователя
+	// Получаем записи на стене пользователя с пагинацией
 	db := h.userRepo.GetDB()
 	wallRepo := repository.NewWallRepository(db)
-	posts, err := wallRepo.GetPostsByUserID(uint(id))
+
+	// Параметры пагинации
+	page := c.DefaultQuery("page", "1")
+	limit := c.DefaultQuery("limit", "10")
+
+	pageInt, _ := strconv.Atoi(page)
+	limitInt, _ := strconv.Atoi(limit)
+	if pageInt < 1 {
+		pageInt = 1
+	}
+	if limitInt < 1 || limitInt > 100 {
+		limitInt = 10
+	}
+
+	offset := (pageInt - 1) * limitInt
+
+	posts, err := wallRepo.GetPostsByUserID(uint(id), limitInt, offset)
 	if err != nil {
 		posts = []*models.WallPost{}
 	}
@@ -201,14 +217,12 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 }
 
 func (h *UserHandler) ShowEditProfileForm(c *gin.Context) {
-	// Получаем текущего пользователя
 	currentUser := GetUserFromContext(c)
 	if currentUser == nil {
 		c.Redirect(http.StatusSeeOther, "/login")
 		return
 	}
 
-	// Получаем социальные сети пользователя
 	db := h.userRepo.GetDB()
 	socialRepo := repository.NewSocialLinkRepository(db)
 	socialLinks, err := socialRepo.GetByUserID(currentUser.ID)
@@ -216,23 +230,114 @@ func (h *UserHandler) ShowEditProfileForm(c *gin.Context) {
 		socialLinks = []*models.SocialLink{}
 	}
 
-	age := currentUser.GetAge()
-	ageText := getAgeText(age)
-
 	c.HTML(http.StatusOK, "base.html", gin.H{
 		"Title":       "Редактирование профиля",
 		"NavActive":   "edit_profile",
+		"User":        currentUser,
 		"CurrentUser": currentUser,
 		"SocialLinks": socialLinks,
-		"Age":         age,
-		"AgeText":     ageText,
 	})
 }
 
 func (h *UserHandler) UpdateProfile(c *gin.Context) {
-	// Перенаправляем на использование JSON API метода
-	// Это позволяет избежать дублирования кода и использовать единый метод обновления профиля
-	h.UpdateProfileJSON(c)
+	currentUser := GetUserFromContext(c)
+	if currentUser == nil {
+		c.Redirect(http.StatusSeeOther, "/login")
+		return
+	}
+
+	var req models.UpdateUserRequest
+	if err := c.ShouldBind(&req); err != nil {
+		c.HTML(http.StatusBadRequest, "base.html", gin.H{
+			"Title":       "Редактирование профиля",
+			"NavActive":   "profile",
+			"Error":       "Неверные данные формы: " + err.Error(),
+			"User":        currentUser,
+			"CurrentUser": currentUser,
+		})
+		return
+	}
+
+	// Конвертация строки даты в time.Time
+	if req.BirthDate != "" {
+		birthDate, err := time.Parse("2006-01-02", req.BirthDate)
+		if err != nil {
+			c.HTML(http.StatusBadRequest, "base.html", gin.H{
+				"Title":       "Редактирование профиля",
+				"NavActive":   "profile",
+				"Error":       "Неверный формат даты рождения: " + err.Error(),
+				"User":        currentUser,
+				"CurrentUser": currentUser,
+			})
+			return
+		}
+		currentUser.BirthDate = birthDate
+	}
+
+	// Обновляем остальные данные пользователя
+	currentUser.FirstName = req.FirstName
+	currentUser.LastName = req.LastName
+	currentUser.Gender = req.Gender
+	currentUser.Phone = req.Phone
+	currentUser.City = req.City
+	currentUser.Latitude = req.Latitude
+	currentUser.Longitude = req.Longitude
+	//currentUser.SocialLinks = req.SocialLinks
+
+	if err := h.userRepo.UpdateUser(currentUser); err != nil {
+		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+			"Title":       "Редактирование профиля",
+			"NavActive":   "profile",
+			"Error":       "Ошибка обновления профиля: " + err.Error(),
+			"User":        currentUser,
+			"CurrentUser": currentUser,
+		})
+		return
+	}
+
+	db := h.userRepo.GetDB()
+	socialRepo := repository.NewSocialLinkRepository(db)
+
+	// Удаляем старые соцсети
+	if err := socialRepo.DeleteByUserID(currentUser.ID); err != nil {
+		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+			"Title":       "Редактирование профиля",
+			"NavActive":   "profile",
+			"Error":       "Ошибка обновления социальных сетей: " + err.Error(),
+			"User":        currentUser,
+			"CurrentUser": currentUser,
+		})
+		return
+	}
+
+	// Сохраняем новые соцсети
+	platforms := c.PostFormArray("platform[]")
+	usernames := c.PostFormArray("username[]")
+	customNames := c.PostFormArray("custom_name[]")
+
+	for i, platform := range platforms {
+		if platform != "" && i < len(usernames) && usernames[i] != "" {
+			socialLink := &models.SocialLink{
+				UserID:     currentUser.ID,
+				Platform:   platform,
+				Username:   usernames[i],
+				CustomName: customNames[i],
+			}
+			if err := socialRepo.Create(socialLink); err != nil {
+				c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+					"Title":       "Редактирование профиля",
+					"NavActive":   "profile",
+					"Error":       "Ошибка сохранения социальных сетей: " + err.Error(),
+					"User":        currentUser,
+					"CurrentUser": currentUser,
+				})
+				return
+			}
+		}
+	}
+	// === КОНЕЦ ОБРАБОТКИ СОЦСЕТЕЙ ===
+
+	c.Redirect(http.StatusSeeOther, "/profile")
 }
 
 func (h *UserHandler) GetAllProfilesJSON(c *gin.Context) {

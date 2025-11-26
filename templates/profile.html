@@ -33,7 +33,7 @@
                         {{else}}{{.User.Gender}}{{end}}
                     </div>
                 {{end}}
-                {{if .User.BirthDate}}<div><strong>Возраст:</strong> {{.User.GetAge}} {{.AgeText}}</div>{{end}}
+                {{if .User.BirthDate}}<div><strong>Возраст:</strong> {{.User.GetAge}} лет</div>{{end}}
                 {{if .User.Phone}}<div><strong>Телефон:</strong> {{.User.Phone}}</div>{{end}}
                 <div><strong>Зарегистрирован:</strong> {{.User.CreatedAt.Format "02.01.2006"}}</div>
             </div>
@@ -152,7 +152,51 @@
         </div>
         {{end}}
     </div>
+    <!-- Пагинация (фронтенд) -->
+    {{if .Posts}}
+    <div class="pagination-frontend">
+        <button onclick="changePage(-1)" class="btn btn-outline btn-small" id="prevBtn">← Назад</button>
+        <span class="pagination-info">Страница <span id="currentPage">1</span> из <span id="totalPages">1</span></span>
+        <button onclick="changePage(1)" class="btn btn-outline btn-small" id="nextBtn">Вперед →</button>
+    </div>
 
+    <script>
+        let currentPage = 1;
+        const postsPerPage = 5;
+        const allPosts = document.querySelectorAll('.post');
+        const totalPages = Math.ceil(allPosts.length / postsPerPage);
+
+        document.getElementById('totalPages').textContent = totalPages;
+
+        function showPage(page) {
+            const startIndex = (page - 1) * postsPerPage;
+            const endIndex = startIndex + postsPerPage;
+
+            allPosts.forEach((post, index) => {
+                if (index >= startIndex && index < endIndex) {
+                    post.style.display = 'block';
+                } else {
+                    post.style.display = 'none';
+                }
+            });
+
+            document.getElementById('currentPage').textContent = page;
+            document.getElementById('prevBtn').disabled = page === 1;
+            document.getElementById('nextBtn').disabled = page === totalPages;
+        }
+
+        function changePage(direction) {
+            const newPage = currentPage + direction;
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                showPage(currentPage);
+            }
+        }
+
+        // Инициализация
+        showPage(1);
+    </script>
+    {{end}}
     {{else}}
     <div class="empty-state">
         <h3>Профиль не найден</h3>
