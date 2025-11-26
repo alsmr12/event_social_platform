@@ -62,6 +62,7 @@ import androidx.compose.ui.window.Dialog
 import com.ark.socialevent.network.EventRepository
 import com.ark.socialevent.network.UserProfile
 import com.ark.socialevent.network.UserRepository
+import com.ark.socialevent.ui.screens.events.EventDetailsDialog
 import com.ark.socialevent.ui.screens.events.EventsScreen
 import com.ark.socialevent.ui.screens.events.MyEventsScreen
 import com.ark.socialevent.ui.screens.friends.FriendsScreen
@@ -112,6 +113,13 @@ fun MainScreen(
     val onBackFromProfile = {
         selectedUserId = null
     }
+
+    var selectedEvent by remember { mutableStateOf<com.ark.socialevent.network.Event?>(null) }
+
+    val openEvent = { event: com.ark.socialevent.network.Event ->
+        selectedEvent = event
+    }
+
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -260,10 +268,12 @@ fun MainScreen(
                             )
                             DrawerScreens.News -> NewsFeedScreen(
                                 userRepository = userRepository,
+                                eventRepository = eventRepository,
                                 onNavigateToPeople = {
                                     currentScreen = DrawerScreens.People
                                 },
-
+                                onOpenProfile = openUserProfile,
+                                onOpenEvent = openEvent
                             )
                             DrawerScreens.MyEvents -> MyEventsScreen(
                                 userRepository = userRepository,
@@ -345,5 +355,19 @@ fun MainScreen(
                 }
             }
         }
+    }
+
+    if (selectedEvent != null) {
+        EventDetailsDialog(
+            event = selectedEvent!!,
+            eventRepository = eventRepository,
+            onDismiss = { selectedEvent = null },
+            onShowMessage = { message ->
+                coroutineScope.launch {
+                    // Можно показать снекбар если нужно
+                    selectedEvent = null // Закрываем диалог после действия
+                }
+            }
+        )
     }
 }

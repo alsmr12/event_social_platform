@@ -197,7 +197,7 @@ api.Use(strictAuth)
     api.DELETE("/events/:id", eventHandler.DeleteEventJSON)
     api.POST("/events/:id/update", eventHandler.UpdateEventJSON)
     api.POST("/events/:id/delete", eventHandler.DeleteEventJSON)
-	
+	api.GET("/event/:id", eventHandler.GetEventJSON)
 	api.GET("/friends/subscriptions", subscriptionHandler.GetSubscriptionsJSON)
 	api.GET("/friends/check-subscription/:id", subscriptionHandler.CheckSubscriptionJSON)
 	api.POST("/friends/subscribe/:id", subscriptionHandler.SubscribeJSON)

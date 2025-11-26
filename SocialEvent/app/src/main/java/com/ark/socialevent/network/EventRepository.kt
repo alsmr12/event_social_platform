@@ -404,4 +404,40 @@ class EventRepository(private val context: Context) {
             }
         })
     }
+
+    fun getEventById(eventId: Int, callback: (Event?, String?) -> Unit) {
+        Log.d("EventRepository", "=== GET EVENT BY ID: $eventId ===")
+
+        api.getEvent(eventId).enqueue(object : Callback<EventResponse> {
+            override fun onResponse(call: Call<EventResponse>, response: Response<EventResponse>) {
+                Log.d("EventRepository", "Get event by ID response: ${response.code()}")
+
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        Log.d("EventRepository", "✅ Loaded event: ${body.event?.title}")
+                        callback(body.event, null)
+                    } else {
+                        val errorMsg = body?.message ?: "Неизвестная ошибка"
+                        Log.e("EventRepository", "❌ Get event by ID failed: $errorMsg")
+                        callback(null, errorMsg)
+                    }
+                } else {
+                    Log.e("EventRepository", "❌ Get event by ID HTTP error: ${response.code()}")
+                    val errorMsg = when (response.code()) {
+                        404 -> "Событие не найдено"
+                        401 -> "Не авторизован"
+                        500 -> "Ошибка сервера"
+                        else -> "Ошибка: ${response.code()}"
+                    }
+                    callback(null, errorMsg)
+                }
+            }
+
+            override fun onFailure(call: Call<EventResponse>, t: Throwable) {
+                Log.e("EventRepository", "❌ Get event by ID NETWORK failed: ${t.message}")
+                callback(null, "Ошибка сети: ${t.message}")
+            }
+        })
+    }
 }

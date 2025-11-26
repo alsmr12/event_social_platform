@@ -1345,3 +1345,61 @@ func (h *EventHandler) GetAllEventsWithFiltersJSON(c *gin.Context) {
         },
     })
 }
+
+// event_handler.go - добавьте этот метод
+// GetEventJSON - получить событие по ID (JSON API)
+func (h *EventHandler) GetEventJSON(c *gin.Context) {
+    currentUser := GetUserFromContext(c)
+    if currentUser == nil {
+        c.JSON(http.StatusUnauthorized, gin.H{
+            "success": false,
+            "message": "Не авторизован",
+        })
+        return
+    }
+
+    idStr := c.Param("id")
+    id, err := strconv.Atoi(idStr)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{
+            "success": false,
+            "message": "Неверный ID события",
+        })
+        return
+    }
+
+    event, err := h.eventRepo.GetEventByID(uint(id))
+    if err != nil {
+        c.JSON(http.StatusNotFound, gin.H{
+            "success": false,
+            "message": "Событие не найдено",
+        })
+        return
+    }
+
+    // Проверяем доступ к приватному событию
+    if event.IsPrivate {
+        hasAccess, _ := h.eventRepo.CanUserAccessEvent(currentUser.ID, event.ID)
+        if !hasAccess {
+            c.JSON(http.StatusForbidden, gin.H{
+                "success": false,
+                "message": "Это приватное событие. У вас нет доступа.",
+            })
+            return
+        }
+    }
+
+    // Получаем информацию о подписке
+    isSubscribed, _ := h.eventSubRepo.IsSubscribed(currentUser.ID, event.ID)
+    subscribersCount, _ := h.eventSubRepo.GetSubscribersCount(event.ID)
+    
+    event.IsSubscribed = isSubscribed
+    event.SubscribersCount = subscribersCount
+    event.IsPast = time.Now().After(event.DateTime)
+
+    c.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "event":   event,
+        "message": "Событие загружено",
+    })
+}

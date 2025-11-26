@@ -1,6 +1,7 @@
 // NewsFeedScreen.kt
 package com.ark.socialevent.ui.screens.news
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,17 +13,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.ark.socialevent.network.EventRepository
 import com.ark.socialevent.network.NewsFeedItem
 import com.ark.socialevent.network.UserRepository
 import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
-fun NewsFeedScreen(userRepository: UserRepository,
-                   onNavigateToPeople: () -> Unit ) {
+fun NewsFeedScreen(
+    userRepository: UserRepository,
+    eventRepository: EventRepository,
+    onNavigateToPeople: () -> Unit,
+    onOpenProfile: (userId: Int) -> Unit,
+    onOpenEvent: (event: com.ark.socialevent.network.Event) -> Unit
+) {
     var newsFeed by remember { mutableStateOf<List<NewsFeedItem>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var loadingEventId by remember { mutableStateOf<Int?>(null) }
 
     fun loadNewsFeed() {
         loading = true
@@ -30,6 +38,19 @@ fun NewsFeedScreen(userRepository: UserRepository,
             newsFeed = items ?: emptyList()
             loading = false
             errorMessage = error
+        }
+    }
+
+
+    val loadFullEvent = { newsEvent: com.ark.socialevent.network.NewsEvent ->
+        loadingEventId = newsEvent.id
+        eventRepository.getEventById(newsEvent.id) { event, error ->
+            loadingEventId = null
+            if (event != null) {
+                onOpenEvent(event)
+            } else {
+                errorMessage = "Не удалось загрузить событие: $error"
+            }
         }
     }
 
@@ -103,7 +124,7 @@ fun NewsFeedScreen(userRepository: UserRepository,
                     verticalArrangement = Arrangement.Center
                 ) {
                     Icon(
-                        Icons.Default.People, // Меняем иконку на People
+                        Icons.Default.People,
                         contentDescription = "Нет подписок",
                         modifier = Modifier.size(64.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -121,7 +142,7 @@ fun NewsFeedScreen(userRepository: UserRepository,
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
-                        onClick = onNavigateToPeople // Используем callback
+                        onClick = onNavigateToPeople
                     ) {
                         Icon(Icons.Default.PersonAdd, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
@@ -135,7 +156,23 @@ fun NewsFeedScreen(userRepository: UserRepository,
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     items(newsFeed) { item ->
-                        NewsFeedItem(item = item)
+                        val isEventLoading = loadingEventId == item.event?.id
+
+                        NewsFeedItem(
+                            item = item,
+                            isEventLoading = isEventLoading,
+                            onAuthorClick = {
+                                onOpenProfile(item.author.id)
+                            },
+                            onEventClick = {
+                                // Если это событие, открываем его
+                                if (item.type == "event" && !isEventLoading) {
+                                    item.event?.let { newsEvent ->
+                                        loadFullEvent(newsEvent)
+                                    }
+                                }
+                            }
+                        )
                         Spacer(modifier = Modifier.height(12.dp))
                     }
                 }
@@ -145,18 +182,32 @@ fun NewsFeedScreen(userRepository: UserRepository,
 }
 
 @Composable
-fun NewsFeedItem(item: NewsFeedItem) {
+fun NewsFeedItem(
+    item: NewsFeedItem,
+    isEventLoading: Boolean = false,
+    onAuthorClick: () -> Unit,
+    onEventClick: () -> Unit
+) {
+    val isEvent = item.type == "event"
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                enabled = isEvent && !isEventLoading,
+                onClick = onEventClick
+            ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Заголовок с автором и временем
+            // Заголовок с автором
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onAuthorClick() },
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Аватар пользователя
                 Icon(
                     Icons.Default.Person,
                     contentDescription = "Автор",
@@ -168,7 +219,8 @@ fun NewsFeedItem(item: NewsFeedItem) {
                     Text(
                         text = "${item.author.firstName} ${item.author.lastName}",
                         style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary
                     )
                     Text(
                         text = formatDate(item.createdAt),
@@ -176,18 +228,22 @@ fun NewsFeedItem(item: NewsFeedItem) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                // Иконка типа контента
-                Icon(
-                    imageVector = when (item.type) {
-                        "event" -> Icons.Default.Event
-                        else -> Icons.Default.Edit // Используем Edit для постов вместо Post
-                    },
-                    contentDescription = when (item.type) {
-                        "event" -> "Событие"
-                        else -> "Запись"
-                    },
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                // Иконка типа контента с индикатором загрузки
+                if (isEventLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                } else {
+                    Icon(
+                        imageVector = when (item.type) {
+                            "event" -> Icons.Default.Event
+                            else -> Icons.Default.Edit
+                        },
+                        contentDescription = when (item.type) {
+                            "event" -> "Событие"
+                            else -> "Запись"
+                        },
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -200,9 +256,16 @@ fun NewsFeedItem(item: NewsFeedItem) {
             )
 
             // Дополнительная информация для событий
-            if (item.type == "event") {
-                item.event?.let { event ->
+            if (isEvent) {
+                item.event?.let { newsEvent ->
                     Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "🎯 ${newsEvent.title}",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
@@ -215,7 +278,7 @@ fun NewsFeedItem(item: NewsFeedItem) {
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = event.location,
+                            text = newsEvent.location,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -233,9 +296,24 @@ fun NewsFeedItem(item: NewsFeedItem) {
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = formatDate(event.dateTime),
+                            text = formatDate(newsEvent.dateTime),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    // Подсказка для клика
+                    Spacer(modifier = Modifier.height(8.dp))
+                    if (isEventLoading) {
+                        Text(
+                            text = "Загрузка события...",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                        )
+                    } else {
+                        Text(
+                            text = "Нажмите для просмотра события →",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                         )
                     }
                 }
@@ -246,7 +324,7 @@ fun NewsFeedItem(item: NewsFeedItem) {
                 item.post?.let { post ->
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Запись на стене",
+                        text = "📝 Запись на стене",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -259,7 +337,6 @@ fun NewsFeedItem(item: NewsFeedItem) {
 // Функция для форматирования даты
 fun formatDate(dateString: String): String {
     return try {
-        // Пробуем разные форматы дат
         val formats = arrayOf(
             SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()),
             SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()),
@@ -280,7 +357,7 @@ fun formatDate(dateString: String): String {
         if (parsedDate != null) {
             outputFormat.format(parsedDate)
         } else {
-            dateString // возвращаем оригинальную строку в случае ошибки
+            dateString
         }
     } catch (e: Exception) {
         dateString
