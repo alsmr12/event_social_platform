@@ -60,8 +60,16 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 	router.GET("/", authMiddleware, userHandler.ShowHomePage)
 
 	// Аутентификация
+	// Веб
 	router.GET("/login", authHandler.ShowLoginForm)
 	router.POST("/login", authHandler.Login)
+
+	// Android / JSON API
+	router.POST("/api/login", authHandler.LoginJSON)
+	router.POST("/api/register", authHandler.RegisterJSON)
+	router.GET("/api/profile", authHandler.ProfileJSON)
+	router.POST("/api/profile", userHandler.UpdateProfileJSON)
+	router.GET("/api/profiles", userHandler.GetAllProfilesJSON)
 
 	// Создание профиля (регистрация)
 	router.GET("/create-profile", userHandler.ShowCreateProfileForm)
@@ -79,65 +87,6 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 		protected.POST("/api/user/location", mapHandler.HandleUserLocation)
 
 		// API для получения событий
-		protected.GET("/api/events", func(c *gin.Context) {
-			currentUserId := c.GetUint("user_id")
-
-			// Фильтр по типу события, если указан
-			filterType := c.DefaultQuery("type", "all")
-			filter := repository.EventFilter{
-				Type: filterType,
-			}
-
-			// Получаем все события с фильтрацией
-			events, err := eventRepo.GetEventsWithFilter(filter)
-			if err != nil {
-				c.JSON(500, gin.H{"error": "Failed to get events"})
-				return
-			}
-
-			// Фильтруем события, к которым пользователь имеет доступ
-			var accessibleEvents []gin.H
-			for _, event := range events {
-				// Всегда включаем публичные события
-				if !event.IsPrivate {
-					accessibleEvents = append(accessibleEvents, gin.H{
-						"id":          event.ID,
-						"title":       event.Title,
-						"description": event.Description,
-						"type":        event.Type,
-						"date_time":   event.DateTime,
-						"location":    event.Location,
-						"latitude":    event.Latitude,
-						"longitude":   event.Longitude,
-						"creator": gin.H{
-							"first_name": event.Creator.FirstName,
-							"last_name":  event.Creator.LastName,
-						},
-					})
-					// Для приватных событий проверяем доступ (пользователь авторизован)
-				} else {
-					hasAccess, _ := eventRepo.CanUserAccessEvent(currentUserId, event.ID)
-					if hasAccess {
-						accessibleEvents = append(accessibleEvents, gin.H{
-							"id":          event.ID,
-							"title":       event.Title,
-							"description": event.Description,
-							"type":        event.Type,
-							"date_time":   event.DateTime,
-							"location":    event.Location,
-							"latitude":    event.Latitude,
-							"longitude":   event.Longitude,
-							"creator": gin.H{
-								"first_name": event.Creator.FirstName,
-								"last_name":  event.Creator.LastName,
-							},
-						})
-					}
-				}
-			}
-
-			c.JSON(200, gin.H{"events": accessibleEvents})
-		})
 
 		// API для получения данных для тепловой карты
 		protected.GET("/api/heatmap", mapHandler.HandleHeatmap)
@@ -181,6 +130,9 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 			eventGroup.POST("/delete/:id", eventHandler.DeleteEvent)
 			eventGroup.GET("/edit/:id", eventHandler.ShowEditEventForm)
 			eventGroup.POST("/edit/:id", eventHandler.UpdateEvent)
+
+			// И в API группе добавь:
+
 		}
 
 		// Подписки на события
@@ -211,10 +163,55 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 		protected.GET("/edit-profile", userHandler.ShowEditProfileForm)
 		protected.POST("/edit-profile", userHandler.UpdateProfile)
 
+		protected.GET("/api/events", eventHandler.GetAllEventsJSON)
+		protected.POST("/api/create-event", eventHandler.CreateEventJSON)
+		protected.POST("/api/event/:id/subscribe", eventHandler.SubscribeJSON)
+		protected.POST("/api/event/:id/unsubscribe", eventHandler.UnsubscribeJSON)
+
+		protected.GET("/api/events/feed", eventHandler.GetEventsFeedJSON)            // Лента событий от подписок
+		protected.GET("/api/events/user/:user_id", eventHandler.GetUserEventsJSON)   // События пользователя
+		protected.POST("/api/events/join-by-code", eventHandler.JoinEventByCodeJSON) // Присоединиться по коду
+
 		// Выход
 		protected.GET("/logout", authHandler.Logout)
 	}
 
 	// Инициализируем базовые достижения
 	achievementRepo.InitializeAchievements()
+	// ==================== ANDROID API ROUTES ====================
+	api := router.Group("/api")
+	api.Use(strictAuth)
+	{
+		// Друзья API
+		api.GET("/friends", friendshipHandler.GetFriendsJSON)
+		api.GET("/friends/pending", friendshipHandler.GetPendingRequestsJSON)
+		api.GET("/friends/sent", friendshipHandler.GetSentRequestsJSON)
+		api.GET("/friends/status/:id", friendshipHandler.GetFriendshipStatusJSON)
+		api.POST("/friends/add/:id", friendshipHandler.SendFriendRequestJSON)
+		api.POST("/friends/accept/:id", friendshipHandler.AcceptFriendRequestJSON)
+		api.POST("/friends/reject/:id", friendshipHandler.RejectFriendRequestJSON)
+		api.POST("/friends/remove/:id", friendshipHandler.RemoveFriendJSON)
+		api.POST("/friends/cancel/:id", friendshipHandler.CancelFriendRequestJSON)
+		api.PUT("/profile", userHandler.UpdateProfileJSON)
+		api.GET("/profile/stats", userHandler.GetUserStatsJSON)
+		api.GET("/wall/posts/:user_id", wallHandler.GetUserWallPostsJSON)
+		api.POST("/wall/posts", wallHandler.CreatePostJSON)
+		api.PUT("/wall/posts/:id", wallHandler.UpdatePostJSON)
+		api.DELETE("/wall/posts/:id", wallHandler.DeletePostJSON)
+
+		api.PUT("/events/:id", eventHandler.UpdateEventJSON)
+		api.DELETE("/events/:id", eventHandler.DeleteEventJSON)
+		api.POST("/events/:id/update", eventHandler.UpdateEventJSON)
+		api.POST("/events/:id/delete", eventHandler.DeleteEventJSON)
+		api.GET("/event/:id", eventHandler.GetEventJSON)
+		api.GET("/friends/subscriptions", subscriptionHandler.GetSubscriptionsJSON)
+		api.GET("/friends/check-subscription/:id", subscriptionHandler.CheckSubscriptionJSON)
+		api.POST("/friends/subscribe/:id", subscriptionHandler.SubscribeJSON)
+		api.POST("/friends/unsubscribe/:id", subscriptionHandler.UnsubscribeJSON)
+		api.GET("/profile/:id/subscription-stats", subscriptionHandler.GetSubscriptionStatsJSON)
+		api.GET("/events/filtered", eventHandler.GetAllEventsWithFiltersJSON)
+		// Лента новостей
+		api.GET("/news", newsHandler.GetNewsFeedJSON)
+
+	}
 }

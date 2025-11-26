@@ -81,7 +81,20 @@ func (h *MapHandler) analyzeSentiment(text string) float64 {
 
 // HandleMap отображает страницу карты
 func (h *MapHandler) HandleMap(c *gin.Context) {
-	currentUserId := c.GetUint("user_id")
+	userIDInterface, exists := c.Get("user_id")
+	if !exists {
+		log.Printf("❌ HandleMap: user_id not found in context")
+		c.Redirect(302, "/login")
+		return
+	}
+
+	currentUserId, ok := userIDInterface.(uint)
+	if !ok || currentUserId == 0 {
+		log.Printf("❌ HandleMap: invalid user_id: %v (type: %T)", userIDInterface, userIDInterface)
+		c.Redirect(302, "/login")
+		return
+	}
+
 	user, err := h.UserRepo.GetUserByID(currentUserId)
 	if err != nil || user == nil {
 		c.Redirect(302, "/login")

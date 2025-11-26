@@ -2,7 +2,9 @@ package repository
 
 import (
 	"event_social_platform/internal/models"
+	"fmt"
 	"gorm.io/gorm"
+	"strings"
 )
 
 type NewsRepository struct {
@@ -305,4 +307,78 @@ func (r *NewsRepository) GetTotalEventsCount(userID uint) (int64, error) {
 	}
 
 	return count, nil
+}
+
+func (r *NewsRepository) GetPostsFromUsers(userIDs []uint, limit, offset int) ([]*models.WallPost, error) {
+	var posts []*models.WallPost
+
+	if len(userIDs) == 0 {
+		return posts, nil // Возвращаем пустой список если нет пользователей
+	}
+
+	// Создаем placeholders для IN запроса
+	placeholders := make([]string, len(userIDs))
+	args := make([]interface{}, len(userIDs))
+	for i, id := range userIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	query := fmt.Sprintf(`
+        SELECT wp.*, u.* 
+        FROM wall_posts wp
+        JOIN users u ON wp.author_id = u.id
+        WHERE wp.author_id IN (%s) 
+        ORDER BY wp.created_at DESC 
+        LIMIT ? OFFSET ?
+    `, strings.Join(placeholders, ","))
+
+	// Добавляем limit и offset в аргументы
+	args = append(args, limit, offset)
+
+	err := r.db.Raw(query, args...).
+		Preload("Author").
+		Find(&posts).Error
+
+	return posts, err
+}
+
+// GetEventsFromUsers - получить события от конкретных пользователей
+func (r *NewsRepository) GetEventsFromUsers(userIDs []uint, limit, offset int) ([]*models.Event, error) {
+	var events []*models.Event
+
+	if len(userIDs) == 0 {
+		return events, nil // Возвращаем пустой список если нет пользователей
+	}
+
+	// Создаем placeholders для IN запроса
+	placeholders := make([]string, len(userIDs))
+	args := make([]interface{}, len(userIDs))
+	for i, id := range userIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	query := fmt.Sprintf(`
+        SELECT e.*, u.* 
+        FROM events e
+        JOIN users u ON e.creator_id = u.id
+        WHERE e.creator_id IN (%s) 
+        AND e.is_private = false  -- Только публичные события
+        ORDER BY e.created_at DESC 
+        LIMIT ? OFFSET ?
+    `, strings.Join(placeholders, ","))
+
+	// Добавляем limit и offset в аргументы
+	args = append(args, limit, offset)
+
+	err := r.db.Raw(query, args...).
+		Preload("Creator").
+		Find(&events).Error
+
+	return events, err
+}
+
+func (r *NewsRepository) GetDB() *gorm.DB {
+	return r.db
 }

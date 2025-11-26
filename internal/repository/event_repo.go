@@ -256,3 +256,39 @@ func (r *EventRepository) GetUserEventsCount(userID uint, count *int64) error {
 		Where("creator_id = ?", userID).
 		Count(count).Error
 }
+
+func (r *EventRepository) GetUserEventsCountAndroid(userID uint) (int64, error) {
+	var count int64
+	err := r.db.Model(&models.Event{}).Where("creator_id = ?", userID).Count(&count).Error
+	return count, err
+}
+
+func (r *EventRepository) GetEventsFromUsers(userIDs []uint, limit, offset int) ([]*models.Event, error) {
+	var events []*models.Event
+	err := r.db.Preload("Creator").
+		Where("creator_id IN (?)", userIDs).
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&events).Error
+	if err != nil {
+		return nil, err
+	}
+	return events, nil
+}
+
+// Получить события текущего пользователя
+func (r *EventRepository) GetUserEvents(userID uint) ([]*models.Event, error) {
+	var events []*models.Event
+	err := r.db.Preload("Creator").
+		Where("creator_id = ?", userID).
+		Order("created_at DESC").
+		Find(&events).Error
+	if err != nil {
+		return nil, err
+	}
+	return events, nil
+}
+func (r *EventRepository) GetDB() *gorm.DB {
+	return r.db
+}

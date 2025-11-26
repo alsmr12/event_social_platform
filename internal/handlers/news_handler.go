@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"event_social_platform/internal/repository"
+	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
-
-	"github.com/gin-gonic/gin"
+	"time"
 )
 
 type NewsHandler struct {
@@ -81,17 +81,17 @@ func (h *NewsHandler) ShowNewsFeed(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "base.html", gin.H{
-		"Title":        "Новости",
-		"NavActive":    "news",
-		"Posts":        posts,
-		"Events":       events,
-		"CurrentUser":  currentUser,
-		"CurrentPage":  page,
-		"TotalPages":   totalPages,
-		"PostsPerPage": postsPerPage,
+		"Title":         "Новости",
+		"NavActive":     "news",
+		"Posts":         posts,
+		"Events":        events,
+		"CurrentUser":   currentUser,
+		"CurrentPage":   page,
+		"TotalPages":    totalPages,
+		"PostsPerPage":  postsPerPage,
 		"EventsPerPage": eventsPerPage,
-		"TotalPosts":   totalPosts,
-		"TotalEvents":  totalEvents,
+		"TotalPosts":    totalPosts,
+		"TotalEvents":   totalEvents,
 	})
 }
 
@@ -103,4 +103,132 @@ func getPageParam(c *gin.Context) int {
 		return 1
 	}
 	return page
+}
+
+// В news_handler.go добавьте:
+
+// GetNewsFeedJSON - получить ленту новостей (JSON)
+func (h *NewsHandler) GetNewsFeedJSON(c *gin.Context) {
+	currentUser := GetUserFromContext(c)
+	if currentUser == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Не авторизован",
+		})
+		return
+	}
+
+	// 1. Получаем список ID пользователей, на которых подписан текущий пользователь
+	subscriptionRepo := repository.NewSubscriptionRepository(h.newsRepo.GetDB())
+	following, err := subscriptionRepo.GetFollowing(currentUser.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Ошибка получения подписок",
+		})
+		return
+	}
+
+	// Если нет подписок - возвращаем пустую ленту
+	if len(following) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"posts":   []gin.H{},
+			"events":  []gin.H{},
+			"message": "Подпишитесь на пользователей, чтобы видеть их записи",
+		})
+		return
+	}
+
+	// 2. Собираем ID пользователей для фильтрации
+	var followingIDs []uint
+	for _, user := range following {
+		followingIDs = append(followingIDs, user.ID)
+	}
+
+	// 3. Получаем посты ТОЛЬКО от пользователей, на которых подписан
+	posts, err := h.newsRepo.GetPostsFromUsers(followingIDs, 50, 0)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Ошибка загрузки ленты новостей",
+		})
+		return
+	}
+
+	// 4. Получаем события ТОЛЬКО от пользователей, на которых подписан
+	events, err := h.newsRepo.GetEventsFromUsers(followingIDs, 50, 0)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Ошибка загрузки событий",
+		})
+		return
+	}
+
+	// 5. Преобразуем посты в нужный формат
+	var postItems []gin.H
+	for _, post := range posts {
+		postItems = append(postItems, gin.H{
+			"id":      post.ID,
+			"type":    "post",
+			"content": post.Content,
+			"author": gin.H{
+				"id":         post.Author.ID,
+				"email":      post.Author.Email,
+				"first_name": post.Author.FirstName,
+				"last_name":  post.Author.LastName,
+				"gender":     post.Author.Gender,
+				"age":        post.Author.Age,
+				"phone":      post.Author.Phone,
+			},
+			"created_at": post.CreatedAt.Format(time.RFC3339),
+			"post": gin.H{
+				"id":         post.ID,
+				"content":    post.Content,
+				"author_id":  post.AuthorID,
+				"user_id":    post.UserID,
+				"created_at": post.CreatedAt.Format(time.RFC3339),
+				"updated_at": post.UpdatedAt.Format(time.RFC3339),
+			},
+		})
+	}
+
+	// 6. Преобразуем события в нужный формат
+	var eventItems []gin.H
+	for _, event := range events {
+		eventItems = append(eventItems, gin.H{
+			"id":      event.ID,
+			"type":    "event",
+			"content": event.Title + " - " + event.Description,
+			"author": gin.H{
+				"id":         event.Creator.ID,
+				"email":      event.Creator.Email,
+				"first_name": event.Creator.FirstName,
+				"last_name":  event.Creator.LastName,
+				"gender":     event.Creator.Gender,
+				"age":        event.Creator.Age,
+				"phone":      event.Creator.Phone,
+			},
+			"created_at": event.CreatedAt.Format(time.RFC3339),
+			"event": gin.H{
+				"id":          event.ID,
+				"title":       event.Title,
+				"description": event.Description,
+				"type":        event.Type,
+				"date_time":   event.DateTime.Format(time.RFC3339),
+				"location":    event.Location,
+				"creator_id":  event.CreatorID,
+				"is_private":  event.IsPrivate,
+				"created_at":  event.CreatedAt.Format(time.RFC3339),
+			},
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"posts":   postItems,
+		"events":  eventItems,
+		"message": "Лента новостей загружена",
+	})
 }

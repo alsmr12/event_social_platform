@@ -51,7 +51,7 @@ func main() {
 	handlers.SetupRoutes(router, db)
 
 	log.Printf("Server started on http://localhost:%s", cfg.ServerPort)
-	if err := router.Run(":" + cfg.ServerPort); err != nil {
+	if err := router.Run("0.0.0.0:" + cfg.ServerPort); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
 }
