@@ -27,11 +27,11 @@
                 <div><strong>Email:</strong> {{.User.Email}}</div>
                 <div><strong>Имя:</strong> {{.User.FirstName}} {{.User.LastName}}</div>
                 {{if .User.Gender}}
-                <div><strong>Пол:</strong>
-                    {{if eq .User.Gender "male"}}Мужской
-                    {{else if eq .User.Gender "female"}}Женский
-                    {{else}}{{.User.Gender}}{{end}}
-                </div>
+                    <div><strong>Пол:</strong>
+                        {{if eq .User.Gender "male"}}Мужской
+                        {{else if eq .User.Gender "female"}}Женский
+                        {{else}}{{.User.Gender}}{{end}}
+                    </div>
                 {{end}}
                 {{if .User.BirthDate}}<div><strong>Возраст:</strong> {{.User.GetAge}} лет</div>{{end}}
                 {{if .User.Phone}}<div><strong>Телефон:</strong> {{.User.Phone}}</div>{{end}}

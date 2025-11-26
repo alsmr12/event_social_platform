@@ -105,31 +105,93 @@ func (h *UserHandler) CreateProfile(c *gin.Context) {
 }
 
 func (h *UserHandler) GetProfile(c *gin.Context) {
-	// Получаем ID профиля из параметра
-	profileID := c.Param("id")
-
-	// Получаем текущего пользователя
-	currentUser := GetUserFromContext(c)
-	if currentUser == nil {
-		c.Redirect(http.StatusSeeOther, "/login")
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.HTML(http.StatusOK, "base.html", gin.H{
+			"Title":     "Профиль",
+			"NavActive": "profile", // ИСПРАВЛЕНО (было "profiles")
+			"Error":     "Неверный ID профиля",
+		})
 		return
 	}
 
-	// Определяем, является ли профиль своим
-	isOwnProfile := profileID == "" || (currentUser != nil && (profileID == strconv.Itoa(int(currentUser.ID)) || profileID == "self" || profileID == "my"))
-
-	// Если это свой профиль, устанавливаем profileID в пустую строку для корректной работы шаблона
-	if isOwnProfile {
-		profileID = ""
+	user, err := h.userRepo.GetUserByID(uint(id))
+	if err != nil || user == nil {
+		c.HTML(http.StatusOK, "base.html", gin.H{
+			"Title":     "Профиль",
+			"NavActive": "profile", // ИСПРАВЛЕНО (было "profiles")
+			"Error":     "Профиль не найден",
+		})
+		return
 	}
 
-	// Передаем данные в шаблон
+	// Получаем записи на стене пользователя
+	db := h.userRepo.GetDB()
+	wallRepo := repository.NewWallRepository(db)
+	posts, err := wallRepo.GetPostsByUserID(uint(id))
+	if err != nil {
+		posts = []*models.WallPost{}
+	}
+
+	// Получаем социальные сети пользователя
+	socialRepo := repository.NewSocialLinkRepository(db)
+	socialLinks, err := socialRepo.GetByUserID(uint(id))
+	if err != nil {
+		socialLinks = []*models.SocialLink{}
+	}
+
+	currentUser := GetUserFromContext(c)
+
+	// Получаем статистику подписок
+	subscriptionRepo := repository.NewSubscriptionRepository(db)
+	followersCount, _ := subscriptionRepo.GetFollowersCount(uint(id))
+	followingCount, _ := subscriptionRepo.GetFollowingCount(uint(id))
+
+	// Проверяем, подписан ли текущий пользователь на этого пользователя
+	var isSubscribed bool
+	if currentUser != nil {
+		isSubscribed, _ = subscriptionRepo.IsSubscribed(currentUser.ID, uint(id))
+	}
+
+	// Получаем статус дружбы
+	var friendshipStatus string = "none"
+	var isIncomingRequest bool = false
+	if currentUser != nil && currentUser.ID != uint(id) {
+		friendshipRepo := repository.NewFriendshipRepository(db)
+		friendshipStatus, err = friendshipRepo.GetFriendshipStatus(currentUser.ID, uint(id))
+		if err != nil {
+			friendshipStatus = "none"
+		}
+		if friendshipStatus == "rejected" {
+			friendshipStatus = "none"
+		}
+
+		// Проверяем, является ли запрос входящим
+		if friendshipStatus == "pending" {
+			var friendship models.Friendship
+			err := db.Where("user_id = ? AND friend_id = ?", uint(id), currentUser.ID).First(&friendship).Error
+			isIncomingRequest = (err == nil)
+		}
+	}
+
+	// Получаем количество друзей
+	friendshipRepo := repository.NewFriendshipRepository(db)
+	friendsCount, _ := friendshipRepo.GetFriendsCount(uint(id))
+
 	c.HTML(http.StatusOK, "base.html", gin.H{
-		"Title":        "Профиль",
-		"NavActive":    "my_profile",
-		"CurrentUser":  currentUser,
-		"ProfileID":    profileID,
-		"IsOwnProfile": isOwnProfile,
+		"Title":             "Профиль " + user.FirstName + " " + user.LastName,
+		"NavActive":         "profile",
+		"CurrentUser":       currentUser,
+		"User":              user,
+		"Posts":             posts,
+		"SocialLinks":       socialLinks,
+		"FollowersCount":    followersCount,
+		"FollowingCount":    followingCount,
+		"FriendsCount":      friendsCount,
+		"IsSubscribed":      isSubscribed,
+		"FriendshipStatus":  friendshipStatus,
+		"IsIncomingRequest": isIncomingRequest,
 	})
 }
 

@@ -261,17 +261,17 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 				"CurrentUser": GetUserFromContext(c),
 			})
 		})
-		/*// Подписки
-		protected.GET("/subscriptions", subscriptionHandler.MySubscriptions)
+		// Подписки
+		//protected.GET("/subscriptions", subscriptionHandler.MySubscriptions)
 		protected.GET("/subscribe/:id", subscriptionHandler.Subscribe)
 		protected.GET("/unsubscribe/:id", subscriptionHandler.Unsubscribe)
 
 		// Друзья
-		protected.GET("/friends", friendshipHandler.FriendsPage)
+		//protected.GET("/friends", friendshipHandler.FriendsPage)
 		protected.GET("/friends/add/:id", friendshipHandler.SendFriendRequest)
 		protected.GET("/friends/accept/:id", friendshipHandler.AcceptFriendRequest)
 		protected.GET("/friends/reject/:id", friendshipHandler.RejectFriendRequest)
-		protected.GET("/friends/remove/:id", friendshipHandler.RemoveFriend)*/
+		protected.GET("/friends/remove/:id", friendshipHandler.RemoveFriend)
 
 		// Награды и рейтинг
 		protected.GET("/ratings", achievementHandler.ShowRatings)
