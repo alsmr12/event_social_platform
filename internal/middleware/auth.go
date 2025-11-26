@@ -99,7 +99,13 @@ func StrictAuthMiddleware(userRepo *repository.UserRepository, sessionRepo *repo
 		}
 
 		log.Printf("✅ StrictAuthMiddleware: user authenticated: %s (ID: %d)", user.Email, user.ID)
+		
+		
 		c.Set("user", user)
+		c.Set("user_id", user.ID)                   
+		c.Set("is_authenticated", true)
+		c.Set("CurrentUser", user)
+		
 		c.Next()
 	}
 }

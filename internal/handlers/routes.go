@@ -87,65 +87,7 @@ router.GET("/api/profiles", userHandler.GetAllProfilesJSON)
 		protected.POST("/api/user/location", mapHandler.HandleUserLocation)
 
 		// API для получения событий
-		protected.GET("/api/events", func(c *gin.Context) {
-			currentUserId := c.GetUint("user_id")
 
-			// Фильтр по типу события, если указан
-			filterType := c.DefaultQuery("type", "all")
-			filter := repository.EventFilter{
-				Type: filterType,
-			}
-
-			// Получаем все события с фильтрацией
-			events, err := eventRepo.GetEventsWithFilter(filter)
-			if err != nil {
-				c.JSON(500, gin.H{"error": "Failed to get events"})
-				return
-			}
-
-			// Фильтруем события, к которым пользователь имеет доступ
-			var accessibleEvents []gin.H
-			for _, event := range events {
-				// Всегда включаем публичные события
-				if !event.IsPrivate {
-					accessibleEvents = append(accessibleEvents, gin.H{
-						"id":          event.ID,
-						"title":       event.Title,
-						"description": event.Description,
-						"type":        event.Type,
-						"date_time":   event.DateTime,
-						"location":    event.Location,
-						"latitude":    event.Latitude,
-						"longitude":   event.Longitude,
-						"creator": gin.H{
-							"first_name": event.Creator.FirstName,
-							"last_name":  event.Creator.LastName,
-						},
-					})
-					// Для приватных событий проверяем доступ (пользователь авторизован)
-				} else {
-					hasAccess, _ := eventRepo.CanUserAccessEvent(currentUserId, event.ID)
-					if hasAccess {
-						accessibleEvents = append(accessibleEvents, gin.H{
-							"id":          event.ID,
-							"title":       event.Title,
-							"description": event.Description,
-							"type":        event.Type,
-							"date_time":   event.DateTime,
-							"location":    event.Location,
-							"latitude":    event.Latitude,
-							"longitude":   event.Longitude,
-							"creator": gin.H{
-								"first_name": event.Creator.FirstName,
-								"last_name":  event.Creator.LastName,
-							},
-						})
-					}
-				}
-			}
-
-			c.JSON(200, gin.H{"events": accessibleEvents})
-		})
 
 		// API для получения данных для тепловой карты
 		protected.GET("/api/heatmap", mapHandler.HandleHeatmap)
