@@ -237,7 +237,7 @@ func (h *SubscriptionHandler) GetSubscriptionsJSON(c *gin.Context) {
 				"first_name": currentUser.FirstName,
 				"last_name":  currentUser.LastName,
 				"gender":     currentUser.Gender,
-				"age":        currentUser.Age,
+				"age":        currentUser.GetAge(),
 				"phone":      currentUser.Phone,
 			},
 			"following": gin.H{
@@ -246,7 +246,7 @@ func (h *SubscriptionHandler) GetSubscriptionsJSON(c *gin.Context) {
 				"first_name": user.FirstName,
 				"last_name":  user.LastName,
 				"gender":     user.Gender,
-				"age":        user.Age,
+				"age":        user.GetAge(),
 				"phone":      user.Phone,
 			},
 			"created_at": user.CreatedAt.Format(time.RFC3339),

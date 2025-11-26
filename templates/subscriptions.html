@@ -24,7 +24,7 @@
             <div class="card">
                 <h4>{{.FirstName}} {{.LastName}}</h4>
                 <p style="color: var(--text-muted); margin: 10px 0;">{{.Email}}</p>
-                {{if .Age}}<p>{{.Age}} лет</p>{{end}}
+                {{if .BirthDate}}<p>{{.GetAge}} лет</p>{{end}}
                 <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 15px;">
                     <a href="/profile/{{.ID}}" class="btn btn-outline btn-small">Профиль</a>
                     <a href="/unsubscribe/{{.ID}}" class="btn btn-danger btn-small" onclick="return confirm('Отписаться от пользователя?')">Отписаться</a>

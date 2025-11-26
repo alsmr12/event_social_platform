@@ -3,10 +3,11 @@ package handlers
 import (
 	"event_social_platform/internal/models"
 	"event_social_platform/internal/repository"
+	"github.com/gin-gonic/gin"
+	"log"
 	"net/http"
 	"strconv"
-
-	"github.com/gin-gonic/gin"
+	"time"
 )
 
 type UserHandler struct {
@@ -40,9 +41,24 @@ func (h *UserHandler) CreateProfile(c *gin.Context) {
 		c.HTML(http.StatusBadRequest, "base.html", gin.H{
 			"Title":     "Регистрация",
 			"NavActive": "register",
-			"Error":     "Неверные данные формы",
+			"Error":     "Неверные данные формы: " + err.Error(),
 		})
 		return
+	}
+
+	// Конвертация строки даты в time.Time
+	var birthDate time.Time
+	if req.BirthDate != "" {
+		var err error
+		birthDate, err = time.Parse("2006-01-02", req.BirthDate)
+		if err != nil {
+			c.HTML(http.StatusBadRequest, "base.html", gin.H{
+				"Title":     "Регистрация",
+				"NavActive": "register",
+				"Error":     "Неверный формат даты рождения: " + err.Error(),
+			})
+			return
+		}
 	}
 
 	if h.userRepo.UserExists(req.Email) {
@@ -59,7 +75,7 @@ func (h *UserHandler) CreateProfile(c *gin.Context) {
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
 		Gender:    req.Gender,
-		//Age:       req.Age,
+		BirthDate: birthDate,
 		Phone:     req.Phone,
 		City:      req.City,
 		Latitude:  req.Latitude,
@@ -285,11 +301,26 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	// Обновляем данные пользователя
+	// Конвертация строки даты в time.Time
+	if req.BirthDate != "" {
+		birthDate, err := time.Parse("2006-01-02", req.BirthDate)
+		if err != nil {
+			c.HTML(http.StatusBadRequest, "base.html", gin.H{
+				"Title":       "Редактирование профиля",
+				"NavActive":   "profile",
+				"Error":       "Неверный формат даты рождения: " + err.Error(),
+				"User":        currentUser,
+				"CurrentUser": currentUser,
+			})
+			return
+		}
+		currentUser.BirthDate = birthDate
+	}
+
+	// Обновляем остальные данные пользователя
 	currentUser.FirstName = req.FirstName
 	currentUser.LastName = req.LastName
 	currentUser.Gender = req.Gender
-	//currentUser.Age = req.Age
 	currentUser.Phone = req.Phone
 	currentUser.City = req.City
 	currentUser.Latitude = req.Latitude
@@ -350,4 +381,126 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	// === КОНЕЦ ОБРАБОТКИ СОЦСЕТЕЙ ===
 
 	c.Redirect(http.StatusSeeOther, "/profile")
+}
+
+func (h *UserHandler) GetAllProfilesJSON(c *gin.Context) {
+	users, err := h.userRepo.GetAllUsers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Ошибка получения пользователей",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    users,
+	})
+}
+
+// ========== ANDROID/JSON API METHODS ==========
+
+// UpdateProfileJSON - обновление профиля пользователя
+func (h *UserHandler) UpdateProfileJSON(c *gin.Context) {
+	log.Printf("🔍 UpdateProfileJSON called")
+
+	// Получаем текущего пользователя
+	user := GetUserFromContext(c)
+	if user == nil {
+		log.Printf("❌ UpdateProfileJSON: User not found in context")
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Не авторизован",
+		})
+		return
+	}
+
+	log.Printf("✅ UpdateProfileJSON: Updating user %s (ID: %d)", user.Email, user.ID)
+
+	var req struct {
+		FirstName string `json:"first_name" binding:"required"`
+		LastName  string `json:"last_name" binding:"required"`
+		Gender    string `json:"gender" binding:"required"`
+		Age       int    `json:"age" binding:"required,min=1,max=120"`
+		Phone     string `json:"phone" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("❌ UpdateProfileJSON: Invalid request data: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Неверные данные: " + err.Error(),
+		})
+		return
+	}
+
+	// Обновляем данные пользователя
+	user.FirstName = req.FirstName
+	user.LastName = req.LastName
+	user.Gender = req.Gender
+	// user.Age = req.Age // Удалено, так как возраст вычисляется по дате рождения
+	user.Phone = req.Phone
+
+	if err := h.userRepo.UpdateUser(user); err != nil {
+		log.Printf("❌ UpdateProfileJSON: Error updating user: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Ошибка обновления профиля: " + err.Error(),
+		})
+		return
+	}
+
+	log.Printf("✅ UpdateProfileJSON: Profile updated successfully for user %s", user.Email)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Профиль успешно обновлен",
+		"user": gin.H{
+			"id":         user.ID,
+			"email":      user.Email,
+			"first_name": user.FirstName,
+			"last_name":  user.LastName,
+			"gender":     user.Gender,
+			"age":        user.GetAge(),
+			"phone":      user.Phone,
+		},
+	})
+}
+
+// GetUserStatsJSON - получение статистики пользователя
+func (h *UserHandler) GetUserStatsJSON(c *gin.Context) {
+	currentUser := GetUserFromContext(c)
+	if currentUser == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Не авторизован",
+		})
+		return
+	}
+
+	db := h.userRepo.GetDB()
+
+	// Получаем количество друзей
+	friendshipRepo := repository.NewFriendshipRepository(db)
+	friendsCount, _ := friendshipRepo.GetFriendsCount(currentUser.ID)
+
+	// Получаем количество подписчиков и подписок
+	subscriptionRepo := repository.NewSubscriptionRepository(db)
+	followersCount, _ := subscriptionRepo.GetFollowersCount(currentUser.ID)
+	followingCount, _ := subscriptionRepo.GetFollowingCount(currentUser.ID)
+
+	// Получаем количество событий пользователя
+	eventRepo := repository.NewEventRepository(db)
+	userEventsCount, _ := eventRepo.GetUserEventsCountAndroid(currentUser.ID)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"stats": gin.H{
+			"friends_count":   friendsCount,
+			"followers_count": followersCount,
+			"following_count": followingCount,
+			"events_count":    userEventsCount,
+		},
+	})
 }
