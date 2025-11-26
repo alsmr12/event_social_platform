@@ -8,6 +8,8 @@ let currentLocationMarker = null;
 let selectedLocationMarker = null;
 let locationMarker = null;
 let selectedLocation = null;
+let heatmap = null;
+let isHeatmapMode = false;
 
 // Инициализация карты после загрузки API Яндекс.Карт
 ymaps.ready(initMap);
@@ -15,7 +17,7 @@ ymaps.ready(initMap);
 function initMap() {
     // Создание экземпляра карты
     map = new ymaps.Map('map', {
-        center: [55.7558, 37.6176], // Москва
+        center: [55.7558, 37.6176],
         zoom: 10,
         controls: ['zoomControl', 'fullscreenControl']
     });
@@ -34,20 +36,16 @@ function initMap() {
     setupLocationControls();
 }
 
-// Функция для создания маркера текущего местоположения (синяя точка как в Яндекс.Картах)
+// Функция для создания маркера текущего местоположения
 function createCurrentLocationMarker(coords) {
-    return new ymaps.Placemark(coords, {
-        // Пустой контент, так как нам нужна только точка
-    }, {
-        // Используем стандартный пресет для текущего местоположения
+    return new ymaps.Placemark(coords, {}, {
         preset: 'islands#blueCircleIcon',
-        // Делаем точку меньше
         iconColor: '#1e88e5',
         iconCaptionMaxWidth: '200'
     });
 }
 
-// Функция для создания маркера выбранного местоположения (красная точка)
+// Функция для создания маркера выбранного местоположения
 function createSelectedLocationMarker(coords) {
     return new ymaps.Placemark(coords, {
         balloonContent: 'Выбранное местоположение'
@@ -57,7 +55,7 @@ function createSelectedLocationMarker(coords) {
     });
 }
 
-// Функция для создания временного маркера (при клике на карту)
+// Функция для создания временного маркера
 function createTemporaryMarker(coords) {
     return new ymaps.Placemark(coords, {
         balloonContent: 'Новое местоположение'
@@ -69,27 +67,29 @@ function createTemporaryMarker(coords) {
 
 // Функция для загрузки событий с сервера
 function loadEvents() {
+    console.log('Загрузка событий...');
+
+    // Очищаем тепловую карту если она активна
+    if (heatmap) {
+        map.geoObjects.remove(heatmap);
+        heatmap = null;
+    }
+    isHeatmapMode = false;
+
     fetch('/api/events')
         .then(response => response.json())
         .then(data => {
-            // Очистка старых меток (кроме маркеров местоположения)
+            console.log('Получены события:', data.events.length);
             map.geoObjects.removeAll();
 
             // Восстанавливаем маркеры местоположения
-            if (currentLocationMarker) {
-                map.geoObjects.add(currentLocationMarker);
-            }
-            if (selectedLocationMarker) {
-                map.geoObjects.add(selectedLocationMarker);
-            }
-            if (locationMarker) {
-                map.geoObjects.add(locationMarker);
-            }
+            if (currentLocationMarker) map.geoObjects.add(currentLocationMarker);
+            if (selectedLocationMarker) map.geoObjects.add(selectedLocationMarker);
+            if (locationMarker) map.geoObjects.add(locationMarker);
 
             // Добавление новых меток событий
             data.events.forEach(event => {
                 if (event.latitude && event.longitude) {
-                    // Создание метки события
                     const placemark = new ymaps.Placemark([
                         event.latitude,
                         event.longitude
@@ -106,10 +106,11 @@ function loadEvents() {
                         preset: 'islands#blueDotIcon'
                     });
 
-                    // Добавление метки на карту
                     map.geoObjects.add(placemark);
                 }
             });
+
+            hideError();
         })
         .catch(error => {
             console.error('Ошибка загрузки событий:', error);
@@ -119,52 +120,193 @@ function loadEvents() {
 
 // Функция для загрузки данных для тепловой карты
 function loadHeatmapData() {
-    // Очистка старых объектов (кроме маркеров местоположения)
-    const markersToKeep = [];
-    if (currentLocationMarker) markersToKeep.push(currentLocationMarker);
-    if (selectedLocationMarker) markersToKeep.push(selectedLocationMarker);
-    if (locationMarker) markersToKeep.push(locationMarker);
+    console.log('Загрузка тепловой карты...');
+
+    // Очистка всех объектов карты
+    map.geoObjects.removeAll();
+    isHeatmapMode = true;
+
+    // Восстанавливаем только маркеры местоположения
+    if (currentLocationMarker) map.geoObjects.add(currentLocationMarker);
+    if (selectedLocationMarker) map.geoObjects.add(selectedLocationMarker);
+    if (locationMarker) map.geoObjects.add(locationMarker);
+
+    showError('Загрузка данных для тепловой карты...');
+
+    fetch('/api/heatmap')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Получены данные тепловой карты:', data);
+            hideError();
+
+            if (!data.points || data.points.length === 0) {
+                console.warn('Нет данных для отображения тепловой карты');
+                showError('Нет данных для отображения тепловой карты');
+                return;
+            }
+
+            // В Яндекс.Картах тепловые карты реализуются через кластеризатор с разными цветами
+            // Создаем кластеризатор для точек с разной интенсивностью
+            const clusterer = new ymaps.Clusterer({
+                preset: 'islands#invertedVioletClusterIcons',
+                clusterDisableClickZoom: true,
+                clusterOpenBalloonOnClick: true,
+                clusterBalloonContentLayout: 'cluster#balloonCarousel',
+                clusterBalloonItemContentLayout: 'hotspot#balloonItemContentLayout',
+                clusterBalloonPanelMaxMapArea: 0,
+                clusterBalloonContentLayoutWidth: 300,
+                clusterBalloonContentLayoutHeight: 200,
+                clusterBalloonPagerSize: 5
+            });
+
+            // Создаем коллекцию объектов для кластеризатора
+            const geoObjects = [];
+
+            data.points.forEach((point, index) => {
+                // Определяем цвет и размер метки в зависимости от интенсивности
+                const intensity = point.intensity || 0.1;
+                let color, size;
+
+                if (intensity < 0.3) {
+                    color = '#00ff00'; // зеленый
+                    size = 'small';
+                } else if (intensity < 0.6) {
+                    color = '#ffff00'; // желтый
+                    size = 'medium';
+                } else {
+                    color = '#ff0000'; // красный
+                    size = 'large';
+                }
+
+                const placemark = new ymaps.Placemark([point.latitude, point.longitude], {
+                    balloonContent: `
+                        <div style="min-width: 200px;">
+                            <h3>Активность: ${(intensity * 100).toFixed(1)}%</h3>
+                            <p><strong>Координаты:</strong> ${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)}</p>
+                            <p><strong>Событий:</strong> ${point.eventCount || 0}</p>
+                            <p><strong>Участников:</strong> ${point.participantCount || 0}</p>
+                            <p><strong>Постов:</strong> ${point.count || 0}</p>
+                        </div>
+                    `,
+                    hotspotContent: `Активность: ${(intensity * 100).toFixed(1)}%`
+                }, {
+                    preset: `islands#${color}${size.charAt(0).toUpperCase() + size.slice(1)}Icon`,
+                    balloonCloseButton: true,
+                    hideIconOnBalloonOpen: false
+                });
+
+                geoObjects.push(placemark);
+            });
+
+            // Добавляем объекты в кластеризатор
+            clusterer.add(geoObjects);
+
+            // Добавляем кластеризатор на карту
+            map.geoObjects.add(clusterer);
+
+            // Автоматическое масштабирование под данные
+            if (data.points.length > 0) {
+                const coordinates = data.points.map(point => [point.latitude, point.longitude]);
+                map.setBounds(ymaps.util.bounds.fromPoints(coordinates), {
+                    checkZoomRange: true,
+                    zoomMargin: 30
+                });
+            }
+
+            console.log('Тепловая карта создана через кластеризатор');
+        })
+        .catch(error => {
+            console.error('Ошибка загрузки данных для тепловой карты:', error);
+            showError('Не удалось загрузить данные для тепловой карты: ' + error.message);
+        });
+}
+
+// Альтернативная версия - создаем тепловую карту через градиентные круги
+function loadHeatmapDataAlternative() {
+    console.log('Загрузка тепловой карты (альтернативный метод)...');
 
     map.geoObjects.removeAll();
+    isHeatmapMode = true;
 
-    // Восстанавливаем маркеры местоположения
-    markersToKeep.forEach(marker => {
-        map.geoObjects.add(marker);
-    });
+    if (currentLocationMarker) map.geoObjects.add(currentLocationMarker);
+    if (selectedLocationMarker) map.geoObjects.add(selectedLocationMarker);
+    if (locationMarker) map.geoObjects.add(locationMarker);
 
-    // Показываем сообщение о загрузке
     showError('Загрузка данных для тепловой карты...');
 
     fetch('/api/heatmap')
         .then(response => response.json())
         .then(data => {
-            // Подготовка данных для тепловой карты
-            const heatData = data.points.map(point => [
-                point.latitude,
-                point.longitude,
-                point.intensity
-            ]);
+            console.log('Получены данные тепловой карты:', data);
+            hideError();
 
-            // Создание слоя тепловой карты
-            // Проверяем наличие данных перед созданием тепловой карты
-            if (heatData.length === 0) {
-                console.warn('Нет данных для отображения тепловой карты');
+            if (!data.points || data.points.length === 0) {
                 showError('Нет данных для отображения тепловой карты');
                 return;
             }
-            
-            const heatmap = new ymaps.Heatmap(heatData, {
-                radius: 25,
-                opacity: 0.8,
-                dissipating: true
+
+            // Создаем круги разного цвета в зависимости от интенсивности
+            data.points.forEach(point => {
+                const intensity = point.intensity || 0.1;
+                let color, radius;
+
+                // Используем разные оттенки желтого до оранжевого в зависимости от интенсивности
+                if (intensity < 0.3) {
+                    color = 'rgba(255, 255, 100, 0.4)'; // светло-желтый
+                } else if (intensity < 0.6) {
+                    color = 'rgba(255, 220, 0, 0.5)'; // желтый
+                } else {
+                    color = 'rgba(255, 165, 0, 0.6)'; // оранжевый
+                }
+                
+                // Увеличиваем радиус для лучшего перекрытия
+                radius = 10000; // 10km
+
+                // Создаем круг для тепловой карты
+                const circle = new ymaps.Circle([
+                    [point.latitude, point.longitude], // центр
+                    radius // радиус
+                ], {
+                    balloonContent: `
+                        <div style="min-width: 200px;">
+                            <h3>Активность: ${(intensity * 100).toFixed(1)}%</h3>
+                            <p><strong>Координаты:</strong> ${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)}</p>
+                            <p><strong>Событий:</strong> ${point.eventCount || 0}</p>
+                            <p><strong>Участников:</strong> ${point.participantCount || 0}</p>
+                            <p><strong>Постов:</strong> ${point.count || 0}</p>
+                        </div>
+                    `
+                }, {
+                    fillColor: color,
+                    strokeColor: color.replace('0.3', '0.8').replace('0.4', '0.8').replace('0.5', '0.8'),
+                    strokeWidth: 2,
+                    strokeOpacity: 0.8
+                });
+
+                map.geoObjects.add(circle);
             });
 
-            // Добавление слоя на карту
-            heatmap.setMap(map);
+            // Автоматическое масштабирование
+            if (data.points.length > 0) {
+                const coordinates = data.points.map(point => [point.latitude, point.longitude]);
+                map.setBounds(ymaps.util.bounds.fromPoints(coordinates), {
+                    checkZoomRange: true,
+                    zoomMargin: 30
+                });
+            }
+
+
+
+            console.log('Тепловая карта создана через цветные круги');
         })
         .catch(error => {
             console.error('Ошибка загрузки данных для тепловой карты:', error);
-            showError('Не удалось загрузить данные для тепловой карты');
+            showError('Не удалось загрузить данные для тепловой карты: ' + error.message);
         });
 }
 
@@ -186,10 +328,20 @@ function showError(message) {
     }
 }
 
+// Функция для скрытия сообщения об ошибке
+function hideError() {
+    const errorElement = document.getElementById('map-error');
+    if (errorElement) {
+        errorElement.style.display = 'none';
+    }
+}
+
 // Обработчик переключения режимов карты
 function setupMapControls() {
     const controls = document.getElementById('map-controls');
     if (!controls) return;
+
+
 
     controls.addEventListener('click', function(e) {
         if (e.target.classList.contains('btn')) {
@@ -203,11 +355,11 @@ function setupMapControls() {
             // Устанавливаем активный класс на выбранную кнопку
             e.target.classList.add('btn-active');
 
-            // Загружаем соответствующие данные
             if (mode === 'events') {
                 loadEvents();
             } else if (mode === 'heatmap') {
-                loadHeatmapData();
+                // Используем альтернативный метод для тепловой карты
+                loadHeatmapDataAlternative();
             }
         }
     });
@@ -215,50 +367,38 @@ function setupMapControls() {
 
 // Обработчик установки местоположения пользователя
 function setupLocationControls() {
-    // Получаем DOM элементы
     const setLocationSection = document.getElementById('set-location-section');
     const currentLocationDiv = document.getElementById('current-location');
-    const locationInfo = document.getElementById('location-info');
     const locationCoords = document.getElementById('location-coords');
     const locationCity = document.getElementById('location-city');
     const currentCitySpan = document.getElementById('current-city');
     const currentCoordsSpan = document.getElementById('current-coords');
 
-    // Кнопка для определения местоположения уже существует в HTML, пропускаем создание
+    // Кнопка для определения местоположения
     const geoBtn = document.getElementById('auto-location-btn');
     if (geoBtn) {
-
-        // Обработчик кнопки определения местоположения
         geoBtn.addEventListener('click', function() {
             if (!navigator.geolocation) {
                 alert('Геолокация не поддерживается вашим браузером');
                 return;
             }
 
-            // Показываем индикатор загрузки
             const originalText = geoBtn.innerHTML;
-            geoBtn.innerHTML = 'GPS';
+            geoBtn.innerHTML = 'GPS...';
             geoBtn.disabled = true;
 
             navigator.geolocation.getCurrentPosition(
                 function(position) {
-                    // Восстанавливаем кнопку
                     geoBtn.innerHTML = originalText;
                     geoBtn.disabled = false;
 
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
-
-                    // Устанавливаем выбранное местоположение
                     selectedLocation = { lat, lng };
 
                     // Удаляем предыдущие временные маркеры
-                    if (locationMarker) {
-                        map.geoObjects.remove(locationMarker);
-                    }
-                    if (selectedLocationMarker) {
-                        map.geoObjects.remove(selectedLocationMarker);
-                    }
+                    if (locationMarker) map.geoObjects.remove(locationMarker);
+                    if (selectedLocationMarker) map.geoObjects.remove(selectedLocationMarker);
 
                     // Добавляем временный маркер
                     locationMarker = createTemporaryMarker([lat, lng]);
@@ -267,14 +407,9 @@ function setupLocationControls() {
                     // Обновляем информацию
                     if (locationCoords) locationCoords.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
                     if (locationCity) locationCity.textContent = 'Определяется...';
-                    if (locationInfo) locationInfo.style.display = 'block';
+                    if (setLocationSection) setLocationSection.style.display = 'block';
 
-                    // Показываем секцию установки
-                    if (setLocationSection) {
-                        setLocationSection.style.display = 'block';
-                    }
-
-                    // Определяем город через геокодирование
+                    // Определяем город
                     ymaps.geocode([lat, lng], {
                         kind: 'locality',
                         results: 1
@@ -295,11 +430,9 @@ function setupLocationControls() {
                         if (locationCity) locationCity.textContent = 'Ошибка определения';
                     });
 
-                    // Центрируем карту на определенном местоположении
                     map.setCenter([lat, lng], 12);
                 },
                 function(error) {
-                    // Восстанавливаем кнопку
                     geoBtn.innerHTML = originalText;
                     geoBtn.disabled = false;
 
@@ -327,15 +460,7 @@ function setupLocationControls() {
         const coords = e.get('coords');
         console.log('Карта кликнута:', coords);
 
-        // Показываем секцию установки при клике по карте
-        if (setLocationSection) {
-            setLocationSection.style.display = 'block';
-        }
-
-        // Всегда показываем текущее местоположение
-        // if (currentLocationDiv) {
-        //     currentLocationDiv.style.display = 'none';
-        // }
+        if (setLocationSection) setLocationSection.style.display = 'block';
 
         selectedLocation = {
             lat: coords[0],
@@ -343,12 +468,8 @@ function setupLocationControls() {
         };
 
         // Удаляем предыдущие временные маркеры
-        if (locationMarker) {
-            map.geoObjects.remove(locationMarker);
-        }
-        if (selectedLocationMarker) {
-            map.geoObjects.remove(selectedLocationMarker);
-        }
+        if (locationMarker) map.geoObjects.remove(locationMarker);
+        if (selectedLocationMarker) map.geoObjects.remove(selectedLocationMarker);
 
         // Добавляем новый временный маркер
         locationMarker = createTemporaryMarker([coords[0], coords[1]]);
@@ -357,14 +478,12 @@ function setupLocationControls() {
         // Обновляем информацию
         if (locationCoords) locationCoords.textContent = `${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`;
         if (locationCity) locationCity.textContent = 'Определяется...';
-        if (locationInfo) locationInfo.style.display = 'block';
 
-        // Определение города через reverse geocoding Яндекс
+        // Определение города
         ymaps.geocode(coords, {
             kind: 'locality',
             results: 1
         }).then(function(result) {
-            console.log('Результат геокодирования:', result);
             const geoObject = result.geoObjects.get(0);
             if (geoObject) {
                 const city = geoObject.getLocalities().length ?
@@ -402,7 +521,6 @@ function setupLocationControls() {
                 city: cityName
             });
 
-            // Отправляем данные на сервер
             fetch('/api/user/location', {
                 method: 'POST',
                 headers: {
@@ -445,19 +563,20 @@ function setupLocationControls() {
                         ]);
                         map.geoObjects.add(currentLocationMarker);
 
-                        // После установки местоположения окно установки должно остаться видимым
-                        // if (setLocationSection) setLocationSection.style.display = 'none';
                         if (currentLocationDiv) {
                             currentLocationDiv.style.display = 'block';
                             if (currentCitySpan) currentCitySpan.textContent = cityName;
                             if (currentCoordsSpan) currentCoordsSpan.textContent = `${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}`;
                         }
 
-                        // Центрируем карту на новом местоположении
                         map.setCenter([selectedLocation.lat, selectedLocation.lng], 12);
 
-                        // Обновляем события с учетом нового местоположения
-                        loadEvents();
+                        // Перезагружаем данные в зависимости от текущего режима
+                        if (isHeatmapMode) {
+                            loadHeatmapDataAlternative();
+                        } else {
+                            loadEvents();
+                        }
                     } else {
                         alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
                     }
@@ -472,17 +591,10 @@ function setupLocationControls() {
     // Показываем текущее местоположение при загрузке
     showCurrentLocation();
 
-    // Гарантируем, что обе секции всегда видны при загрузке
-    if (setLocationSection) {
-        setLocationSection.style.display = 'block';
-    }
-    if (currentLocationDiv) {
-        currentLocationDiv.style.display = 'block';
-    }
+    if (setLocationSection) setLocationSection.style.display = 'block';
+    if (currentLocationDiv) currentLocationDiv.style.display = 'block';
 
-    // Функция для отображения текущего местоположения
     function showCurrentLocation() {
-        // Пытаемся получить данные пользователя из скрытого элемента
         const userAttrs = document.querySelector('[data-user-id]');
         if (userAttrs) {
             const lat = parseFloat(userAttrs.dataset.userLatitude) || null;
@@ -492,44 +604,28 @@ function setupLocationControls() {
             if (lat !== null && lng !== null && lat !== 0 && lng !== 0) {
                 displayCurrentLocation(lat, lng, city);
             } else {
-                // Если координаты не установлены, показываем секцию установки
                 if (setLocationSection) setLocationSection.style.display = 'block';
             }
         } else {
-            // Если элемент не найден, показываем секцию установки
             if (setLocationSection) setLocationSection.style.display = 'block';
         }
     }
 
-    // Отображение текущего местоположения
     function displayCurrentLocation(lat, lng, city) {
         if (currentLocationDiv && currentCitySpan && currentCoordsSpan) {
-            // Всегда показываем текущее местоположение
             currentCitySpan.textContent = city;
             currentCoordsSpan.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
             currentLocationDiv.style.display = 'block';
 
-            // После установки местоположения секция установки должна оставаться видимой
-            // if (setLocationSection) setLocationSection.style.display = 'none';
-
-            // Добавляем или обновляем маркер текущего местоположения
             if (currentLocationMarker) {
                 map.geoObjects.remove(currentLocationMarker);
             }
 
             currentLocationMarker = createCurrentLocationMarker([lat, lng]);
             map.geoObjects.add(currentLocationMarker);
-
-            // Центрируем карту на текущем местоположении
             map.setCenter([lat, lng], 12);
         }
     }
-
-    // Кнопка "Изменить местоположение" удалена, так как она не нужна
-    // Оставлена только кнопка "Установить местоположение"
-
-    // Кнопки "Изменить" и "Очистить" удалены, так как они ничего не делают
-    // Оставлены только кнопки "Установить местоположение" и "Изменить местоположение"
 
     console.log('Контролы местоположения инициализированы');
 }

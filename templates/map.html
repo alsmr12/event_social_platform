@@ -17,13 +17,13 @@
     <div id="map" style="height: 600px; border-radius: var(--radius); border: 1px solid var(--border-color);"></div>
 
     <!-- Компактная панель -->
-    <div id="location-controls" style="margin-top: 12px; padding: 8px 12px; background: var(--bg-secondary); border-radius: var(--radius); display: flex; gap: 20px; font-size: 0.8em; align-items: center; justify-content: space-between;">
+    <div id="location-controls" style="margin-top: 12px; padding: 12px 16px; background: var(--bg-secondary); border-radius: var(--radius); display: flex; gap: 20px; font-size: 0.8em; align-items: stretch; justify-content: space-between;">
 
         <!-- Текущее местоположение -->
-        <div id="current-location" style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
-            <div style="min-width: 0;">
-                <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 2px; white-space: nowrap;">Текущее местоположение</div>
-                <div style="color: var(--text-secondary); display: flex; gap: 12px; white-space: nowrap;">
+        <div id="current-location" style="display: flex; align-items: flex-start; gap: 12px; flex: 1; min-width: 0;">
+            <div style="min-width: 0; flex: 1;">
+                <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 6px; white-space: nowrap;">Текущее местоположение</div>
+                <div style="color: var(--text-secondary); display: flex; flex-direction: column; gap: 2px;">
                     <span>Город: <span id="current-city">-</span></span>
                     <span>Координаты: <span id="current-coords">-</span></span>
                 </div>
@@ -31,23 +31,23 @@
         </div>
 
         <!-- Новое местоположение и кнопки -->
-        <div style="display: flex; align-items: center; gap: 15px; flex: 1;">
-            <div id="set-location-section" style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
+        <div style="display: flex; align-items: flex-start; gap: 16px; flex: 1; min-width: 0;">
+            <div id="set-location-section" style="display: flex; align-items: flex-start; gap: 12px; flex: 1; min-width: 0;">
                 <div style="min-width: 0; flex: 1;">
-                    <div style="color: var(--text-secondary); margin-bottom: 2px; white-space: nowrap;">Новое местоположение</div>
-                    <div style="color: var(--text-secondary); display: flex; gap: 12px; white-space: nowrap;">
+                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 6px; white-space: nowrap;">Новое местоположение</div>
+                    <div style="color: var(--text-secondary); display: flex; flex-direction: column; gap: 2px;">
                         <span>Город: <span id="location-city">-</span></span>
                         <span>Координаты: <span id="location-coords">-</span></span>
                     </div>
                 </div>
             </div>
 
-            <!-- Вертикальное расположение кнопок -->
-            <div style="display: flex; flex-direction: column; gap: 5px;">
-                <button id="auto-location-btn" class="btn btn-outline btn-small" style="white-space: nowrap;">
-                    GPS
+            <!-- Кнопки действий -->
+            <div style="display: flex; flex-direction: column; gap: 6px; flex-shrink: 0;">
+                <button id="auto-location-btn" class="btn btn-outline btn-small" style="white-space: nowrap; min-width: 80px;">
+                    📍 GPS
                 </button>
-                <button id="set-location-btn" class="btn btn-primary btn-small" style="white-space: nowrap;">
+                <button id="set-location-btn" class="btn btn-primary btn-small" style="white-space: nowrap; min-width: 80px;">
                     Применить
                 </button>
             </div>
@@ -108,12 +108,18 @@
     @media (max-width: 768px) {
         #location-controls {
             flex-direction: column;
-            gap: 12px;
+            gap: 16px;
             align-items: stretch;
         }
 
-        #current-location, #set-location-section {
+        #current-location,
+        #set-location-section {
             width: 100%;
+        }
+
+        .location-setter {
+            flex-direction: column;
+            gap: 12px;
         }
     }
 </style>
