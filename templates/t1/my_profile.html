@@ -1,0 +1,20 @@
+{{define "my_profile_content"}}
+<div class="card">
+    <div id="profile-content" data-profile-id="">
+        <div class="loading">Загрузка профиля...</div>
+    </div>
+    <script>
+        // Передаем данные текущего пользователя в JavaScript
+        window.currentUser = {
+            id: {{.CurrentUser.ID}},
+            email: "{{.CurrentUser.Email}}",
+            firstName: "{{.CurrentUser.FirstName}}",
+            lastName: "{{.CurrentUser.LastName}}",
+            gender: "{{.CurrentUser.Gender}}"
+        };
+        // Передаем флаг, что это свой профиль
+        window.isOwnProfile = true;
+    </script>
+    <script src="/js/profile.js"></script>
+</div>
+{{end}}
