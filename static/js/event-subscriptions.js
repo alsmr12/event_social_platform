@@ -174,7 +174,14 @@ async function unsubscribeFromEvent(eventId) {
 
         if (data.success) {
             showMessage('✅ Вы отписались от события', 'success');
-            setTimeout(() => window.location.reload(), 1000);
+            // Находим кнопку по data-event-id и удаляем карточку
+            const button = document.querySelector(`[data-event-id="${eventId}"]`);
+            if (button) {
+                const card = button.closest('.card');
+                if (card) {
+                    card.remove();
+                }
+            }
         } else {
             showMessage(data.message || '❌ Ошибка при отписке', 'error');
         }

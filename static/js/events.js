@@ -363,7 +363,20 @@ async function subscribeToEvent(eventId) {
 
         if (data.success) {
             showMessage('✅ Вы успешно подписались на событие', 'success');
-            setTimeout(() => window.location.reload(), 1000);
+            // Находим кнопку и меняем её текст и классы
+            const button = document.querySelector(`[data-event-id="${eventId}"]`);
+            if (button) {
+                button.textContent = '✅ Отписаться';
+                button.classList.remove('btn-primary', 'subscribe-btn');
+                button.classList.add('btn-outline', 'unsubscribe-btn');
+            }
+            // Обновляем счетчик подписчиков
+            const card = button.closest('.card');
+            const subscribersDiv = card.querySelector('div[style*="padding: 8px 12px;"]');
+            if (subscribersDiv) {
+                const currentCount = parseInt(subscribersDiv.textContent.split(':')[1].trim());
+                subscribersDiv.innerHTML = `<strong>🔔 Подписчиков:</strong> ${currentCount + 1}`;
+            }
         } else {
             showMessage(data.message || '❌ Ошибка при подписке', 'error');
         }
@@ -386,7 +399,20 @@ async function unsubscribeFromEvent(eventId) {
 
         if (data.success) {
             showMessage('✅ Вы отписались от события', 'success');
-            setTimeout(() => window.location.reload(), 1000);
+            // Находим кнопку и меняем её текст и классы
+            const button = document.querySelector(`[data-event-id="${eventId}"]`);
+            if (button) {
+                button.textContent = '🔔 Подписаться';
+                button.classList.remove('btn-outline', 'unsubscribe-btn');
+                button.classList.add('btn-primary', 'subscribe-btn');
+            }
+            // Обновляем счетчик подписчиков
+            const card = button.closest('.card');
+            const subscribersDiv = card.querySelector('div[style*="padding: 8px 12px;"]');
+            if (subscribersDiv) {
+                const currentCount = parseInt(subscribersDiv.textContent.split(':')[1].trim());
+                subscribersDiv.innerHTML = `<strong>🔔 Подписчиков:</strong> ${currentCount - 1}`;
+            }
         } else {
             showMessage(data.message || '❌ Ошибка при отписке', 'error');
         }

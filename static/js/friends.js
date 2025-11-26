@@ -182,7 +182,21 @@ async function acceptFriendRequest(userId) {
 
         if (data.success) {
             showMessage('✅ Запрос в друзья принят', 'success');
-            setTimeout(() => window.location.reload(), 1000);
+            // Находим кнопку по data-user-id и удаляем карточку
+            const button = document.querySelector(`[data-user-id="${userId}"]`);
+            if (button) {
+                const card = button.closest('.card');
+                if (card) {
+                    card.remove();
+                }
+                // Обновляем счетчик
+                const badge = document.querySelector('.badge.badge-pending');
+                if (badge) {
+                    const count = parseInt(badge.textContent) - 1;
+                    badge.textContent = count;
+                    badge.style.display = count > 0 ? 'inline' : 'none';
+                }
+            }
         } else {
             showMessage(data.message || '❌ Ошибка', 'error');
         }
@@ -205,7 +219,21 @@ async function rejectFriendRequest(userId) {
 
         if (data.success) {
             showMessage('✅ Запрос в друзья отклонен', 'success');
-            setTimeout(() => window.location.reload(), 1000);
+            // Находим кнопку по data-user-id и удаляем карточку
+            const button = document.querySelector(`[data-user-id="${userId}"]`);
+            if (button) {
+                const card = button.closest('.card');
+                if (card) {
+                    card.remove();
+                }
+                // Обновляем счетчик
+                const badge = document.querySelector('.badge.badge-pending');
+                if (badge) {
+                    const count = parseInt(badge.textContent) - 1;
+                    badge.textContent = count;
+                    badge.style.display = count > 0 ? 'inline' : 'none';
+                }
+            }
         } else {
             showMessage(data.message || '❌ Ошибка', 'error');
         }
@@ -228,7 +256,21 @@ async function cancelFriendRequest(userId) {
 
         if (data.success) {
             showMessage('✅ Запрос отменен', 'success');
-            setTimeout(() => window.location.reload(), 1000);
+            // Находим кнопку по data-user-id и удаляем карточку
+            const button = document.querySelector(`[data-user-id="${userId}"]`);
+            if (button) {
+                const card = button.closest('.card');
+                if (card) {
+                    card.remove();
+                }
+                // Обновляем счетчик
+                const badge = document.querySelector('.badge.badge-pending');
+                if (badge) {
+                    const count = parseInt(badge.textContent) - 1;
+                    badge.textContent = count;
+                    badge.style.display = count > 0 ? 'inline' : 'none';
+                }
+            }
         } else {
             showMessage(data.message || '❌ Ошибка', 'error');
         }
@@ -251,7 +293,20 @@ async function removeFriend(userId) {
 
         if (data.success) {
             showMessage('✅ Пользователь удален из друзей', 'success');
-            setTimeout(() => window.location.reload(), 1000);
+            // Находим кнопку по data-user-id и удаляем карточку
+            const button = document.querySelector(`[data-user-id="${userId}"]`);
+            if (button) {
+                const card = button.closest('.card');
+                if (card) {
+                    card.remove();
+                }
+                // Обновляем счетчик
+                const badge = document.querySelector('.badge.badge-success');
+                if (badge) {
+                    const count = parseInt(badge.textContent) - 1;
+                    badge.textContent = count;
+                }
+            }
         } else {
             showMessage(data.message || '❌ Ошибка', 'error');
         }

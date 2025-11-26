@@ -149,7 +149,19 @@ async function unsubscribeFromUser(userId) {
 
         if (data.success) {
             showMessage('✅ Отписка выполнена', 'success');
-            setTimeout(() => window.location.reload(), 1000);
+            // Удаляем элемент пользователя из DOM без перезагрузки
+            const button = document.querySelector(`[data-user-id="${userId}"]`);
+            if (button) {
+                const card = button.closest('.card');
+                if (card) {
+                    card.remove();
+                }
+                // Обновляем счетчик подписок
+                const counter = document.querySelector('.stat-item .stat-number');
+                if (counter) {
+                    counter.textContent = parseInt(counter.textContent) - 1;
+                }
+            }
         } else {
             showMessage(data.message || '❌ Ошибка', 'error');
         }
