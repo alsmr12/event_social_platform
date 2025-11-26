@@ -1,5 +1,15 @@
 package com.ark.socialevent.ui.screens
 
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.util.Log
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
+import android.webkit.WebSettings
+import android.webkit.WebView
+import android.webkit.WebView.setWebContentsDebuggingEnabled
+import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,16 +25,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.EventNote
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Newspaper
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -57,16 +67,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
+import com.ark.socialevent.network.ApiClient
 import com.ark.socialevent.network.EventRepository
 import com.ark.socialevent.network.UserProfile
 import com.ark.socialevent.network.UserRepository
+import com.ark.socialevent.ui.screens.achievements.AchievementsScreen
 import com.ark.socialevent.ui.screens.events.EventDetailsDialog
 import com.ark.socialevent.ui.screens.events.EventsScreen
 import com.ark.socialevent.ui.screens.events.MyEventsScreen
 import com.ark.socialevent.ui.screens.friends.FriendsScreen
-import com.ark.socialevent.ui.screens.home.HomeScreen
 import com.ark.socialevent.ui.screens.news.NewsFeedScreen
 import com.ark.socialevent.ui.screens.people.PeopleScreen
 import com.ark.socialevent.ui.screens.people.UserProfileScreen
@@ -80,15 +93,16 @@ sealed class DrawerScreens(
     val title: String,
     val icon: ImageVector
 ) {
-    object Home : DrawerScreens("home", "Главная", Icons.Filled.Home)
+    object Map : DrawerScreens("map", "Карта", Icons.Filled.Map)
     object News : DrawerScreens("news", "Новости", Icons.Filled.Newspaper)
     object Events : DrawerScreens("events", "События", Icons.Filled.CalendarToday)
     object People : DrawerScreens("people", "Люди", Icons.Filled.People)
     object Profile : DrawerScreens("profile", "Профиль", Icons.Filled.Person)
     object Friends : DrawerScreens("friends", "Друзья", Icons.Filled.Group)
     object Subscriptions : DrawerScreens("subscriptions", "Подписки", Icons.Filled.AccountCircle)
+    object Achievements : DrawerScreens("achievements", "Достижения", Icons.Filled.Star)
+    object MyEvents : DrawerScreens("my_events", "Мои события", Icons.AutoMirrored.Filled.EventNote)
     object Logout : DrawerScreens("logout", "Выйти", Icons.Filled.ExitToApp)
-    object MyEvents : DrawerScreens("my_events", "Мои события", Icons.Filled.EventNote)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -98,8 +112,8 @@ fun MainScreen(
     userRepository: UserRepository,
     eventRepository: EventRepository,
 ) {
-    var currentScreen by remember { mutableStateOf<DrawerScreens>(DrawerScreens.Home) }
-    var selectedUserId by remember { mutableStateOf<Int?>(null) } // Для открытия профиля пользователя
+    var currentScreen by remember { mutableStateOf<DrawerScreens>(DrawerScreens.Map) }
+    var selectedUserId by remember { mutableStateOf<Int?>(null) }
     var showLogoutDialog by remember { mutableStateOf(false) }
     val drawerState = remember { DrawerState(DrawerValue.Closed) }
     val coroutineScope = rememberCoroutineScope()
@@ -120,7 +134,6 @@ fun MainScreen(
         selectedEvent = event
     }
 
-
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -137,14 +150,15 @@ fun MainScreen(
 
                 // Список экранов кроме Logout
                 listOf(
-                    DrawerScreens.Home,
+                    DrawerScreens.Map,
                     DrawerScreens.Events,
                     DrawerScreens.People,
                     DrawerScreens.News,
                     DrawerScreens.Profile,
                     DrawerScreens.MyEvents,
                     DrawerScreens.Friends,
-                    DrawerScreens.Subscriptions
+                    DrawerScreens.Subscriptions,
+                    DrawerScreens.Achievements
                 ).forEach { screen ->
                     NavigationDrawerItem(
                         icon = { Icon(screen.icon, contentDescription = null) },
@@ -187,7 +201,7 @@ fun MainScreen(
                             title = { Text("Профиль") },
                             navigationIcon = {
                                 IconButton(onClick = onBackFromProfile) {
-                                    Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
                                 }
                             },
                             colors = TopAppBarDefaults.centerAlignedTopAppBarColors()
@@ -228,7 +242,12 @@ fun MainScreen(
                     else -> {
                         // Показываем обычные экраны
                         when (currentScreen) {
-                            DrawerScreens.Home -> HomeScreen()
+                            DrawerScreens.Map -> MapScreen(
+                                userRepository = userRepository,
+                                eventRepository = eventRepository,
+                                onOpenEvent = openEvent,
+                                onOpenProfile = openUserProfile
+                            )
                             DrawerScreens.Events -> EventsScreen(eventRepository = eventRepository)
                             DrawerScreens.People -> PeopleScreen(
                                 userRepository = userRepository
@@ -279,7 +298,18 @@ fun MainScreen(
                                 userRepository = userRepository,
                                 eventRepository = eventRepository
                             )
-                            DrawerScreens.Logout -> HomeScreen()
+                            DrawerScreens.Achievements -> AchievementsScreen(
+
+                            )
+                            DrawerScreens.Logout -> {
+                                // Просто показываем карту вместо выхода
+                                MapScreen(
+                                    userRepository = userRepository,
+                                    eventRepository = eventRepository,
+                                    onOpenEvent = openEvent,
+                                    onOpenProfile = openUserProfile
+                                )
+                            }
                         }
                     }
                 }
@@ -301,7 +331,7 @@ fun MainScreen(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Icon(
-                        Icons.Default.ExitToApp,
+                        Icons.Filled.ExitToApp,
                         contentDescription = "Выход",
                         modifier = Modifier
                             .size(48.dp)
@@ -368,6 +398,203 @@ fun MainScreen(
                     selectedEvent = null // Закрываем диалог после действия
                 }
             }
+        )
+    }
+}
+
+// Обновленный MapScreen с WebView
+@Composable
+fun MapScreen(
+    userRepository: UserRepository,
+    eventRepository: EventRepository,
+    onOpenEvent: (com.ark.socialevent.network.Event) -> Unit,
+    onOpenProfile: (Int) -> Unit
+) {
+    val context = LocalContext.current
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    // Получаем токен авторизации и baseUrl
+    val authToken = ApiClient.getSessionToken()
+    val baseUrl = ApiClient.getBaseUrl()
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (isLoading) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Загрузка карты...")
+            }
+        }
+
+        if (errorMessage != null) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    Icons.Filled.Error,
+                    contentDescription = "Ошибка",
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Ошибка загрузки карты")
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    errorMessage ?: "Неизвестная ошибка",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = {
+                    errorMessage = null
+                    isLoading = true
+                }) {
+                    Text("Повторить")
+                }
+            }
+        }
+
+        AndroidView(
+            factory = { context ->
+                WebView(context).apply {
+                    webViewClient = object : WebViewClient() {
+                        override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                            super.onPageStarted(view, url, favicon)
+                            isLoading = true
+                            errorMessage = null
+                        }
+
+                        override fun onPageFinished(view: WebView?, url: String?) {
+                            super.onPageFinished(view, url)
+                            isLoading = false
+                        }
+
+                        override fun onReceivedError(
+                            view: WebView?,
+                            request: WebResourceRequest?,
+                            error: WebResourceError?
+                        ) {
+                            super.onReceivedError(view, request, error)
+                            isLoading = false
+                            errorMessage = "Ошибка загрузки: ${error?.description}"
+                        }
+
+                        override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+                            url?.let {
+                                Log.d("MapScreen", "WebView loading URL: $url")
+
+                                when {
+                                    // Обработка ссылок на события
+                                    url.contains("/event/") -> {
+                                        val eventId = url.substringAfterLast("/").toIntOrNull()
+                                        eventId?.let { id ->
+                                            Log.d("MapScreen", "Opening event: $id")
+                                            eventRepository.getEventById(id) { event, error ->
+                                                if (event != null) {
+                                                    onOpenEvent(event)
+                                                } else {
+                                                    Log.e("MapScreen", "Failed to load event: $error")
+                                                    // Если не удалось загрузить, открываем в WebView
+                                                    view?.loadUrl(url)
+                                                }
+                                            }
+                                        } ?: run {
+                                            view?.loadUrl(url)
+                                        }
+                                        return true
+                                    }
+                                    // Обработка ссылок на профили
+                                    url.contains("/profile/") -> {
+                                        val profileId = url.substringAfterLast("/").toIntOrNull()
+                                        profileId?.let { id ->
+                                            Log.d("MapScreen", "Opening profile: $id")
+                                            onOpenProfile(id)
+                                        } ?: run {
+                                            view?.loadUrl(url)
+                                        }
+                                        return true
+                                    }
+
+                                    url.startsWith("http://") || url.startsWith("https://") -> {
+                                        // Проверяем, это наш сервер или внешняя ссылка
+                                        if (url.contains(baseUrl) || url.contains("localhost") || url.contains("10.0.2.2")) {
+                                            return false // Позволяем WebView обрабатывать внутренние ссылки
+                                        } else {
+
+                                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                            context.startActivity(intent)
+                                            return true
+                                        }
+                                    }
+                                    else -> {
+                                        return false
+                                    }
+                                }
+                            }
+                            return false
+                        }
+                    }
+
+                    settings.apply {
+                        javaScriptEnabled = true
+                        domStorageEnabled = true
+                        allowFileAccess = true
+                        setGeolocationEnabled(true)
+                        setSupportZoom(true)
+                        builtInZoomControls = true
+                        displayZoomControls = false
+                        loadWithOverviewMode = true
+                        useWideViewPort = true
+                        setSupportMultipleWindows(true)
+
+
+                        cacheMode = WebSettings.LOAD_DEFAULT
+
+                        databaseEnabled = true
+
+                        // Разрешаем доступ к файлам
+                        allowContentAccess = true
+                        allowFileAccessFromFileURLs = true
+                        allowUniversalAccessFromFileURLs = true
+                    }
+
+                    // Включаем отладку WebView
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                        setWebContentsDebuggingEnabled(true)
+                    }
+
+                    // Улучшаем производительность
+                    setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
+                }
+            },
+            update = { webView ->
+                val mapUrl = "$baseUrl/map"
+                Log.d("MapScreen", "Loading map from: $mapUrl")
+
+                // Формируем заголовки с авторизацией
+                val headers = authToken?.let {
+                    mapOf(
+                        "Authorization" to "Bearer $it",
+                        "User-Agent" to "SocialEvent-Android-App/1.0",
+                        "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+                    )
+                } ?: mapOf(
+                    "User-Agent" to "SocialEvent-Android-App/1.0",
+                    "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+                )
+
+                webView.loadUrl(mapUrl, headers)
+            },
+            modifier = Modifier.fillMaxSize()
         )
     }
 }

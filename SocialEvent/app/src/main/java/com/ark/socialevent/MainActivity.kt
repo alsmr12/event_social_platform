@@ -5,8 +5,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
+import com.ark.socialevent.network.ApiClient
 import com.ark.socialevent.network.UserRepository
-import com.ark.socialevent.network.EventRepository // ← ДОБАВЬ ИМПОРТ
+import com.ark.socialevent.network.EventRepository
 import com.ark.socialevent.ui.screens.LoginScreen
 import com.ark.socialevent.ui.screens.MainScreen
 import com.ark.socialevent.ui.screens.RegisterScreen
@@ -17,9 +18,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Инициализируем ApiClient с правильным baseUrl для локального сервера
+        ApiClient.initialize(this)
+        ApiClient.setBaseUrl("http://10.0.2.2:8080") // для эмулятора
+
         // Инициализируем репозитории
         val userRepo = UserRepository(this)
-        val eventRepo = EventRepository(this) // ← СОЗДАЕМ EventRepository
+        val eventRepo = EventRepository(this)
 
         setContent {
             SocialEventTheme {
