@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"event_social_platform/internal/middleware"
-	"event_social_platform/internal/models"
 	"event_social_platform/internal/repository"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -129,14 +128,14 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 			})
 		})
 		// В разделе protected добавляем правильные маршруты для профилей:
-		protected.GET("/profile", func(c *gin.Context) {
+		/*protected.GET("/profile", func(c *gin.Context) {
 			c.HTML(http.StatusOK, "base.html", gin.H{
 				"Title":       "Мой профиль",
 				"NavActive":   "my_profile",
 				"CurrentUser": GetUserFromContext(c),
 			})
-		})
-		//protected.GET("/profile", authHandler.ShowProfile)
+		})*/
+		protected.GET("/profile", authHandler.ShowProfile)
 		protected.GET("/profile/:id", userHandler.GetProfile)
 
 		// В разделе protected добавляем:
@@ -277,9 +276,9 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 		protected.GET("/ratings", achievementHandler.ShowRatings)
 		protected.GET("/my-achievements", achievementHandler.ShowMyAchievements)
 
-		//protected.GET("/edit-profile", userHandler.ShowEditProfileForm)
-		//protected.POST("/edit-profile", userHandler.UpdateProfile)
-		protected.GET("/edit-profile", func(c *gin.Context) {
+		protected.GET("/edit-profile", userHandler.ShowEditProfileForm)
+		protected.POST("/edit-profile", userHandler.UpdateProfile)
+		/*protected.GET("/edit-profile", func(c *gin.Context) {
 			currentUser := GetUserFromContext(c)
 			if currentUser == nil {
 				c.Redirect(http.StatusSeeOther, "/login")
@@ -299,7 +298,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 				"CurrentUser": currentUser,
 				"SocialLinks": socialLinks,
 			})
-		})
+		})*/
 
 		protected.GET("/api/events", eventHandler.GetAllEventsJSON)
 		protected.POST("/api/create-event", eventHandler.CreateEventJSON)
