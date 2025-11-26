@@ -61,6 +61,9 @@ func (h *UserHandler) CreateProfile(c *gin.Context) {
 		Gender:    req.Gender,
 		Age:       req.Age,
 		Phone:     req.Phone,
+		City:      req.City,
+		Latitude:  req.Latitude,
+		Longitude: req.Longitude,
 		//SocialLinks: req.SocialLinks,
 	}
 
@@ -288,6 +291,9 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	currentUser.Gender = req.Gender
 	currentUser.Age = req.Age
 	currentUser.Phone = req.Phone
+	currentUser.City = req.City
+	currentUser.Latitude = req.Latitude
+	currentUser.Longitude = req.Longitude
 	//currentUser.SocialLinks = req.SocialLinks
 
 	if err := h.userRepo.UpdateUser(currentUser); err != nil {

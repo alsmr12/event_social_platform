@@ -1,0 +1,126 @@
+{{define "map_content"}}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2>Карта событий</h2>
+
+        <!-- Переключатели режимов карты -->
+        <div id="map-controls" style="display: flex; gap: 8px;">
+            <button class="btn btn-outline" data-mode="events">📌 События</button>
+            <button class="btn btn-outline" data-mode="heatmap">🔥 Тепловая карта</button>
+        </div>
+    </div>
+
+    <!-- Блок для сообщений об ошибках -->
+    <div id="map-error" class="alert alert-error" style="display: none; margin-bottom: 20px;"></div>
+
+    <!-- Контейнер карты -->
+    <div id="map" style="height: 600px; border-radius: var(--radius); border: 1px solid var(--border-color);"></div>
+
+    <!-- Компактная панель -->
+    <div id="location-controls" style="margin-top: 12px; padding: 12px 16px; background: var(--bg-secondary); border-radius: var(--radius); display: flex; gap: 20px; font-size: 0.8em; align-items: stretch; justify-content: space-between;">
+
+        <!-- Текущее местоположение -->
+        <div id="current-location" style="display: flex; align-items: flex-start; gap: 12px; flex: 1; min-width: 0;">
+            <div style="min-width: 0; flex: 1;">
+                <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 6px; white-space: nowrap;">Текущее местоположение</div>
+                <div style="color: var(--text-secondary); display: flex; flex-direction: column; gap: 2px;">
+                    <span>Город: <span id="current-city">-</span></span>
+                    <span>Координаты: <span id="current-coords">-</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Новое местоположение и кнопки -->
+        <div style="display: flex; align-items: flex-start; gap: 16px; flex: 1; min-width: 0;">
+            <div id="set-location-section" style="display: flex; align-items: flex-start; gap: 12px; flex: 1; min-width: 0;">
+                <div style="min-width: 0; flex: 1;">
+                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 6px; white-space: nowrap;">Новое местоположение</div>
+                    <div style="color: var(--text-secondary); display: flex; flex-direction: column; gap: 2px;">
+                        <span>Город: <span id="location-city">-</span></span>
+                        <span>Координаты: <span id="location-coords">-</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Кнопки действий -->
+            <div style="display: flex; flex-direction: column; gap: 6px; flex-shrink: 0;">
+                <button id="auto-location-btn" class="btn btn-outline btn-small" style="white-space: nowrap; min-width: 80px;">
+                    📍 GPS
+                </button>
+                <button id="set-location-btn" class="btn btn-primary btn-small" style="white-space: nowrap; min-width: 80px;">
+                    Применить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Подключение API Яндекс.Карт -->
+<script src="https://enterprise.api-maps.yandex.ru/2.1/?apikey=4a2a4fa4-3e61-4583-bedd-f03c2bc66160&lang=ru_RU"></script>
+
+<!-- Подключение нашего скрипта карты -->
+<script src="/static/js/map.js"></script>
+
+<!-- Подключение отладочного скрипта -->
+<script src="/static/js/debug.js"></script>
+
+<!-- Подключение стилей карты -->
+<link rel="stylesheet" href="/static/css/map.css">
+
+<style>
+    #map {
+        height: 600px;
+    }
+
+    #map-controls .btn {
+        padding: 8px 16px;
+        font-size: 0.9em;
+        transition: all 0.2s ease;
+    }
+
+    #map-controls .btn-active {
+        background-color: var(--primary-color) !important;
+        color: white !important;
+        border-color: var(--primary-color) !important;
+    }
+
+    .leaflet-popup-content {
+        margin: 0;
+    }
+
+    .leaflet-popup-content h3 {
+        margin: 0 0 10px 0;
+        font-size: 1.2em;
+        color: var(--text-primary);
+    }
+
+    .leaflet-popup-content p {
+        margin: 5px 0;
+        font-size: 0.9em;
+        color: var(--text-secondary);
+    }
+
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 0.85em;
+    }
+
+    @media (max-width: 768px) {
+        #location-controls {
+            flex-direction: column;
+            gap: 16px;
+            align-items: stretch;
+        }
+
+        #current-location,
+        #set-location-section {
+            width: 100%;
+        }
+
+        .location-setter {
+            flex-direction: column;
+            gap: 12px;
+        }
+    }
+</style>
+{{end}}

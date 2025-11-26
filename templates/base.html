@@ -739,6 +739,7 @@
                     {{end}}
                     <a href="/profile" class="dropdown-item {{if eq .NavActive "my_profile"}}active{{end}}">Профиль</a>
                     <a href="/events" class="dropdown-item {{if eq .NavActive "events"}}active{{end}}">События</a>
+                <a href="/map" class="dropdown-item {{if eq .NavActive "map"}}active{{end}}">Карта</a>
                 </div>
             </li>
 
@@ -805,6 +806,16 @@
     {{template "ratings_content" .}}
     {{else if eq .NavActive "news"}}
     {{template "news_content" .}}
+    {{else if eq .NavActive "map"}}
+    {{if .UserAttrs}}
+    <div
+        data-user-id="{{index .UserAttrs "data-user-id"}}"
+        data-user-city="{{index .UserAttrs "data-user-city"}}"
+        data-user-latitude="{{index .UserAttrs "data-user-latitude"}}"
+        data-user-longitude="{{index .UserAttrs "data-user-longitude"}}"
+    ></div>
+    {{end}}
+    {{template "map_content" .}}
     {{else}}
     {{block "content" .}}{{end}}
     {{end}}

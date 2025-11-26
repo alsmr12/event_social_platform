@@ -1,0 +1,72 @@
+/* Стили для маркеров на карте */
+
+.current-location-marker {
+    font-size: 24px;
+    transform: translate(-50%, -50%);
+}
+
+.user-location-marker {
+    font-size: 24px;
+    transform: translate(-50%, -50%);
+}
+
+.selected-location-marker {
+    font-size: 24px;
+    transform: translate(-50%, -50%);
+}
+
+/* Плавная анимация для маркеров */
+.leaflet-marker-icon {
+    transition: all 0.3s ease;
+}
+
+/* Стили для секции управления местоположением */
+#location-controls {
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    padding: 15px;
+    margin-top: 15px;
+}
+
+#current-location {
+    background: var(--bg-primary);
+    border-radius: var(--radius);
+    padding: 15px;
+    margin-bottom: 15px;
+    border: 1px solid var(--border-color);
+}
+
+#set-location-section {
+    background: var(--bg-primary);
+    border-radius: var(--radius);
+    padding: 15px;
+    border: 1px solid var(--border-color);
+}
+
+#location-info {
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    padding: 10px;
+    margin-top: 10px;
+    font-size: 0.85em;
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+    #map {
+        height: 400px;
+    }
+    
+    #location-controls {
+        padding: 10px;
+    }
+    
+    #set-location-section {
+        padding: 10px;
+    }
+    
+    .btn {
+        padding: 8px 12px;
+        font-size: 0.9em;
+    }
+}

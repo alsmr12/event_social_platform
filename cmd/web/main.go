@@ -47,7 +47,7 @@ func main() {
 		},
 	})
 
-	router.LoadHTMLGlob("templates/*")
+	router.LoadHTMLGlob("templates/*.html")
 	handlers.SetupRoutes(router, db)
 
 	log.Printf("Server started on http://localhost:%s", cfg.ServerPort)

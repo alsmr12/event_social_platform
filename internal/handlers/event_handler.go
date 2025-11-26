@@ -148,9 +148,18 @@ func (h *EventHandler) GetAllEvents(c *gin.Context) {
 		dateTo = now
 	}
 
-	// Координаты пользователя (пока фиксированные 0,0)
-	userLat := 0.0
-	userLng := 0.0
+	// Получаем пользователя из контекста
+	currentUser := GetUserFromContext(c)
+
+	// Получаем координаты пользователя
+	var userLat, userLng float64
+	if currentUser != nil {
+		userLat = currentUser.Latitude
+		userLng = currentUser.Longitude
+	} else {
+		userLat = 0.0
+		userLng = 0.0
+	}
 
 	// Создаем фильтр
 	filter := repository.EventFilter{
@@ -176,8 +185,6 @@ func (h *EventHandler) GetAllEvents(c *gin.Context) {
 
 	// Получаем все типы событий для фильтра
 	eventTypes, _ := h.eventRepo.GetEventTypes()
-
-	currentUser := GetUserFromContext(c)
 
 	// ФИЛЬТРУЕМ: показываем события, к которым пользователь имеет доступ
 	var filteredEvents []*models.Event
