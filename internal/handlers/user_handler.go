@@ -126,26 +126,10 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	// Получаем записи на стене пользователя с пагинацией
+	// Получаем записи на стене пользователя
 	db := h.userRepo.GetDB()
 	wallRepo := repository.NewWallRepository(db)
-
-	// Параметры пагинации
-	page := c.DefaultQuery("page", "1")
-	limit := c.DefaultQuery("limit", "10")
-
-	pageInt, _ := strconv.Atoi(page)
-	limitInt, _ := strconv.Atoi(limit)
-	if pageInt < 1 {
-		pageInt = 1
-	}
-	if limitInt < 1 || limitInt > 100 {
-		limitInt = 10
-	}
-
-	offset := (pageInt - 1) * limitInt
-
-	posts, err := wallRepo.GetPostsByUserID(uint(id), limitInt, offset)
+	posts, err := wallRepo.GetPostsByUserID(uint(id))
 	if err != nil {
 		posts = []*models.WallPost{}
 	}
