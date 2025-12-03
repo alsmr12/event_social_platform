@@ -26,7 +26,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -36,7 +35,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -61,7 +59,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.ark.socialevent.network.EventRepository
-import com.ark.socialevent.network.HeatmapPoint
 import com.ark.socialevent.network.UserRepository
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
@@ -93,7 +90,6 @@ fun MapScreen(
 ) {
     val context = LocalContext.current
     var mapMode by remember { mutableStateOf(MapMode.EVENTS) }
-    var isLoading by remember { mutableStateOf(true) }
     var selectedLocation by remember { mutableStateOf<Point?>(null) }
     var locationCity by remember { mutableStateOf<String?>(null) }
     var currentUserLocation by remember { mutableStateOf<Point?>(null) }
@@ -102,11 +98,6 @@ fun MapScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
-
-    // Инициализация MapKit
-    LaunchedEffect(Unit) {
-        isLoading = false
-    }
 
     // Запрос разрешений на геолокацию
     val locationPermissionLauncher = rememberLauncherForActivityResult(
@@ -252,51 +243,39 @@ fun MapScreen(
                     .fillMaxSize()
                     .padding(top = 8.dp)
             ) {
-                when {
-                    isLoading -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    }
-                    else -> {
-                        YandexMapView(
-                            modifier = Modifier.fillMaxSize(),
-                            mapMode = mapMode,
-                            userRepository = userRepository,
-                            eventRepository = eventRepository,
-                            onMapReady = { view ->
-                                mapView = view
-                                view.mapWindow.map.move(
-                                    CameraPosition(Point(55.7558, 37.6176), 11f, 0f, 0f)
-                                )
-
-                                // Обработчик кликов по карте
-                                view.mapWindow.map.addInputListener(object : InputListener {
-                                    override fun onMapTap(map: Map, point: Point) {
-                                        selectedLocation = point
-                                        getCityFromPoint(context, point) { city ->
-                                            locationCity = city
-                                            showSaveDialog = true
-                                        }
-
-                                        // Добавляем маркер местоположения
-                                        map.mapObjects.clear()
-                                        val placemark = map.mapObjects.addPlacemark(point)
-                                        placemark.setIcon(createLocationMarkerIcon())
-                                    }
-
-                                    override fun onMapLongTap(map: Map, point: Point) {
-                                        // Не используется
-                                    }
-                                })
-                            },
-                            onEventClicked = onOpenEvent
+                YandexMapView(
+                    modifier = Modifier.fillMaxSize(),
+                    mapMode = mapMode,
+                    userRepository = userRepository,
+                    eventRepository = eventRepository,
+                    onMapReady = { view ->
+                        mapView = view
+                        view.mapWindow.map.move(
+                            CameraPosition(Point(55.7558, 37.6176), 11f, 0f, 0f)
                         )
-                    }
-                }
+
+                        // Обработчик кликов по карте
+                        view.mapWindow.map.addInputListener(object : InputListener {
+                            override fun onMapTap(map: Map, point: Point) {
+                                selectedLocation = point
+                                getCityFromPoint(context, point) { city ->
+                                    locationCity = city
+                                    showSaveDialog = true
+                                }
+
+                                // Добавляем маркер местоположения
+                                map.mapObjects.clear()
+                                val placemark = map.mapObjects.addPlacemark(point)
+                                placemark.setIcon(createLocationMarkerIcon())
+                            }
+
+                            override fun onMapLongTap(map: Map, point: Point) {
+                                // Не используется
+                            }
+                        })
+                    },
+                    onEventClicked = onOpenEvent
+                )
             }
         }
     }
@@ -323,7 +302,7 @@ fun MapScreen(
                                 selectedLocation!!.latitude,
                                 selectedLocation!!.longitude,
                                 locationCity!!
-                            ) { success, message ->
+                            ) { success: Boolean, message: String? ->
                                 coroutineScope.launch {
                                     if (success) {
                                         snackbarHostState.showSnackbar(
@@ -381,7 +360,7 @@ fun YandexMapView(
         mapViewState?.let { view ->
             when (mapMode) {
                 MapMode.EVENTS -> loadEventsOnMap(view, eventRepository, onEventClicked)
-                MapMode.HEATMAP -> loadHeatmapOnMap(view, userRepository)
+                MapMode.HEATMAP -> loadSimpleHeatmap(view, eventRepository, onEventClicked)
             }
         }
 
@@ -397,7 +376,7 @@ fun YandexMapView(
             // Обновление при смене режима
             when (mapMode) {
                 MapMode.EVENTS -> loadEventsOnMap(view, eventRepository, onEventClicked)
-                MapMode.HEATMAP -> loadHeatmapOnMap(view, userRepository)
+                MapMode.HEATMAP -> loadSimpleHeatmap(view, eventRepository, onEventClicked)
             }
         }
     )
@@ -438,6 +417,153 @@ private fun loadEventsOnMap(
             }
         }
     }
+}
+
+// ПРОСТАЯ ТЕПЛОВАЯ КАРТА НА ОСНОВЕ ОБЫЧНЫХ СОБЫТИЙ
+private fun loadSimpleHeatmap(
+    mapView: MapView,
+    eventRepository: EventRepository,
+    onEventClicked: (com.ark.socialevent.network.Event) -> Unit
+) {
+    val map = mapView.mapWindow.map
+    map.mapObjects.clear()
+
+    Log.d("MapScreen", "Загрузка тепловой карты...")
+
+    // Используем ТЕ ЖЕ САМЫЕ события что и в обычном режиме
+    eventRepository.getEventsWithFilters { events, error ->
+        if (error != null) {
+            Log.e("MapScreen", "Ошибка загрузки событий: $error")
+            return@getEventsWithFilters
+        }
+
+        if (events.isNullOrEmpty()) {
+            Log.d("MapScreen", "Нет событий для тепловой карты")
+            return@getEventsWithFilters
+        }
+
+        Log.d("MapScreen", "Найдено ${events.size} событий для тепловой карты")
+
+        // Считаем максимальное количество участников
+        var maxParticipants = 1
+        events.forEach { event ->
+            // Используем subscribers_count который уже есть в событии
+            val participants = event.subscribersCount ?: 0
+            if (participants > maxParticipants) {
+                maxParticipants = participants
+            }
+        }
+
+        Log.d("MapScreen", "Максимальное количество участников: $maxParticipants")
+
+        // ОТОБРАЖАЕМ КАЖДОЕ СОБЫТИЕ КАК ЦВЕТНОЙ КРУГ
+        events.forEach { event ->
+            if (event.latitude != null && event.longitude != null) {
+                try {
+                    val participants = event.subscribersCount ?: 0
+
+                    // РАЗМЕР КРУГА ЗАВИСИТ ОТ КОЛИЧЕСТВА УЧАСТНИКОВ
+                    // Чем больше участников - тем больше круг
+                    val radius = 100f + (participants * 50f) // Базовый размер + за каждого участника
+
+                    // ЦВЕТ ЗАВИСИТ ОТ КОЛИЧЕСТВА УЧАСТНИКОВ
+                    val color = when {
+                        participants < 5 -> 0x8000FF00.toInt()    // Зеленый (мало участников)
+                        participants < 10 -> 0x80FFFF00.toInt()   // Желтый (средне)
+                        participants < 20 -> 0x80FFA500.toInt()   // Оранжевый (много)
+                        else -> 0x80FF0000.toInt()                // Красный (очень много)
+                    }
+
+                    // Создаем круг для тепловой карты
+                    val circle = YandexCircle(
+                        Point(event.latitude, event.longitude),
+                        radius
+                    )
+
+                    val circleMapObject = map.mapObjects.addCircle(circle)
+                    circleMapObject.fillColor = color
+                    circleMapObject.strokeColor = Color.WHITE
+                    circleMapObject.strokeWidth = 2f
+                    circleMapObject.zIndex = 1f
+                    circleMapObject.userData = event
+
+                    // Добавляем возможность кликать на круг
+                    circleMapObject.addTapListener { mapObject, _ ->
+                        val clickedEvent = mapObject.userData as? com.ark.socialevent.network.Event
+                        clickedEvent?.let { onEventClicked(it) }
+                        true
+                    }
+
+                    // ДОБАВЛЯЕМ МАРКЕР ПОВЕРХ КРУГА
+                    val point = Point(event.latitude, event.longitude)
+                    val placemark = map.mapObjects.addPlacemark(point)
+
+                    // Создаем маленький маркер с числом участников
+                    val icon = createHeatmapMarkerIcon(participants)
+                    placemark.setIcon(icon)
+
+                    // Показываем количество участников
+                    placemark.setText("${participants} чел")
+                    placemark.userData = event
+                    placemark.zIndex = 2f // Поверх круга
+
+                    placemark.addTapListener { mapObject, _ ->
+                        val clickedEvent = mapObject.userData as? com.ark.socialevent.network.Event
+                        clickedEvent?.let { onEventClicked(it) }
+                        true
+                    }
+
+                } catch (e: Exception) {
+                    Log.e("MapScreen", "Ошибка добавления тепловой точки: ${e.message}")
+                }
+            }
+        }
+
+        Log.d("MapScreen", "Тепловая карта создана: ${events.count { it.latitude != null && it.longitude != null }} точек")
+    }
+}
+
+// Создаем иконку маркера для тепловой карты (с числом участников)
+private fun createHeatmapMarkerIcon(participants: Int): ImageProvider {
+    val size = 40
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+
+    // Цвет зависит от количества участников
+    val color = when {
+        participants < 5 -> Color.GREEN
+        participants < 10 -> Color.YELLOW
+        participants < 20 -> Color.rgb(255, 165, 0) // Оранжевый
+        else -> Color.RED
+    }
+
+    val paint = Paint().apply {
+        this.color = color
+        isAntiAlias = true
+    }
+
+    val center = size / 2f
+    canvas.drawCircle(center, center, center - 4, paint)
+
+    // Белая обводка
+    paint.color = Color.WHITE
+    paint.style = Paint.Style.STROKE
+    paint.strokeWidth = 2f
+    canvas.drawCircle(center, center, center - 4, paint)
+
+    // Рисуем число участников в центре (если меньше 100)
+    if (participants > 0 && participants < 100) {
+        paint.style = Paint.Style.FILL
+        paint.color = Color.WHITE
+        paint.textSize = 12f
+        paint.textAlign = Paint.Align.CENTER
+
+        val text = participants.toString()
+        val yPos = center - ((paint.descent() + paint.ascent()) / 2)
+        canvas.drawText(text, center, yPos, paint)
+    }
+
+    return ImageProvider.fromBitmap(bitmap)
 }
 
 // Создаем иконку маркера события
@@ -497,55 +623,6 @@ private fun createLocationMarkerIcon(): ImageProvider {
     return ImageProvider.fromBitmap(bitmap)
 }
 
-private fun loadHeatmapOnMap(
-    mapView: MapView,
-    userRepository: UserRepository
-) {
-    val map = mapView.mapWindow.map
-    map.mapObjects.clear()
-
-    userRepository.getHeatmapData { points, error ->
-        if (error != null) {
-            Log.e("MapScreen", "Error loading heatmap: $error")
-            return@getHeatmapData
-        }
-
-        points?.forEach { point ->
-            try {
-                val circle = YandexCircle(
-                    Point(point.latitude, point.longitude),
-                    1000f // 1 км в метрах
-                )
-                val circleMapObject = map.mapObjects.addCircle(circle)
-                val color = getColorForIntensity(point.intensity)
-                circleMapObject.fillColor = color
-                circleMapObject.strokeColor = color
-                circleMapObject.strokeWidth = 2f
-                circleMapObject.userData = point
-
-                circleMapObject.addTapListener { mapObject, _ ->
-                    val heatmapPoint = mapObject.userData as? HeatmapPoint
-                    heatmapPoint?.let {
-                        Log.d("Heatmap", "Точка: ${it.latitude}, ${it.longitude}, Интенсивность: ${it.intensity}")
-                    }
-                    true
-                }
-            } catch (e: Exception) {
-                Log.e("MapScreen", "Error adding heatmap circle: ${e.message}")
-            }
-        }
-    }
-}
-
-// Функция для получения цвета по интенсивности
-private fun getColorForIntensity(intensity: Double): Int {
-    return when {
-        intensity < 0.3 -> 0x4000FF00.toInt()    // светло-зеленый
-        intensity < 0.6 -> 0x80FFFF00.toInt()    // желтый
-        else -> 0xC0FFA500.toInt()              // оранжевый
-    }
-}
-
 @SuppressLint("MissingPermission")
 private fun getCurrentLocation(context: Context, callback: (Point) -> Unit) {
     val fusedLocationClient: FusedLocationProviderClient =
@@ -554,9 +631,13 @@ private fun getCurrentLocation(context: Context, callback: (Point) -> Unit) {
     fusedLocationClient.lastLocation.addOnSuccessListener { location ->
         location?.let {
             callback(Point(it.latitude, it.longitude))
-        } ?: Log.e("MapScreen", "Location is null")
+        } ?: run {
+            Log.e("MapScreen", "Location is null, using default location")
+            callback(Point(55.7558, 37.6176))
+        }
     }.addOnFailureListener { e ->
         Log.e("MapScreen", "Error getting location", e)
+        callback(Point(55.7558, 37.6176))
     }
 }
 
@@ -573,6 +654,9 @@ private fun getCityFromPoint(context: Context, point: Point, callback: (String) 
         }
     } catch (e: IOException) {
         Log.e("MapScreen", "Error getting city from location", e)
+        callback("Неизвестный город")
+    } catch (e: IllegalArgumentException) {
+        Log.e("MapScreen", "Invalid coordinates: ${point.latitude}, ${point.longitude}")
         callback("Неизвестный город")
     }
 }
