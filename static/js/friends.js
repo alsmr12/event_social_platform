@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 </div>
                                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                                     <a href="/profile/${request.friend.id}" class="btn btn-outline btn-small">Профиль</a>
-                                    <button class="btn btn-secondary btn-small cancel-btn" data-user-id="${request.friend.id}">Отменить</button>
+                                    <button class="btn btn-outline btn-small cancel-btn" data-user-id="${request.friend.id}">Отменить</button>
                                 </div>
                             </div>
                         `).join('')}

@@ -467,3 +467,51 @@ input:focus, select:focus, textarea:focus {
     height: 20px;
     object-fit: contain;
 }
+
+/* Кнопки вкладок на странице событий */
+.tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.tabs .btn {
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.tabs .btn-outline {
+    border-color: #3498db;
+    color: #3498db;
+    background: transparent;
+}
+
+.tabs .btn-outline:hover {
+    background: #3498db;
+    color: white;
+    border-color: #3498db;
+}
+
+/* Активная вкладка */
+.tabs .btn-primary {
+    background: #3498db;
+    color: white;
+    border-color: #3498db;
+}
+
+.tabs .btn-primary:hover {
+    background: #2980b9;
+    border-color: #2980b9;
+}
+
+/* Стили для вкладок на мобильных */
+@media (max-width: 768px) {
+    .tabs {
+        flex-direction: column;
+    }
+    
+    .tabs .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}

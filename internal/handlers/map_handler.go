@@ -304,6 +304,19 @@ func (h *MapHandler) HandleHeatmap(c *gin.Context) {
 		}
 		// Добавляем в результат только если есть данные
 		if data.Count > 0 {
+			// Сначала получаем события в этой локации
+			var eventsInLocation []map[string]interface{}
+			for _, event := range events {
+				if event.Latitude == data.Lat && event.Longitude == data.Lng {
+					eventsInLocation = append(eventsInLocation, map[string]interface{}{
+						"id":    event.ID,
+						"title": event.Title,
+						"type":  event.Type,
+						"date":  event.DateTime.Format("02.01.2006 15:04"),
+					})
+				}
+			}
+
 			heatmapData = append(heatmapData, map[string]interface{}{
 				"latitude":         data.Lat,
 				"longitude":        data.Lng,
@@ -311,6 +324,7 @@ func (h *MapHandler) HandleHeatmap(c *gin.Context) {
 				"count":            data.Count,
 				"eventCount":       data.EventCount,
 				"participantCount": data.ParticipantCount,
+				"events":           eventsInLocation,
 			})
 		}
 	}

@@ -37,7 +37,7 @@
           {{else}}{{.User.Gender}}{{end}}
         </div>
         {{end}}
-        {{if .User.BirthDate}}<div><strong>Возраст:</strong> {{.User.GetAge}} лет</div>{{end}}
+        {{if .User.BirthDate}}<div><strong>Возраст:</strong> {{.User.GetAge}}</div>{{end}}
         {{if .User.Phone}}<div><strong>Телефон:</strong> {{.User.Phone}}</div>{{end}}
         <div><strong>Зарегистрирован:</strong> {{.User.CreatedAt.Format "02.01.2006"}}</div>
       </div>
@@ -120,7 +120,7 @@
   </div>
   <!-- Пагинация (фронтенд) -->
   {{if .Posts}}
-  <div class="pagination-frontend">
+  <div class="pagination-frontend" style="display: flex; align-items: center; gap: 10px; margin-top: 20px; justify-content: center;">
     <button onclick="changePage(-1)" class="btn btn-outline btn-small" id="prevBtn">← Назад</button>
     <span class="pagination-info">Страница <span id="currentPage">1</span> из <span id="totalPages">1</span></span>
     <button onclick="changePage(1)" class="btn btn-outline btn-small" id="nextBtn">Вперед →</button>
@@ -163,5 +163,6 @@
     showPage(1);
   </script>
   {{end}}
+  <script src="/static/js/profile.js"></script>
 </div>
 {{end}}

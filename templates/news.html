@@ -1,9 +1,9 @@
 {{define "news_content"}}
 <div class="card">
-    <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 30px;">
-        <h2>📰 Лента новостей</h2>
+    <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 30px; gap: 10px;">
+        <h2>Лента новостей</h2>
         <button id="refreshNews" class="btn btn-outline btn-small" style="display: none;">
-            🔄 Обновить
+            Обновить
         </button>
     </div>
 
@@ -95,14 +95,29 @@
                         minute: '2-digit'
                     });
 
+                    // Проверяем существование post.user перед доступом к его свойствам
+                    const userName = post.user ? `${post.user.first_name} ${post.user.last_name}` : 'Неизвестный пользователь';
+                    const userId = post.user ? post.user.id : null;
+
                     html += `
                     <div class="post">
                         <div class="post-header">
-                            <span class="post-author">
-                                <a href="/profile/${post.author.id}" style="text-decoration: none; color: var(--text-primary);">
-                                    ${post.author.first_name} ${post.author.last_name}
-                                </a>
-                            </span>
+                            <div>
+                                <div style="display: flex; gap: 5px; font-size: 0.9em; color: var(--text-muted);">
+                                    <span>Автор:</span>
+                                    <a href="/profile/${post.author.id}" style="text-decoration: none; color: var(--text-primary);">
+                                        ${post.author.first_name} ${post.author.last_name}
+                                    </a>
+                                </div>
+                                <div style="display: flex; gap: 5px; font-size: 0.9em; color: var(--text-muted);">
+                                    <span>На стене:</span>
+                                    ${post.user ? `
+                                        <a href="/profile/${post.user.id}" style="text-decoration: none; color: var(--text-primary);">
+                                            ${post.user.first_name} ${post.user.last_name}
+                                        </a>
+                                    ` : `<span>Неизвестный пользователь</span>`}
+                                </div>
+                            </div>
                             <span class="post-date">${postDate}</span>
                         </div>
                         <div class="post-content">${escapeHtml(post.content)}</div>

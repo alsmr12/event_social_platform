@@ -11,6 +11,21 @@ let selectedLocation = null;
 let heatmap = null;
 let isHeatmapMode = false;
 
+// Функция для перевода типа события на русский
+function getTypeInRussian(type) {
+    const typeMap = {
+        'concert': 'Концерт',
+        'lecture': 'Лекция',
+        'sport': 'Спорт',
+        'meeting': 'Встреча',
+        'party': 'Вечеринка',
+        'conference': 'Конференция',
+        'exhibition': 'Выставка',
+        'other': 'Другое'
+    };
+    return typeMap[type] || type;
+}
+
 // Инициализация карты после загрузки API Яндекс.Карт
 ymaps.ready(initMap);
 
@@ -96,7 +111,7 @@ function loadEvents() {
                     ], {
                         balloonContent: `<div style="min-width: 200px;">
                             <h3>${event.title}</h3>
-                            <p><strong>Тип:</strong> ${event.type}</p>
+                            <p><strong>Тип:</strong> ${getTypeInRussian(event.type)}</p>
                             <p><strong>Дата:</strong> ${formatDateTime(event.date_time)}</p>
                             <p><strong>Место:</strong> ${event.location}</p>
                             <p><strong>Организатор:</strong> ${event.creator.first_name} ${event.creator.last_name}</p>
@@ -186,11 +201,12 @@ function loadHeatmapData() {
                 const placemark = new ymaps.Placemark([point.latitude, point.longitude], {
                     balloonContent: `
                         <div style="min-width: 200px;">
-                            <h3>Активность: ${(intensity * 100).toFixed(1)}%</h3>
-                            <p><strong>Координаты:</strong> ${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)}</p>
                             <p><strong>Событий:</strong> ${point.eventCount || 0}</p>
                             <p><strong>Участников:</strong> ${point.participantCount || 0}</p>
                             <p><strong>Постов:</strong> ${point.count || 0}</p>
+                            ${point.events ? `<div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;"><strong>События в этой области:</strong><ul style="margin: 5px 0; padding-left: 20px; font-size: 0.9em;">
+                                ${point.events.map(event => `<li><a href="/event/${event.id}" style="color: #1e88e5; text-decoration: none;" onclick="event.stopPropagation();">${event.title}</a> <span style="color: #666;">(${getTypeInRussian(event.type)}, ${event.date})</span></li>`).join('')}
+                            </ul></div>` : ''}
                         </div>
                     `,
                     hotspotContent: `Активность: ${(intensity * 100).toFixed(1)}%`
@@ -274,11 +290,12 @@ function loadHeatmapDataAlternative() {
                 ], {
                     balloonContent: `
                         <div style="min-width: 200px;">
-                            <h3>Активность: ${(intensity * 100).toFixed(1)}%</h3>
-                            <p><strong>Координаты:</strong> ${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)}</p>
                             <p><strong>Событий:</strong> ${point.eventCount || 0}</p>
                             <p><strong>Участников:</strong> ${point.participantCount || 0}</p>
                             <p><strong>Постов:</strong> ${point.count || 0}</p>
+                            ${point.events ? `<div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;"><strong>События в этой области:</strong><ul style="margin: 5px 0; padding-left: 20px; font-size: 0.9em;">
+                                ${point.events.map(event => `<li><a href="/event/${event.id}" style="color: #1e88e5; text-decoration: none;" onclick="event.stopPropagation();">${event.title}</a> <span style="color: #666;">(${getTypeInRussian(event.type)}, ${event.date})</span></li>`).join('')}
+                            </ul></div>` : ''}
                         </div>
                     `
                 }, {

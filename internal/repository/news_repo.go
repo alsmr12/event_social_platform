@@ -325,9 +325,10 @@ func (r *NewsRepository) GetPostsFromUsers(userIDs []uint, limit, offset int) ([
 	}
 
 	query := fmt.Sprintf(`
-        SELECT wp.*, u.* 
+        SELECT wp.*, u.*, wu.* 
         FROM wall_posts wp
         JOIN users u ON wp.author_id = u.id
+        JOIN users wu ON wp.user_id = wu.id
         WHERE wp.author_id IN (%s) 
         ORDER BY wp.created_at DESC 
         LIMIT ? OFFSET ?
@@ -339,6 +340,24 @@ func (r *NewsRepository) GetPostsFromUsers(userIDs []uint, limit, offset int) ([
 	err := r.db.Raw(query, args...).
 		Preload("Author").
 		Find(&posts).Error
+
+	// Заполняем поле User для каждого поста
+	for i, post := range posts {
+		// Получаем владельца стены из уже загруженных данных
+		if post.User.ID == 0 {
+			// Если User не был загружен через JOIN, пытаемся получить его отдельно
+			var wallOwner models.User
+			err := r.db.First(&wallOwner, post.UserID).Error
+			if err != nil {
+				// Если не удалось найти владельца, используем данные автора
+				wallOwner = post.Author
+				// Также обновляем UserID, чтобы избежать проблем с отображением
+				posts[i].UserID = post.AuthorID
+			}
+			// Присваиваем структуру
+			posts[i].User = wallOwner
+		}
+	}
 
 	return posts, err
 }
@@ -364,7 +383,6 @@ func (r *NewsRepository) GetEventsFromUsers(userIDs []uint, limit, offset int) (
         FROM events e
         JOIN users u ON e.creator_id = u.id
         WHERE e.creator_id IN (%s) 
-        AND e.is_private = false  -- Только публичные события
         ORDER BY e.created_at DESC 
         LIMIT ? OFFSET ?
     `, strings.Join(placeholders, ","))

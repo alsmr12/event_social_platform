@@ -114,8 +114,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             <!-- Вкладки -->
             <div class="tabs" style="margin-bottom: 20px;">
-                <button class="tab-btn ${timeFilter === 'upcoming' ? 'active' : ''}" data-tab="upcoming">Предстоящие события</button>
-                <button class="tab-btn ${timeFilter === 'past' ? 'active' : ''}" data-tab="past">Прошедшие события</button>
+                <button class="btn ${timeFilter === 'upcoming' ? 'btn-primary' : 'btn-outline'}" data-tab="upcoming">Предстоящие события</button>
+                <button class="btn ${timeFilter === 'past' ? 'btn-primary' : 'btn-outline'}" data-tab="past">Прошедшие события</button>
             </div>
 
             <!-- Список событий -->
@@ -309,7 +309,7 @@ function setupEventHandlers() {
     }
 
     // Переключение вкладок
-    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabButtons = document.querySelectorAll('.tabs .btn');
     tabButtons.forEach(btn => {
         btn.addEventListener('click', function() {
             const tab = this.getAttribute('data-tab');
