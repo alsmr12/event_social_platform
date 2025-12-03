@@ -156,17 +156,19 @@ fun NewsFeedScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     items(newsFeed) { item ->
-                        val isEventLoading = loadingEventId == item.event?.id
+                        val isEvent = item.type == "event"
+                        val isEventLoading = isEvent && loadingEventId == item.event?.id
 
                         NewsFeedItem(
                             item = item,
+                            isEvent = isEvent,
                             isEventLoading = isEventLoading,
                             onAuthorClick = {
                                 onOpenProfile(item.author.id)
                             },
                             onEventClick = {
-                                // Если это событие, открываем его
-                                if (item.type == "event" && !isEventLoading) {
+                                // Кликабельно только для событий и не во время загрузки
+                                if (isEvent && !isEventLoading) {
                                     item.event?.let { newsEvent ->
                                         loadFullEvent(newsEvent)
                                     }
@@ -184,12 +186,11 @@ fun NewsFeedScreen(
 @Composable
 fun NewsFeedItem(
     item: NewsFeedItem,
+    isEvent: Boolean = false,
     isEventLoading: Boolean = false,
     onAuthorClick: () -> Unit,
     onEventClick: () -> Unit
 ) {
-    val isEvent = item.type == "event"
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -201,11 +202,9 @@ fun NewsFeedItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Заголовок с автором
+            // Заголовок с автором - только имя кликабельное
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onAuthorClick() },
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
@@ -216,11 +215,13 @@ fun NewsFeedItem(
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
+                    // Только имя автора кликабельно
                     Text(
                         text = "${item.author.firstName} ${item.author.lastName}",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable { onAuthorClick() }
                     )
                     Text(
                         text = formatDate(item.createdAt),
@@ -228,22 +229,18 @@ fun NewsFeedItem(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                // Иконка типа контента с индикатором загрузки
-                if (isEventLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                } else {
-                    Icon(
-                        imageVector = when (item.type) {
-                            "event" -> Icons.Default.Event
-                            else -> Icons.Default.Edit
-                        },
-                        contentDescription = when (item.type) {
-                            "event" -> "Событие"
-                            else -> "Запись"
-                        },
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
+                // Иконка типа контента (БЕЗ индикатора загрузки)
+                Icon(
+                    imageVector = when (item.type) {
+                        "event" -> Icons.Default.Event
+                        else -> Icons.Default.Edit
+                    },
+                    contentDescription = when (item.type) {
+                        "event" -> "Событие"
+                        else -> "Запись"
+                    },
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -301,15 +298,23 @@ fun NewsFeedItem(
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
-                    // Подсказка для клика
-                    Spacer(modifier = Modifier.height(8.dp))
+                    // Подсказка для клика (только для событий)
                     if (isEventLoading) {
-                        Text(
-                            text = "Загрузка события...",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
-                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Загрузка события...",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                            )
+                        }
                     } else {
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "Нажмите для просмотра события →",
                             style = MaterialTheme.typography.labelSmall,
@@ -319,7 +324,7 @@ fun NewsFeedItem(
                 }
             }
 
-            // Дополнительная информация для постов
+            // Дополнительная информация для постов (не кликабельно)
             if (item.type == "post") {
                 item.post?.let { post ->
                     Spacer(modifier = Modifier.height(8.dp))
