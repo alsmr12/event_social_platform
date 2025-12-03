@@ -40,6 +40,14 @@ android {
 }
 
 dependencies {
+    implementation("com.google.android.gms:play-services-maps:18.1.0")
+// Location services
+
+    // Yandex Maps
+    implementation("com.yandex.android:maps.mobile:4.5.1-full")
+// Location services
+    implementation("com.google.android.gms:play-services-location:21.0.1")
+
     implementation("androidx.compose.material3:material3:1.1.2")
     implementation("io.github.vanpra.compose-material-dialogs:datetime:0.8.1-rc")
     implementation("io.github.vanpra.compose-material-dialogs:core:0.8.1-rc")

@@ -1,4 +1,578 @@
 package com.ark.socialevent.ui.screens.map
 
-class MapScreen {
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.location.Geocoder
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import com.ark.socialevent.network.EventRepository
+import com.ark.socialevent.network.HeatmapPoint
+import com.ark.socialevent.network.UserRepository
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
+import com.yandex.mapkit.MapKitFactory
+import com.yandex.mapkit.geometry.Circle as YandexCircle
+import com.yandex.mapkit.geometry.Point
+import com.yandex.mapkit.map.CameraPosition
+import com.yandex.mapkit.map.InputListener
+import com.yandex.mapkit.map.Map
+import com.yandex.mapkit.mapview.MapView
+import com.yandex.runtime.image.ImageProvider
+import kotlinx.coroutines.launch
+import java.io.IOException
+import java.util.Locale
+
+// Режимы отображения карты
+enum class MapMode {
+    EVENTS, HEATMAP
+}
+
+@SuppressLint("CoroutineCreationDuringComposition")
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MapScreen(
+    userRepository: UserRepository,
+    eventRepository: EventRepository,
+    onOpenEvent: (com.ark.socialevent.network.Event) -> Unit,
+    onOpenProfile: (Int) -> Unit
+) {
+    val context = LocalContext.current
+    var mapMode by remember { mutableStateOf(MapMode.EVENTS) }
+    var isLoading by remember { mutableStateOf(true) }
+    var selectedLocation by remember { mutableStateOf<Point?>(null) }
+    var locationCity by remember { mutableStateOf<String?>(null) }
+    var currentUserLocation by remember { mutableStateOf<Point?>(null) }
+    var mapView by remember { mutableStateOf<MapView?>(null) }
+    var showSaveDialog by remember { mutableStateOf(false) }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
+    // Инициализация MapKit
+    LaunchedEffect(Unit) {
+        isLoading = false
+    }
+
+    // Запрос разрешений на геолокацию
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            getCurrentLocation(context) { point ->
+                currentUserLocation = point
+                selectedLocation = point
+                getCityFromPoint(context, point) { city ->
+                    locationCity = city
+                    showSaveDialog = true
+
+                    // Перемещаем карту к местоположению
+                    mapView?.mapWindow?.map?.move(
+                        CameraPosition(point, 15f, 0f, 0f)
+                    )
+                }
+            }
+        } else {
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar(
+                    message = "Для использования GPS требуется разрешение на геолокацию",
+                    duration = SnackbarDuration.Long
+                )
+            }
+        }
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            // Панель управления
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp)
+                ) {
+                    Text(
+                        text = "Карта событий",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    SingleChoiceSegmentedButtonRow(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        SegmentedButton(
+                            selected = mapMode == MapMode.EVENTS,
+                            onClick = { mapMode = MapMode.EVENTS },
+                            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                            icon = { Icon(Icons.Filled.Event, null) }
+                        ) {
+                            Text("События")
+                        }
+
+                        SegmentedButton(
+                            selected = mapMode == MapMode.HEATMAP,
+                            onClick = { mapMode = MapMode.HEATMAP },
+                            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                            icon = { Icon(Icons.Filled.Whatshot, null) }
+                        ) {
+                            Text("Тепловая карта")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Filled.MyLocation, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Мое местоположение")
+                        }
+                    }
+                }
+            }
+
+            // Информация о местоположении
+            if (selectedLocation != null || currentUserLocation != null) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Filled.LocationOn,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (locationCity != null) "Город: $locationCity" else "Местоположение",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+
+                            val lat = selectedLocation?.latitude ?: currentUserLocation?.latitude
+                            val lon = selectedLocation?.longitude ?: currentUserLocation?.longitude
+                            Text(
+                                text = "Координаты: ${"%.6f".format(lat)}, ${"%.6f".format(lon)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Карта
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 8.dp)
+            ) {
+                when {
+                    isLoading -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    else -> {
+                        YandexMapView(
+                            modifier = Modifier.fillMaxSize(),
+                            mapMode = mapMode,
+                            userRepository = userRepository,
+                            eventRepository = eventRepository,
+                            onMapReady = { view ->
+                                mapView = view
+                                view.mapWindow.map.move(
+                                    CameraPosition(Point(55.7558, 37.6176), 11f, 0f, 0f)
+                                )
+
+                                // Обработчик кликов по карте
+                                view.mapWindow.map.addInputListener(object : InputListener {
+                                    override fun onMapTap(map: Map, point: Point) {
+                                        selectedLocation = point
+                                        getCityFromPoint(context, point) { city ->
+                                            locationCity = city
+                                            showSaveDialog = true
+                                        }
+
+                                        // Добавляем маркер местоположения
+                                        map.mapObjects.clear()
+                                        val placemark = map.mapObjects.addPlacemark(point)
+                                        placemark.setIcon(createLocationMarkerIcon())
+                                    }
+
+                                    override fun onMapLongTap(map: Map, point: Point) {
+                                        // Не используется
+                                    }
+                                })
+                            },
+                            onEventClicked = onOpenEvent
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // Диалог сохранения местоположения
+    if (showSaveDialog && selectedLocation != null) {
+        AlertDialog(
+            onDismissRequest = { showSaveDialog = false },
+            title = { Text("Сохранение местоположения") },
+            text = {
+                Column {
+                    Text("Сохранить выбранное местоположение?")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Город: ${locationCity ?: "Не определен"}")
+                    Text("Координаты: ${"%.6f".format(selectedLocation!!.latitude)}, ${"%.6f".format(selectedLocation!!.longitude)}")
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showSaveDialog = false
+                        if (selectedLocation != null && locationCity != null) {
+                            userRepository.saveUserLocation(
+                                selectedLocation!!.latitude,
+                                selectedLocation!!.longitude,
+                                locationCity!!
+                            ) { success, message ->
+                                coroutineScope.launch {
+                                    if (success) {
+                                        snackbarHostState.showSnackbar(
+                                            message = "Местоположение сохранено",
+                                            duration = SnackbarDuration.Short
+                                        )
+                                        currentUserLocation = selectedLocation
+                                    } else {
+                                        snackbarHostState.showSnackbar(
+                                            message = message ?: "Ошибка сохранения",
+                                            duration = SnackbarDuration.Short
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ) {
+                    Text("Сохранить")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showSaveDialog = false }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun YandexMapView(
+    modifier: Modifier = Modifier,
+    mapMode: MapMode,
+    userRepository: UserRepository,
+    eventRepository: EventRepository,
+    onMapReady: (MapView) -> Unit,
+    onEventClicked: (com.ark.socialevent.network.Event) -> Unit
+) {
+    val context = LocalContext.current
+    var mapViewState by remember { mutableStateOf<MapView?>(null) }
+
+    DisposableEffect(Unit) {
+        val mapView = MapView(context)
+        mapViewState = mapView
+        onMapReady(mapView)
+
+        onDispose {
+            mapView.onStop()
+            mapViewState = null
+        }
+    }
+
+    DisposableEffect(mapMode) {
+        mapViewState?.let { view ->
+            when (mapMode) {
+                MapMode.EVENTS -> loadEventsOnMap(view, eventRepository, onEventClicked)
+                MapMode.HEATMAP -> loadHeatmapOnMap(view, userRepository)
+            }
+        }
+
+        onDispose {
+            // Cleanup при смене режима
+        }
+    }
+
+    AndroidView(
+        factory = { mapViewState ?: MapView(it) },
+        modifier = modifier,
+        update = { view ->
+            // Обновление при смене режима
+            when (mapMode) {
+                MapMode.EVENTS -> loadEventsOnMap(view, eventRepository, onEventClicked)
+                MapMode.HEATMAP -> loadHeatmapOnMap(view, userRepository)
+            }
+        }
+    )
+}
+
+private fun loadEventsOnMap(
+    mapView: MapView,
+    eventRepository: EventRepository,
+    onEventClicked: (com.ark.socialevent.network.Event) -> Unit
+) {
+    val map = mapView.mapWindow.map
+    map.mapObjects.clear()
+
+    eventRepository.getEventsWithFilters { events, error ->
+        if (error != null) {
+            Log.e("MapScreen", "Error loading events: $error")
+            return@getEventsWithFilters
+        }
+
+        events?.forEach { event ->
+            if (event.latitude != null && event.longitude != null) {
+                try {
+                    val point = Point(event.latitude, event.longitude)
+                    val placemark = map.mapObjects.addPlacemark(point)
+                    val icon = createSimpleMarkerIcon(event.type)
+                    placemark.setIcon(icon)
+                    placemark.setText(event.title ?: "Событие")
+                    placemark.userData = event
+
+                    placemark.addTapListener { mapObject, _ ->
+                        val clickedEvent = mapObject.userData as? com.ark.socialevent.network.Event
+                        clickedEvent?.let { onEventClicked(it) }
+                        true
+                    }
+                } catch (e: Exception) {
+                    Log.e("MapScreen", "Error adding event marker: ${e.message}")
+                }
+            }
+        }
+    }
+}
+
+// Создаем иконку маркера события
+private fun createSimpleMarkerIcon(eventType: String?): ImageProvider {
+    val size = 48
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+
+    val color = when (eventType?.lowercase()) {
+        "concert" -> Color.BLUE
+        "lecture" -> Color.GREEN
+        "sport" -> Color.RED
+        "meeting" -> Color.YELLOW
+        "party" -> Color.MAGENTA
+        "conference" -> Color.CYAN
+        "exhibition" -> Color.GRAY
+        else -> Color.DKGRAY
+    }
+
+    val paint = Paint().apply {
+        this.color = color
+        isAntiAlias = true
+    }
+
+    val center = size / 2f
+    canvas.drawCircle(center, center, center - 2, paint)
+
+    paint.color = Color.WHITE
+    paint.style = Paint.Style.STROKE
+    paint.strokeWidth = 3f
+    canvas.drawCircle(center, center, center - 2, paint)
+
+    return ImageProvider.fromBitmap(bitmap)
+}
+
+// Создаем иконку маркера местоположения
+private fun createLocationMarkerIcon(): ImageProvider {
+    val size = 56
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+
+    val paint = Paint().apply {
+        color = Color.BLUE
+        isAntiAlias = true
+    }
+
+    val center = size / 2f
+    val radius = center - 4f
+    canvas.drawCircle(center, center, radius, paint)
+
+    paint.color = Color.WHITE
+    canvas.drawCircle(center, center, radius - 8f, paint)
+
+    paint.color = Color.BLUE
+    canvas.drawCircle(center, center, 4f, paint)
+
+    return ImageProvider.fromBitmap(bitmap)
+}
+
+private fun loadHeatmapOnMap(
+    mapView: MapView,
+    userRepository: UserRepository
+) {
+    val map = mapView.mapWindow.map
+    map.mapObjects.clear()
+
+    userRepository.getHeatmapData { points, error ->
+        if (error != null) {
+            Log.e("MapScreen", "Error loading heatmap: $error")
+            return@getHeatmapData
+        }
+
+        points?.forEach { point ->
+            try {
+                val circle = YandexCircle(
+                    Point(point.latitude, point.longitude),
+                    1000f // 1 км в метрах
+                )
+                val circleMapObject = map.mapObjects.addCircle(circle)
+                val color = getColorForIntensity(point.intensity)
+                circleMapObject.fillColor = color
+                circleMapObject.strokeColor = color
+                circleMapObject.strokeWidth = 2f
+                circleMapObject.userData = point
+
+                circleMapObject.addTapListener { mapObject, _ ->
+                    val heatmapPoint = mapObject.userData as? HeatmapPoint
+                    heatmapPoint?.let {
+                        Log.d("Heatmap", "Точка: ${it.latitude}, ${it.longitude}, Интенсивность: ${it.intensity}")
+                    }
+                    true
+                }
+            } catch (e: Exception) {
+                Log.e("MapScreen", "Error adding heatmap circle: ${e.message}")
+            }
+        }
+    }
+}
+
+// Функция для получения цвета по интенсивности
+private fun getColorForIntensity(intensity: Double): Int {
+    return when {
+        intensity < 0.3 -> 0x4000FF00.toInt()    // светло-зеленый
+        intensity < 0.6 -> 0x80FFFF00.toInt()    // желтый
+        else -> 0xC0FFA500.toInt()              // оранжевый
+    }
+}
+
+@SuppressLint("MissingPermission")
+private fun getCurrentLocation(context: Context, callback: (Point) -> Unit) {
+    val fusedLocationClient: FusedLocationProviderClient =
+        LocationServices.getFusedLocationProviderClient(context)
+
+    fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+        location?.let {
+            callback(Point(it.latitude, it.longitude))
+        } ?: Log.e("MapScreen", "Location is null")
+    }.addOnFailureListener { e ->
+        Log.e("MapScreen", "Error getting location", e)
+    }
+}
+
+private fun getCityFromPoint(context: Context, point: Point, callback: (String) -> Unit) {
+    val geocoder = Geocoder(context, Locale.getDefault())
+
+    try {
+        val addresses = geocoder.getFromLocation(point.latitude, point.longitude, 1)
+        if (addresses?.isNotEmpty() == true) {
+            val city = addresses[0].locality ?: addresses[0].adminArea ?: "Неизвестный город"
+            callback(city)
+        } else {
+            callback("Неизвестный город")
+        }
+    } catch (e: IOException) {
+        Log.e("MapScreen", "Error getting city from location", e)
+        callback("Неизвестный город")
+    }
 }

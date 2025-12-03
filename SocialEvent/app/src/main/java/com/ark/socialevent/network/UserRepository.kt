@@ -942,4 +942,77 @@ class UserRepository(private val context: Context) {
             }
         })
     }
+
+    // В класс UserRepository добавьте:
+
+    // Получить данные для тепловой карты
+    fun getHeatmapData(callback: (List<HeatmapPoint>?, String?) -> Unit) {
+        Log.d("UserRepository", "=== GET HEATMAP DATA ===")
+
+        api.getHeatmapData().enqueue(object : Callback<HeatmapResponse> {
+            override fun onResponse(call: Call<HeatmapResponse>, response: Response<HeatmapResponse>) {
+                Log.d("UserRepository", "Heatmap response: ${response.code()}")
+
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        Log.d("UserRepository", "✅ Loaded ${body.points?.size ?: 0} heatmap points")
+                        callback(body.points ?: emptyList(), null)
+                    } else {
+                        val errorMsg = body?.message ?: "Неизвестная ошибка"
+                        Log.e("UserRepository", "❌ Heatmap failed: $errorMsg")
+                        callback(null, errorMsg)
+                    }
+                } else {
+                    Log.e("UserRepository", "❌ Heatmap HTTP error: ${response.code()}")
+                    try {
+                        val errorBody = response.errorBody()?.string()
+                        Log.e("UserRepository", "Error body: $errorBody")
+                    } catch (e: Exception) {
+                        Log.e("UserRepository", "Error reading error body: ${e.message}")
+                    }
+                    callback(null, "Ошибка сервера: ${response.code()}")
+                }
+            }
+
+            override fun onFailure(call: Call<HeatmapResponse>, t: Throwable) {
+                Log.e("UserRepository", "❌ Heatmap NETWORK failed: ${t.message}")
+                callback(null, "Ошибка сети: ${t.message}")
+            }
+        })
+    }
+
+    // Сохранить местоположение пользователя
+    fun saveUserLocation(latitude: Double, longitude: Double, city: String, callback: (Boolean, String?) -> Unit) {
+        Log.d("UserRepository", "=== SAVE USER LOCATION ===")
+        Log.d("UserRepository", "Lat: $latitude, Lng: $longitude, City: $city")
+
+        val request = LocationRequest(latitude, longitude, city)
+        api.saveUserLocation(request).enqueue(object : Callback<LocationResponse> {
+            override fun onResponse(call: Call<LocationResponse>, response: Response<LocationResponse>) {
+                Log.d("UserRepository", "Save location response: ${response.code()}")
+
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        Log.d("UserRepository", "✅ Location saved successfully")
+                        callback(true, body.message ?: "Местоположение сохранено")
+                    } else {
+                        val errorMsg = body?.error ?: body?.message ?: "Неизвестная ошибка"
+                        Log.e("UserRepository", "❌ Save location failed: $errorMsg")
+                        callback(false, errorMsg)
+                    }
+                } else {
+                    Log.e("UserRepository", "❌ Save location HTTP error: ${response.code()}")
+                    callback(false, "Ошибка сервера: ${response.code()}")
+                }
+            }
+
+            override fun onFailure(call: Call<LocationResponse>, t: Throwable) {
+                Log.e("UserRepository", "❌ Save location NETWORK failed: ${t.message}")
+                callback(false, "Ошибка сети: ${t.message}")
+            }
+        })
+    }
+
 }

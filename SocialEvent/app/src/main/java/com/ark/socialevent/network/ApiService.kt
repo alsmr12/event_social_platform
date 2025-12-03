@@ -5,6 +5,45 @@ import retrofit2.Call
 import retrofit2.http.*
 
 
+data class HeatmapPoint(
+    val latitude: Double,
+    val longitude: Double,
+    val intensity: Double,
+    val count: Int,
+    @SerializedName("eventCount") val eventCount: Int,
+    @SerializedName("participantCount") val participantCount: Int,
+    val events: List<HeatmapEvent>? = null
+)
+
+// Модель для события в тепловой карте
+data class HeatmapEvent(
+    val id: Int,
+    val title: String,
+    val type: String,
+    val date: String
+)
+
+// Ответ для тепловой карты
+data class HeatmapResponse(
+    val success: Boolean,
+    val points: List<HeatmapPoint>? = null,
+    val message: String? = null,
+    val debug: Map<String, Any>? = null
+)
+
+// Модель для запроса местоположения
+data class LocationRequest(
+    val latitude: Double,
+    val longitude: Double,
+    val city: String
+)
+
+data class LocationResponse(
+    val success: Boolean,
+    val message: String? = null,
+    val error: String? = null
+)
+
 data class Achievement(
     val id: Int,
     val name: String,
@@ -444,4 +483,11 @@ interface ApiService {
     // Получить общее количество очков
     @GET("/api/achievements/total-points")
     fun getTotalPoints(): Call<TotalPointsResponse>
+
+    @GET("/api/heatmap")
+    fun getHeatmapData(): Call<HeatmapResponse>
+
+    // Сохранить местоположение пользователя
+    @POST("/api/user/location")
+    fun saveUserLocation(@Body request: LocationRequest): Call<LocationResponse>
 }
