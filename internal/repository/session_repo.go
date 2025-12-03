@@ -17,9 +17,8 @@ func NewSessionRepository(db *gorm.DB) *SessionRepository {
 func (r *SessionRepository) CreateSession(session *models.Session) error {
 	println("СОЗДАНИЕ СЕССИИ для UserID:", session.UserID, "Token:", session.Token)
 
-	// Удаляем ВСЕ старые сессии для этого пользователя
-	result := r.db.Where("user_id = ?", session.UserID).Delete(&models.Session{})
-	println("Удалено старых сессий:", result.RowsAffected)
+	// result := r.db.Where("user_id = ?", session.UserID).Delete(&models.Session{})
+	// println("Удалено старых сессий:", result.RowsAffected)
 
 	err := r.db.Create(session).Error
 	if err != nil {

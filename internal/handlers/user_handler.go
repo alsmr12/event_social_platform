@@ -104,43 +104,108 @@ func (h *UserHandler) CreateProfile(c *gin.Context) {
 }
 
 func (h *UserHandler) GetProfile(c *gin.Context) {
-	// Получаем ID профиля из параметра
-	profileID := c.Param("id")
-
-	// Получаем текущего пользователя
-	currentUser := GetUserFromContext(c)
-	if currentUser == nil {
-		c.Redirect(http.StatusSeeOther, "/login")
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.HTML(http.StatusOK, "base.html", gin.H{
+			"Title":     "Профиль",
+			"NavActive": "profile", // ИСПРАВЛЕНО (было "profiles")
+			"Error":     "Неверный ID профиля",
+		})
 		return
 	}
 
-	// Определяем, является ли профиль своим
-	isOwnProfile := profileID == "" || (currentUser != nil && (profileID == strconv.Itoa(int(currentUser.ID)) || profileID == "self" || profileID == "my"))
-
-	// Если это свой профиль, устанавливаем profileID в пустую строку для корректной работы шаблона
-	if isOwnProfile {
-		profileID = ""
+	user, err := h.userRepo.GetUserByID(uint(id))
+	if err != nil || user == nil {
+		c.HTML(http.StatusOK, "base.html", gin.H{
+			"Title":     "Профиль",
+			"NavActive": "profile", // ИСПРАВЛЕНО (было "profiles")
+			"Error":     "Профиль не найден",
+		})
+		return
 	}
 
-	// Передаем данные в шаблон
+	// Получаем записи на стене пользователя
+	db := h.userRepo.GetDB()
+	wallRepo := repository.NewWallRepository(db)
+	posts, err := wallRepo.GetPostsByUserID(uint(id))
+	if err != nil {
+		posts = []*models.WallPost{}
+	}
+
+	// Получаем социальные сети пользователя
+	socialRepo := repository.NewSocialLinkRepository(db)
+	socialLinks, err := socialRepo.GetByUserID(uint(id))
+	if err != nil {
+		socialLinks = []*models.SocialLink{}
+	}
+
+	currentUser := GetUserFromContext(c)
+
+	// Получаем статистику подписок
+	subscriptionRepo := repository.NewSubscriptionRepository(db)
+	followersCount, _ := subscriptionRepo.GetFollowersCount(uint(id))
+	followingCount, _ := subscriptionRepo.GetFollowingCount(uint(id))
+
+	// Проверяем, подписан ли текущий пользователь на этого пользователя
+	var isSubscribed bool
+	if currentUser != nil {
+		isSubscribed, _ = subscriptionRepo.IsSubscribed(currentUser.ID, uint(id))
+	}
+
+	// Получаем статус дружбы
+	var friendshipStatus string = "none"
+	var isIncomingRequest bool = false
+	if currentUser != nil && currentUser.ID != uint(id) {
+		friendshipRepo := repository.NewFriendshipRepository(db)
+		friendshipStatus, err = friendshipRepo.GetFriendshipStatus(currentUser.ID, uint(id))
+		if err != nil {
+			friendshipStatus = "none"
+		}
+		if friendshipStatus == "rejected" {
+			friendshipStatus = "none"
+		}
+
+		// Проверяем, является ли запрос входящим
+		if friendshipStatus == "pending" {
+			var friendship models.Friendship
+			err := db.Where("user_id = ? AND friend_id = ?", uint(id), currentUser.ID).First(&friendship).Error
+			isIncomingRequest = (err == nil)
+		}
+	}
+
+	// Получаем количество друзей
+	friendshipRepo := repository.NewFriendshipRepository(db)
+	friendsCount, _ := friendshipRepo.GetFriendsCount(uint(id))
+
+	age := user.GetAge()
+	ageText := getAgeText(age)
+
 	c.HTML(http.StatusOK, "base.html", gin.H{
-		"Title":        "Профиль",
-		"NavActive":    "my_profile",
-		"CurrentUser":  currentUser,
-		"ProfileID":    profileID,
-		"IsOwnProfile": isOwnProfile,
+		"Title":             "Профиль " + user.FirstName + " " + user.LastName,
+		"NavActive":         "profile",
+		"CurrentUser":       currentUser,
+		"User":              user,
+		"Posts":             posts,
+		"SocialLinks":       socialLinks,
+		"FollowersCount":    followersCount,
+		"FollowingCount":    followingCount,
+		"FriendsCount":      friendsCount,
+		"IsSubscribed":      isSubscribed,
+		"FriendshipStatus":  friendshipStatus,
+		"IsIncomingRequest": isIncomingRequest,
+		"Age":               age,
+		"AgeText":           ageText,
 	})
 }
 
 func (h *UserHandler) ShowEditProfileForm(c *gin.Context) {
-	// Получаем текущего пользователя
 	currentUser := GetUserFromContext(c)
 	if currentUser == nil {
 		c.Redirect(http.StatusSeeOther, "/login")
 		return
 	}
 
-	// Получаем социальные сети пользователя
 	db := h.userRepo.GetDB()
 	socialRepo := repository.NewSocialLinkRepository(db)
 	socialLinks, err := socialRepo.GetByUserID(currentUser.ID)
@@ -151,15 +216,111 @@ func (h *UserHandler) ShowEditProfileForm(c *gin.Context) {
 	c.HTML(http.StatusOK, "base.html", gin.H{
 		"Title":       "Редактирование профиля",
 		"NavActive":   "edit_profile",
+		"User":        currentUser,
 		"CurrentUser": currentUser,
 		"SocialLinks": socialLinks,
 	})
 }
 
 func (h *UserHandler) UpdateProfile(c *gin.Context) {
-	// Перенаправляем на использование JSON API метода
-	// Это позволяет избежать дублирования кода и использовать единый метод обновления профиля
-	h.UpdateProfileJSON(c)
+	currentUser := GetUserFromContext(c)
+	if currentUser == nil {
+		c.Redirect(http.StatusSeeOther, "/login")
+		return
+	}
+
+	var req models.UpdateUserRequest
+	if err := c.ShouldBind(&req); err != nil {
+		c.HTML(http.StatusBadRequest, "base.html", gin.H{
+			"Title":       "Редактирование профиля",
+			"NavActive":   "profile",
+			"Error":       "Неверные данные формы: " + err.Error(),
+			"User":        currentUser,
+			"CurrentUser": currentUser,
+		})
+		return
+	}
+
+	// Конвертация строки даты в time.Time
+	if req.BirthDate != "" {
+		birthDate, err := time.Parse("2006-01-02", req.BirthDate)
+		if err != nil {
+			c.HTML(http.StatusBadRequest, "base.html", gin.H{
+				"Title":       "Редактирование профиля",
+				"NavActive":   "profile",
+				"Error":       "Неверный формат даты рождения: " + err.Error(),
+				"User":        currentUser,
+				"CurrentUser": currentUser,
+			})
+			return
+		}
+		currentUser.BirthDate = birthDate
+	}
+
+	// Обновляем остальные данные пользователя
+	currentUser.FirstName = req.FirstName
+	currentUser.LastName = req.LastName
+	currentUser.Gender = req.Gender
+	currentUser.Phone = req.Phone
+	currentUser.City = req.City
+	currentUser.Latitude = req.Latitude
+	currentUser.Longitude = req.Longitude
+	//currentUser.SocialLinks = req.SocialLinks
+
+	if err := h.userRepo.UpdateUser(currentUser); err != nil {
+		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+			"Title":       "Редактирование профиля",
+			"NavActive":   "profile",
+			"Error":       "Ошибка обновления профиля: " + err.Error(),
+			"User":        currentUser,
+			"CurrentUser": currentUser,
+		})
+		return
+	}
+
+	db := h.userRepo.GetDB()
+	socialRepo := repository.NewSocialLinkRepository(db)
+
+	// Удаляем старые соцсети
+	if err := socialRepo.DeleteByUserID(currentUser.ID); err != nil {
+		c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+			"Title":       "Редактирование профиля",
+			"NavActive":   "profile",
+			"Error":       "Ошибка обновления социальных сетей: " + err.Error(),
+			"User":        currentUser,
+			"CurrentUser": currentUser,
+		})
+		return
+	}
+
+	// Сохраняем новые соцсети
+	platforms := c.PostFormArray("platform[]")
+	usernames := c.PostFormArray("username[]")
+	customNames := c.PostFormArray("custom_name[]")
+
+	for i, platform := range platforms {
+		if platform != "" && i < len(usernames) && usernames[i] != "" {
+			socialLink := &models.SocialLink{
+				UserID:     currentUser.ID,
+				Platform:   platform,
+				Username:   usernames[i],
+				CustomName: customNames[i],
+			}
+			if err := socialRepo.Create(socialLink); err != nil {
+				c.HTML(http.StatusInternalServerError, "base.html", gin.H{
+					"Title":       "Редактирование профиля",
+					"NavActive":   "profile",
+					"Error":       "Ошибка сохранения социальных сетей: " + err.Error(),
+					"User":        currentUser,
+					"CurrentUser": currentUser,
+				})
+				return
+			}
+		}
+	}
+	// === КОНЕЦ ОБРАБОТКИ СОЦСЕТЕЙ ===
+
+	c.Redirect(http.StatusSeeOther, "/profile")
 }
 
 func (h *UserHandler) GetAllProfilesJSON(c *gin.Context) {
@@ -197,6 +358,10 @@ func (h *UserHandler) GetAllProfilesJSON(c *gin.Context) {
 		wallRepo := repository.NewWallRepository(h.userRepo.GetDB())
 		posts, _ := wallRepo.GetPostsByUserID(user.ID)
 		user.Posts = posts
+
+		// Добавляем возраст и текст
+		age := user.GetAge()
+		user.AgeText = getAgeText(age)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -270,14 +435,43 @@ func (h *UserHandler) UpdateProfileJSON(c *gin.Context) {
         return
     }
 
+	log.Printf("✅ UpdateProfileJSON: Profile updated successfully for user %s", user.Email)
+
+	age := user.GetAge()
+	ageText := getAgeText(age)
     log.Printf("✅ UpdateProfileJSON: Profile updated successfully for user %s", user.Email)
 
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Профиль успешно обновлен",
+		"user": gin.H{
+			"id":         user.ID,
+			"email":      user.Email,
+			"first_name": user.FirstName,
+			"last_name":  user.LastName,
+			"gender":     user.Gender,
+			"birth_date": user.BirthDate.Format("2006-01-02"),
+			"age":        age,
+			"age_text":   ageText,
+			"phone":      user.Phone,
+		},
+	})
     // Теперь при сериализации User автоматически добавится поле Age
     c.JSON(http.StatusOK, gin.H{
         "success": true,
         "message": "Профиль успешно обновлен",
         "user":    user, // Просто возвращаем user, MarshalJSON сделает всё остальное
     })
+}
+
+// getAgeText возвращает правильную форму слова "год" в зависимости от возраста
+func getAgeText(age int) string {
+	if age == 1 || (age%10 == 1 && age%100 != 11) {
+		return "год"
+	} else if age >= 2 && age <= 4 || (age%10 >= 2 && age%10 <= 4 && !(age%100 >= 12 && age%100 <= 14)) {
+		return "года"
+	}
+	return "лет"
 }
 
 // GetUserStatsJSON - получение статистики пользователя
@@ -290,6 +484,9 @@ func (h *UserHandler) GetUserStatsJSON(c *gin.Context) {
 		})
 		return
 	}
+
+	age := currentUser.GetAge()
+	ageText := getAgeText(age)
 
 	db := h.userRepo.GetDB()
 
@@ -313,6 +510,8 @@ func (h *UserHandler) GetUserStatsJSON(c *gin.Context) {
 			"followers_count": followersCount,
 			"following_count": followingCount,
 			"events_count":    userEventsCount,
+			"age":             age,
+			"age_text":        ageText,
 		},
 	})
 }

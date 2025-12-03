@@ -152,9 +152,24 @@ function initAgeCalculator(birthDateInput, ageDisplay) {
         const birthDateValue = birthDateInput.value;
         if (birthDateValue) {
             const birthDate = new Date(birthDateValue);
-            ageDisplay.textContent = calculateAge(birthDate);
+            const age = calculateAge(birthDate);
+            ageDisplay.textContent = age;
+            
+            // Определяем правильное окончание для слова "год"
+            let ageUnit;
+            if (age === 1 || (age % 10 === 1 && age % 100 !== 11)) {
+                ageUnit = 'год';
+            } else if (age >= 2 && age <= 4 || 
+                     (age % 10 >= 2 && age % 10 <= 4 && !(age % 100 >= 12 && age % 100 <= 14))) {
+                ageUnit = 'года';
+            } else {
+                ageUnit = 'лет';
+            }
+            
+            document.getElementById('age-unit').textContent = ageUnit;
         } else {
             ageDisplay.textContent = '0';
+            document.getElementById('age-unit').textContent = 'лет';
         }
     }
 

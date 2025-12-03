@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                             <div class="card">
                                 <h4>${request.user.first_name} ${request.user.last_name}</h4>
                                 <p style="color: var(--text-muted); margin: 10px 0;">${request.user.email}</p>
-                                ${request.user.birth_date ? `<p>${calculateAge(request.user.birth_date)} лет</p>` : ''}
+                                
                                 <div style="font-size: 0.85em; color: var(--text-muted); margin: 10px 0;">
                                     Запрос отправлен: ${formatDateTime(request.created_at)}
                                 </div>
@@ -76,13 +76,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                             <div class="card">
                                 <h4>${request.friend.first_name} ${request.friend.last_name}</h4>
                                 <p style="color: var(--text-muted); margin: 10px 0;">${request.friend.email}</p>
-                                ${request.friend.birth_date ? `<p>${calculateAge(request.friend.birth_date)} лет</p>` : ''}
+                                
                                 <div style="font-size: 0.85em; color: var(--text-muted); margin: 10px 0;">
                                     Запрос отправлен: ${formatDateTime(request.created_at)}
                                 </div>
                                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                                     <a href="/profile/${request.friend.id}" class="btn btn-outline btn-small">Профиль</a>
-                                    <button class="btn btn-secondary btn-small cancel-btn" data-user-id="${request.friend.id}">Отменить</button>
+                                    <button class="btn btn-outline btn-small cancel-btn" data-user-id="${request.friend.id}">Отменить</button>
                                 </div>
                             </div>
                         `).join('')}
@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                             <div class="card">
                                 <h4>${friend.first_name} ${friend.last_name}</h4>
                                 <p style="color: var(--text-muted); margin: 10px 0;">${friend.email}</p>
-                                ${friend.birth_date ? `<p>${calculateAge(friend.birth_date)} лет</p>` : ''}
+                                
                                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                                     <a href="/profile/${friend.id}" class="btn btn-outline btn-small">Профиль</a>
                                     <button class="btn btn-danger btn-small remove-btn" data-user-id="${friend.id}">Удалить</button>
@@ -182,7 +182,21 @@ async function acceptFriendRequest(userId) {
 
         if (data.success) {
             showMessage('✅ Запрос в друзья принят', 'success');
-            setTimeout(() => window.location.reload(), 1000);
+            // Находим кнопку по data-user-id и удаляем карточку
+            const button = document.querySelector(`[data-user-id="${userId}"]`);
+            if (button) {
+                const card = button.closest('.card');
+                if (card) {
+                    card.remove();
+                }
+                // Обновляем счетчик
+                const badge = document.querySelector('.badge.badge-pending');
+                if (badge) {
+                    const count = parseInt(badge.textContent) - 1;
+                    badge.textContent = count;
+                    badge.style.display = count > 0 ? 'inline' : 'none';
+                }
+            }
         } else {
             showMessage(data.message || '❌ Ошибка', 'error');
         }
@@ -205,7 +219,21 @@ async function rejectFriendRequest(userId) {
 
         if (data.success) {
             showMessage('✅ Запрос в друзья отклонен', 'success');
-            setTimeout(() => window.location.reload(), 1000);
+            // Находим кнопку по data-user-id и удаляем карточку
+            const button = document.querySelector(`[data-user-id="${userId}"]`);
+            if (button) {
+                const card = button.closest('.card');
+                if (card) {
+                    card.remove();
+                }
+                // Обновляем счетчик
+                const badge = document.querySelector('.badge.badge-pending');
+                if (badge) {
+                    const count = parseInt(badge.textContent) - 1;
+                    badge.textContent = count;
+                    badge.style.display = count > 0 ? 'inline' : 'none';
+                }
+            }
         } else {
             showMessage(data.message || '❌ Ошибка', 'error');
         }
@@ -228,7 +256,21 @@ async function cancelFriendRequest(userId) {
 
         if (data.success) {
             showMessage('✅ Запрос отменен', 'success');
-            setTimeout(() => window.location.reload(), 1000);
+            // Находим кнопку по data-user-id и удаляем карточку
+            const button = document.querySelector(`[data-user-id="${userId}"]`);
+            if (button) {
+                const card = button.closest('.card');
+                if (card) {
+                    card.remove();
+                }
+                // Обновляем счетчик
+                const badge = document.querySelector('.badge.badge-pending');
+                if (badge) {
+                    const count = parseInt(badge.textContent) - 1;
+                    badge.textContent = count;
+                    badge.style.display = count > 0 ? 'inline' : 'none';
+                }
+            }
         } else {
             showMessage(data.message || '❌ Ошибка', 'error');
         }
@@ -251,7 +293,20 @@ async function removeFriend(userId) {
 
         if (data.success) {
             showMessage('✅ Пользователь удален из друзей', 'success');
-            setTimeout(() => window.location.reload(), 1000);
+            // Находим кнопку по data-user-id и удаляем карточку
+            const button = document.querySelector(`[data-user-id="${userId}"]`);
+            if (button) {
+                const card = button.closest('.card');
+                if (card) {
+                    card.remove();
+                }
+                // Обновляем счетчик
+                const badge = document.querySelector('.badge.badge-success');
+                if (badge) {
+                    const count = parseInt(badge.textContent) - 1;
+                    badge.textContent = count;
+                }
+            }
         } else {
             showMessage(data.message || '❌ Ошибка', 'error');
         }

@@ -96,3 +96,57 @@ func (h *AchievementHandler) UpdateProgress(c *gin.Context) {
 
 	c.Redirect(http.StatusSeeOther, "/my-achievements?message=updated")
 }
+// Получить мои достижения (JSON)
+func (h *AchievementHandler) GetMyAchievementsJSON(c *gin.Context) {
+    currentUser := GetUserFromContext(c)
+    if currentUser == nil {
+        c.JSON(http.StatusUnauthorized, gin.H{"success": false, "message": "Не авторизован"})
+        return
+    }
+
+    achievements, err := h.achievementRepo.GetUserAchievements(currentUser.ID)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Ошибка загрузки достижений"})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "achievements": achievements,
+    })
+}
+
+// Получить рейтинг (JSON)
+func (h *AchievementHandler) GetRatingsJSON(c *gin.Context) {
+    search := c.Query("search")
+    ratings, err := h.achievementRepo.GetUserRatings(search)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Ошибка загрузки рейтинга"})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "ratings": ratings,
+    })
+}
+
+// Получить общее количество очков (JSON)
+func (h *AchievementHandler) GetTotalPointsJSON(c *gin.Context) {
+    currentUser := GetUserFromContext(c)
+    if currentUser == nil {
+        c.JSON(http.StatusUnauthorized, gin.H{"success": false, "message": "Не авторизован"})
+        return
+    }
+
+    points, err := h.achievementRepo.GetUserTotalPoints(currentUser.ID)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Ошибка загрузки очков"})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "points": points,
+    })
+}

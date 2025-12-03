@@ -91,7 +91,7 @@ function renderEditForm(container, data) {
                 <div class="form-group">
                     <label for="birth_date">Дата рождения</label>
                     <input type="date" id="birth_date" name="birth_date" class="form-control" value="${formatDateForInput(user.birth_date)}">
-                    <small style="color: var(--text-muted);">Возраст: <span id="age-display">${user.age || 0}</span> лет</small>
+                    <small style="color: var(--text-muted);">Возраст: <span id="age-display">${user.age || 0}</span> <span id="age-unit">${user.age_text || 'лет'}</span></small>
                 </div>
             </div>
 
@@ -177,8 +177,9 @@ function setupEventHandlers() {
 function updateAgeDisplay() {
     const birthDateInput = document.getElementById('birth_date');
     const ageDisplay = document.getElementById('age-display');
+    const ageUnit = document.getElementById('age-unit');
 
-    if (birthDateInput && ageDisplay && birthDateInput.value) {
+    if (birthDateInput && ageDisplay && ageUnit && birthDateInput.value) {
         const birthDate = new Date(birthDateInput.value);
         const today = new Date();
         let age = today.getFullYear() - birthDate.getFullYear();
@@ -189,6 +190,19 @@ function updateAgeDisplay() {
         }
 
         ageDisplay.textContent = age;
+
+        // Определяем правильное окончание для слова "год"
+        let ageText;
+        if (age === 1 || (age % 10 === 1 && age % 100 !== 11)) {
+            ageText = 'год';
+        } else if (age >= 2 && age <= 4 || 
+                 (age % 10 >= 2 && age % 10 <= 4 && !(age % 100 >= 12 && age % 100 <= 14))) {
+            ageText = 'года';
+        } else {
+            ageText = 'лет';
+        }
+        
+        ageUnit.textContent = ageText;
     }
 }
 

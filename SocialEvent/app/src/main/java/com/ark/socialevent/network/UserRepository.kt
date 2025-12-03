@@ -871,4 +871,75 @@ class UserRepository(private val context: Context) {
             }
         })
     }
+
+    fun getMyAchievements(callback: (List<UserAchievement>?, String?) -> Unit) {
+        api.getMyAchievements().enqueue(object : Callback<AchievementsResponse> {
+            override fun onResponse(call: Call<AchievementsResponse>, response: Response<AchievementsResponse>) {
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        Log.d("UserRepository", "Loaded ${body.achievements?.size ?: 0} achievements")
+                        callback(body.achievements ?: emptyList(), null)
+                    } else {
+                        val errorMsg = body?.message ?: "Неизвестная ошибка"
+                        callback(null, errorMsg)
+                    }
+                } else {
+                    callback(null, "Ошибка сервера: ${response.code()}")
+                }
+            }
+
+            override fun onFailure(call: Call<AchievementsResponse>, t: Throwable) {
+                callback(null, "Ошибка сети: ${t.message}")
+            }
+        })
+    }
+
+    // Получить рейтинг пользователей
+    fun getRatings(search: String? = null, callback: (List<UserRating>?, String?) -> Unit) {
+        api.getRatings(search).enqueue(object : Callback<RatingsResponse> {
+            override fun onResponse(call: Call<RatingsResponse>, response: Response<RatingsResponse>) {
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        Log.d("UserRepository", "Loaded ${body.ratings?.size ?: 0} ratings")
+                        callback(body.ratings ?: emptyList(), null)
+                    } else {
+                        val errorMsg = body?.message ?: "Неизвестная ошибка"
+                        callback(null, errorMsg)
+                    }
+                } else {
+                    callback(null, "Ошибка сервера: ${response.code()}")
+                }
+            }
+
+            override fun onFailure(call: Call<RatingsResponse>, t: Throwable) {
+                callback(null, "Ошибка сети: ${t.message}")
+            }
+        })
+    }
+
+    // Получить общее количество очков
+    fun getTotalPoints(callback: (Int?, String?) -> Unit) {
+        api.getTotalPoints().enqueue(object : Callback<TotalPointsResponse> {
+            override fun onResponse(call: Call<TotalPointsResponse>, response: Response<TotalPointsResponse>) {
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null && body.success) {
+                        Log.d("UserRepository", "Total points: ${body.points}")
+                        callback(body.points ?: 0, null)
+                    } else {
+                        val errorMsg = body?.message ?: "Неизвестная ошибка"
+                        callback(null, errorMsg)
+                    }
+                } else {
+                    callback(null, "Ошибка сервера: ${response.code()}")
+                }
+            }
+
+            override fun onFailure(call: Call<TotalPointsResponse>, t: Throwable) {
+                callback(null, "Ошибка сети: ${t.message}")
+            }
+        })
+    }
 }

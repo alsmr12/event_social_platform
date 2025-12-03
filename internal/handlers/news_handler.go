@@ -169,6 +169,12 @@ func (h *NewsHandler) GetNewsFeedJSON(c *gin.Context) {
 	// 5. Преобразуем посты в нужный формат
 	var postItems []gin.H
 	for _, post := range posts {
+		// Определяем владельца стены
+		wallUser := post.User
+		if wallUser.ID == 0 {
+			// Если User не загружен, используем автора как владельца стены
+			wallUser = post.Author
+		}
 		postItems = append(postItems, gin.H{
 			"id":      post.ID,
 			"type":    "post",
@@ -181,6 +187,15 @@ func (h *NewsHandler) GetNewsFeedJSON(c *gin.Context) {
 				"gender":     post.Author.Gender,
 				"age":        post.Author.GetAge(),
 				"phone":      post.Author.Phone,
+			},
+			"user": gin.H{
+				"id":         wallUser.ID,
+				"email":      wallUser.Email,
+				"first_name": wallUser.FirstName,
+				"last_name":  wallUser.LastName,
+				"gender":     wallUser.Gender,
+				"age":        wallUser.GetAge(),
+				"phone":      wallUser.Phone,
 			},
 			"created_at": post.CreatedAt.Format(time.RFC3339),
 			"post": gin.H{

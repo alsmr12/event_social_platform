@@ -4,6 +4,58 @@ import com.google.gson.annotations.SerializedName
 import retrofit2.Call
 import retrofit2.http.*
 
+
+data class Achievement(
+    val id: Int,
+    val name: String,
+    val description: String,
+    val icon: String,
+    val points: Int,
+    val type: String,
+    val condition: Int,
+    @SerializedName("created_at") val createdAt: String
+)
+
+// Модель достижения пользователя
+data class UserAchievement(
+    val id: Int,
+    @SerializedName("user_id") val userId: Int,
+    @SerializedName("achievement_id") val achievementId: Int,
+    val achievement: Achievement,
+    val progress: Int,
+    val completed: Boolean,
+    @SerializedName("completed_at") val completedAt: String?,
+    @SerializedName("created_at") val createdAt: String,
+    @SerializedName("updated_at") val updatedAt: String
+)
+
+// Модель для рейтинга пользователей
+data class UserRating(
+    @SerializedName("user_id") val userId: Int,
+    @SerializedName("first_name") val firstName: String,
+    @SerializedName("last_name") val lastName: String,
+    val points: Int
+)
+
+// Ответы API
+data class AchievementsResponse(
+    val success: Boolean,
+    val achievements: List<UserAchievement>? = null,
+    val message: String? = null
+)
+
+data class RatingsResponse(
+    val success: Boolean,
+    val ratings: List<UserRating>? = null,
+    val message: String? = null
+)
+
+data class TotalPointsResponse(
+    val success: Boolean,
+    val points: Int? = null,
+    val message: String? = null
+)
+
 data class EventsRequest(
     @SerializedName("type") val type: String? = null,
     @SerializedName("date_from") val dateFrom: String? = null,
@@ -381,4 +433,15 @@ interface ApiService {
 
     @POST("/api/events/{id}/delete")
     fun deleteEvent(@Path("id") eventId: Int): Call<OperationResponse>
+
+    @GET("/api/achievements/my")
+    fun getMyAchievements(): Call<AchievementsResponse>
+
+    // Получить рейтинг пользователей
+    @GET("/api/achievements/ratings")
+    fun getRatings(@Query("search") search: String? = null): Call<RatingsResponse>
+
+    // Получить общее количество очков
+    @GET("/api/achievements/total-points")
+    fun getTotalPoints(): Call<TotalPointsResponse>
 }

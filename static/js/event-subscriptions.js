@@ -56,8 +56,8 @@ function createSubscriptionsHTML(subscriptions, filter, currentUser) {
 
         <!-- Вкладки -->
         <div class="tabs" style="margin-bottom: 20px;">
-            <button class="tab-btn ${!isPast ? 'active' : ''}" data-tab="upcoming">Предстоящие события</button>
-            <button class="tab-btn ${isPast ? 'active' : ''}" data-tab="past">Прошедшие события</button>
+            <button class="btn ${!isPast ? 'btn-primary' : 'btn-outline'}" data-tab="upcoming">Предстоящие события</button>
+            <button class="btn ${isPast ? 'btn-primary' : 'btn-outline'}" data-tab="past">Прошедшие события</button>
         </div>
 
         ${subscriptions.length > 0 ? `
@@ -138,7 +138,7 @@ function createSubscriptionsHTML(subscriptions, filter, currentUser) {
 
 function setupSubscriptionsHandlers() {
     // Переключение вкладок
-    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabButtons = document.querySelectorAll('.tabs .btn');
     tabButtons.forEach(btn => {
         btn.addEventListener('click', function() {
             const tab = this.getAttribute('data-tab');
@@ -174,7 +174,14 @@ async function unsubscribeFromEvent(eventId) {
 
         if (data.success) {
             showMessage('✅ Вы отписались от события', 'success');
-            setTimeout(() => window.location.reload(), 1000);
+            // Находим кнопку по data-event-id и удаляем карточку
+            const button = document.querySelector(`[data-event-id="${eventId}"]`);
+            if (button) {
+                const card = button.closest('.card');
+                if (card) {
+                    card.remove();
+                }
+            }
         } else {
             showMessage(data.message || '❌ Ошибка при отписке', 'error');
         }

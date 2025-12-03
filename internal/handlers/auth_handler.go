@@ -197,6 +197,17 @@ func (h *AuthHandler) ProfileJSON(c *gin.Context) {
 			return
 		}
 
+		// Проверим, что токен не просрочен
+		if time.Now().After(session.ExpiresAt) {
+			log.Printf("❌ ProfileJSON: Session expired")
+			h.sessionRepo.DeleteSession(token)
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"message": "Сессия истекла",
+			})
+			return
+		}
+
 		// Получим пользователя по ID из сессии
 		user, err = h.userRepo.GetUserByID(session.UserID)
 		if err != nil {

@@ -93,7 +93,7 @@ fun JoinEventByCodeDialog(
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Text("Присоединиться")
+                            Text("Войти")
                         }
                     }
                 }

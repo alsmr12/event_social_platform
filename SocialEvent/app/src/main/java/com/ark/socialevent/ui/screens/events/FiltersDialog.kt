@@ -158,7 +158,7 @@ fun FiltersDialog(
                 ) {
                     Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Применить")
+                    Text("Готово")
                 }
             }
         }

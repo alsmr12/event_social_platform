@@ -298,9 +298,7 @@ fun MainScreen(
                                 userRepository = userRepository,
                                 eventRepository = eventRepository
                             )
-                            DrawerScreens.Achievements -> AchievementsScreen(
-
-                            )
+                            DrawerScreens.Achievements -> AchievementsScreen(userRepository = userRepository)
                             DrawerScreens.Logout -> {
                                 // Просто показываем карту вместо выхода
                                 MapScreen(

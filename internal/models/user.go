@@ -25,11 +25,12 @@ type User struct {
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
 	// Поля для статистики (не сохраняются в БД)
-	FollowersCount int           `gorm:"-" json:"followers_count,omitempty"`
-	FollowingCount int           `gorm:"-" json:"following_count,omitempty"`
-	FriendsCount   int           `gorm:"-" json:"friends_count,omitempty"`
-	SocialLinks    []*SocialLink `gorm:"-" json:"social_links,omitempty"`
-	Posts          []*WallPost   `gorm:"-" json:"posts,omitempty"`
+	FollowersCount int           `json:"followers_count,omitempty"`
+	FollowingCount int           `json:"following_count,omitempty"`
+	FriendsCount   int           `json:"friends_count,omitempty"`
+	SocialLinks    []*SocialLink `json:"social_links,omitempty"`
+	Posts          []*WallPost   `json:"posts,omitempty"`
+	AgeText        string        `json:"age_text,omitempty"` // Текст для правильного склонения возраста
 }
 
 // HashPassword хеширует пароль перед сохранением

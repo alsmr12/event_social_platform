@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"event_social_platform/internal/middleware"
-	"event_social_platform/internal/models"
 	"event_social_platform/internal/repository"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -129,23 +128,15 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 			})
 		})
 		// В разделе protected добавляем правильные маршруты для профилей:
-		protected.GET("/profile", func(c *gin.Context) {
+		/*protected.GET("/profile", func(c *gin.Context) {
 			c.HTML(http.StatusOK, "base.html", gin.H{
 				"Title":       "Мой профиль",
 				"NavActive":   "my_profile",
 				"CurrentUser": GetUserFromContext(c),
 			})
-		})
-
-		protected.GET("/profile/:id", func(c *gin.Context) {
-			idStr := c.Param("id")
-			c.HTML(http.StatusOK, "base.html", gin.H{
-				"Title":       "Профиль пользователя",
-				"NavActive":   "profile",
-				"ProfileID":   idStr,
-				"CurrentUser": GetUserFromContext(c),
-			})
-		})
+		})*/
+		protected.GET("/profile", authHandler.ShowProfile)
+		protected.GET("/profile/:id", userHandler.GetProfile)
 
 		// В разделе protected добавляем:
 		protected.GET("/events", func(c *gin.Context) {
@@ -269,25 +260,25 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 				"CurrentUser": GetUserFromContext(c),
 			})
 		})
-		/*// Подписки
-		protected.GET("/subscriptions", subscriptionHandler.MySubscriptions)
+		// Подписки
+		//protected.GET("/subscriptions", subscriptionHandler.MySubscriptions)
 		protected.GET("/subscribe/:id", subscriptionHandler.Subscribe)
 		protected.GET("/unsubscribe/:id", subscriptionHandler.Unsubscribe)
 
 		// Друзья
-		protected.GET("/friends", friendshipHandler.FriendsPage)
+		//protected.GET("/friends", friendshipHandler.FriendsPage)
 		protected.GET("/friends/add/:id", friendshipHandler.SendFriendRequest)
 		protected.GET("/friends/accept/:id", friendshipHandler.AcceptFriendRequest)
 		protected.GET("/friends/reject/:id", friendshipHandler.RejectFriendRequest)
-		protected.GET("/friends/remove/:id", friendshipHandler.RemoveFriend)*/
+		protected.GET("/friends/remove/:id", friendshipHandler.RemoveFriend)
 
 		// Награды и рейтинг
 		protected.GET("/ratings", achievementHandler.ShowRatings)
 		protected.GET("/my-achievements", achievementHandler.ShowMyAchievements)
 
-		//protected.GET("/edit-profile", userHandler.ShowEditProfileForm)
-		//protected.POST("/edit-profile", userHandler.UpdateProfile)
-		protected.GET("/edit-profile", func(c *gin.Context) {
+		protected.GET("/edit-profile", userHandler.ShowEditProfileForm)
+		protected.POST("/edit-profile", userHandler.UpdateProfile)
+		/*protected.GET("/edit-profile", func(c *gin.Context) {
 			currentUser := GetUserFromContext(c)
 			if currentUser == nil {
 				c.Redirect(http.StatusSeeOther, "/login")
@@ -307,7 +298,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 				"CurrentUser": currentUser,
 				"SocialLinks": socialLinks,
 			})
-		})
+		})*/
 
 		protected.GET("/api/events", eventHandler.GetAllEventsJSON)
 		protected.POST("/api/create-event", eventHandler.CreateEventJSON)
@@ -362,6 +353,9 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB) {
 		api.GET("/events/filtered", eventHandler.GetAllEventsWithFiltersJSON)
 		// Лента новостей
 		api.GET("/news", newsHandler.GetNewsFeedJSON)
+		api.GET("/achievements/my", achievementHandler.GetMyAchievementsJSON)
+		api.GET("/achievements/ratings", achievementHandler.GetRatingsJSON)
+		api.GET("/achievements/total-points", achievementHandler.GetTotalPointsJSON)
 
 	}
 }
