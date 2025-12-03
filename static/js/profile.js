@@ -1,5 +1,9 @@
 document.addEventListener('DOMContentLoaded', async function() {
     try {
+        const response1 = await fetch('/api/profile');
+        const data1 = await response.json();
+        // Формируем URL для запроса
+
         const profileContent = document.getElementById('profile-content');
         if (!profileContent) {
             console.error('Profile content element not found');
@@ -15,10 +19,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.log('Loading profile with ID:', profileId);
         console.log('Current user ID:', window.currentUser ? window.currentUser.id : 'none');
 
-        // Формируем URL для запроса
-        let url = '/api/profile';
+        let url = '/api/profile/stats';
         if (profileId && profileId !== 'undefined') {
-            url = `/api/profile?id=${profileId}`;
+            url = `/api/profile?id=${profileId}/subscription-stats`;
         }
 
         // Получаем данные профиля через JSON API
