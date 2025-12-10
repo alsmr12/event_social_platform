@@ -381,6 +381,27 @@ input:focus, select:focus, textarea:focus {
     font-size: 0.9rem;
 }
 
+/* Empty state styles */
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #7f8c8d;
+    background: #f8f9fa;
+    border-radius: 10px;
+    margin: 20px 0;
+    border: 1px solid #e9ecef;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.empty-state p {
+    margin: 1rem 0;
+    font-size: 1.1em;
+}
+
+.empty-state .btn {
+    margin-top: 1rem;
+}
+
 /* Навигация для авторизованных пользователей */
 .user-greeting {
     color: #7f8c8d;

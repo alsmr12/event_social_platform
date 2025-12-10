@@ -31,11 +31,26 @@ document.addEventListener('DOMContentLoaded', async function() {
         friendsContent.innerHTML = `
             <h2>Мои друзья</h2>
 
+            <!-- Статистика -->
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-number">${pendingRequests.length}</div>
+                    <div class="stat-label">Входящих заявок</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">${sentRequests.length}</div>
+                    <div class="stat-label">Исходящих заявок</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">${friends.length}</div>
+                    <div class="stat-label">Друзей</div>
+                </div>
+            </div>
+
             <!-- Входящие запросы -->
             <div style="margin-bottom: 40px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h3>Входящие запросы</h3>
-                    <span class="badge badge-pending">${pendingRequests.length}</span>
                 </div>
 
                 ${pendingRequests.length > 0 ? `
@@ -67,7 +82,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             <div style="margin-bottom: 40px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h3>Исходящие запросы</h3>
-                    <span class="badge badge-pending">${sentRequests.length}</span>
                 </div>
 
                 ${sentRequests.length > 0 ? `
@@ -98,7 +112,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             <div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h3>Мои друзья</h3>
-                    <span class="badge badge-success">${friends.length}</span>
                 </div>
 
                 ${friends.length > 0 ? `
