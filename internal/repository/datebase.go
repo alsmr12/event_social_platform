@@ -58,7 +58,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.SocialLink{},
 		&models.Achievement{},
 		&models.UserAchievement{},
-		//&models.Event{},
+		&models.Event{},
 	}
 
 	for _, table := range tables {
@@ -70,9 +70,9 @@ func AutoMigrate(db *gorm.DB) error {
 	log.Println("All tables migrated except events")
 
 	// Теперь обрабатываем events таблицу отдельно
-	if err := handleEventsTable(db); err != nil {
-		return fmt.Errorf("failed to handle events table: %w", err)
-	}
+	//if err := handleEventsTable(db); err != nil {
+	//	return fmt.Errorf("failed to handle events table: %w", err)
+	//}
 
 	log.Println("Database migration completed successfully")
 	return nil
