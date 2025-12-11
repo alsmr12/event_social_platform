@@ -58,6 +58,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&models.SocialLink{},
 		&models.Achievement{},
 		&models.UserAchievement{},
+		//&models.Event{},
 	}
 
 	for _, table := range tables {
